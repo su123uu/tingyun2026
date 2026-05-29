@@ -4,32 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>停云山居 · 首页</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            ink: '#151515',
-            muted: '#8b8b8b',
-            paper: '#f7f5ef',
-            green: '#4f6f52',
-            gold: '#b99355',
-          },
-        },
-      },
-    };
-  </script>
   <style>
     :root {
-      --ink: #151515;
-      --muted: #8b8b8b;
-      --line: #ece9e2;
-      --paper: #f7f5ef;
-      --white: #ffffff;
-      --green: #4f6f52;
-      --gold: #b99355;
-      --soft-gold: #c7a36a;
+      --ink: #1A1A1A;
+      --ink-soft: #4A4A4A;
+      --mist: #7C8A8C;
+      --paper: #F8F6F1;
+      --paper-deep: #F1EDE5;
+      --beige: #E8E4DC;
+      --green: #4F6F52;
+      --bronze: #8B7355;
+      --gold: #C9A962;
+      --white: #FFFFFF;
+      --line: rgba(26, 26, 26, 0.07);
+      --shadow: 0 8px 24px rgba(26, 26, 26, 0.045);
     }
 
     * {
@@ -54,20 +42,23 @@
       background: transparent;
       color: inherit;
       font: inherit;
+      cursor: pointer;
     }
 
     .app {
       position: relative;
       width: 100%;
       height: 100vh;
-      background: #f5f3ee;
       overflow: hidden;
+      background:
+        radial-gradient(circle at 12% 4%, rgba(79, 111, 82, 0.10), transparent 34%),
+        linear-gradient(180deg, #F8F6F1 0%, #F3F0E9 100%);
     }
 
     .scroll {
       height: 100%;
       overflow-y: auto;
-      padding-bottom: 98px;
+      padding: 18px 16px 104px;
       scrollbar-width: none;
     }
 
@@ -75,527 +66,468 @@
       display: none;
     }
 
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 1px 12px rgba(26, 26, 26, 0.04);
+    }
+
+    .brand-mark img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }
+
+    .brand-name {
+      display: block;
+      font-size: 19px;
+      font-weight: 650;
+      letter-spacing: 3px;
+      line-height: 1.2;
+    }
+
+    .brand-sub {
+      display: block;
+      margin-top: 3px;
+      color: var(--mist);
+      font-size: 11px;
+      letter-spacing: 1.5px;
+    }
+
+    .weather-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.68);
+      color: var(--ink-soft);
+      font-size: 12px;
+      box-shadow: 0 1px 10px rgba(26, 26, 26, 0.035);
+    }
+
+    .weather-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+
     .hero {
       position: relative;
-      min-height: 372px;
+      height: 174px;
+      border-radius: 22px;
       overflow: hidden;
-      color: #fff;
-      background: #20331f;
+      background: #24331F;
+      box-shadow: var(--shadow);
     }
 
     .hero-slide {
       position: absolute;
       inset: 0;
       opacity: 0;
-      transition: opacity 700ms ease;
-      background-position: center;
+      transition: opacity 720ms ease;
       background-size: cover;
+      background-position: center;
     }
 
     .hero-slide.active {
       opacity: 1;
     }
 
-    .hero-slide.one {
-      background-image: url("../部分图片/茶空间.jpg");
-    }
-
-    .hero-slide.two {
-      background-image: url("../部分图片/茶.jpg");
-    }
-
-    .hero-slide.three {
-      background-image: url("../部分图片/晚饭.jpg");
-    }
+    .hero-slide.one { background-image: url("../部分图片/茶空间.jpg"); }
+    .hero-slide.two { background-image: url("../部分图片/茶活动正.jpg"); }
+    .hero-slide.three { background-image: url("../部分图片/晚饭.jpg"); }
 
     .hero::after {
       content: "";
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(180deg, rgba(0, 0, 0, 0.16) 0%, rgba(0, 0, 0, 0.08) 38%, rgba(0, 0, 0, 0.44) 100%),
-        radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.16), transparent 34%);
+        linear-gradient(90deg, rgba(0, 0, 0, 0.48) 0%, rgba(0, 0, 0, 0.18) 58%, rgba(0, 0, 0, 0.04) 100%),
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.22) 100%);
       pointer-events: none;
-    }
-
-    .status {
-      position: relative;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 18px 0;
-      color: rgba(255, 255, 255, 0.94);
-      font-size: 18px;
-      font-weight: 700;
-      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.22);
-    }
-
-    .system-icons {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-    }
-
-    .signal {
-      display: grid;
-      grid-template-columns: repeat(4, 4px);
-      align-items: end;
-      gap: 2px;
-      height: 15px;
-    }
-
-    .signal span {
-      width: 4px;
-      border-radius: 2px;
-      background: currentColor;
-    }
-
-    .signal span:nth-child(1) { height: 5px; }
-    .signal span:nth-child(2) { height: 8px; }
-    .signal span:nth-child(3) { height: 11px; }
-    .signal span:nth-child(4) { height: 14px; }
-
-    .wifi {
-      width: 18px;
-      height: 13px;
-      border: 3px solid currentColor;
-      border-bottom: 0;
-      border-left-color: transparent;
-      border-right-color: transparent;
-      border-radius: 18px 18px 0 0;
-      position: relative;
-    }
-
-    .wifi::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: -4px;
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: currentColor;
-      transform: translateX(-50%);
-    }
-
-    .battery {
-      min-width: 28px;
-      height: 16px;
-      border-radius: 5px;
-      background: rgba(0, 0, 0, 0.25);
-      display: grid;
-      place-items: center;
-      font-size: 11px;
-      line-height: 1;
-    }
-
-    .wechat-capsule {
-      position: relative;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      width: 90px;
-      height: 34px;
-      margin: 24px 16px 0 auto;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.78);
-      color: #111;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-    }
-
-    .wechat-capsule::after {
-      content: "";
-      width: 1px;
-      height: 20px;
-      background: rgba(0, 0, 0, 0.14);
-    }
-
-    .dots {
-      display: flex;
-      gap: 4px;
-      order: -1;
-    }
-
-    .dots span {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-
-    .circle-dot {
-      width: 23px;
-      height: 23px;
-      border: 3px solid currentColor;
-      border-radius: 50%;
-      position: relative;
-    }
-
-    .circle-dot::after {
-      content: "";
-      position: absolute;
-      inset: 4px;
-      border-radius: 50%;
-      background: currentColor;
     }
 
     .hero-copy {
       position: relative;
-      z-index: 2;
-      margin-top: 18px;
-      padding: 0 26px;
-      text-align: center;
-      text-shadow: 0 2px 16px rgba(0, 0, 0, 0.36);
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 22px;
+      color: #fff;
+      text-shadow: 0 2px 16px rgba(0, 0, 0, 0.28);
+    }
+
+    .hero-kicker {
+      width: fit-content;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      font-size: 11px;
+      letter-spacing: 2px;
+      backdrop-filter: blur(10px);
     }
 
     .hero-title {
-      font-size: 34px;
-      font-weight: 800;
+      margin-top: 12px;
+      font-size: 26px;
+      font-weight: 650;
       letter-spacing: 4px;
-      line-height: 1.18;
+      line-height: 1.25;
     }
 
-    .hero-subtitle {
-      margin-top: 20px;
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      line-height: 1.7;
-    }
-
-    .hero-note {
-      margin-top: 10px;
-      color: rgba(255, 255, 255, 0.78);
-      font-size: 10px;
+    .hero-text {
+      margin-top: 8px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 12px;
       letter-spacing: 1px;
-      line-height: 1.7;
+      line-height: 1.55;
     }
 
-    .hero-vertical {
+    .hero-dots {
       position: absolute;
       z-index: 2;
-      left: 26px;
-      bottom: 72px;
+      right: 18px;
+      bottom: 17px;
       display: flex;
-      flex-direction: column;
-      gap: 3px;
+      gap: 5px;
+    }
+
+    .hero-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.48);
+      transition: width 240ms ease, background 240ms ease;
+    }
+
+    .hero-dot.active {
+      width: 17px;
+      background: #fff;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .action-card {
+      min-height: 116px;
+      border-radius: 20px;
+      padding: 16px;
+      color: #fff;
+      overflow: hidden;
+      position: relative;
+      box-shadow: var(--shadow);
+    }
+
+    .action-card.order {
+      background: linear-gradient(145deg, #4F6F52 0%, #2F4F34 100%);
+    }
+
+    .action-card.booking {
+      background: linear-gradient(145deg, #8B7355 0%, #63513C 100%);
+    }
+
+    .action-card::after {
+      content: "";
+      position: absolute;
+      right: -24px;
+      bottom: -34px;
+      width: 118px;
+      height: 118px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 50%;
+    }
+
+    .action-icon {
+      width: 34px;
+      height: 34px;
       color: rgba(255, 255, 255, 0.88);
-      font-size: 24px;
-      font-weight: 300;
-      letter-spacing: 1px;
-      writing-mode: vertical-rl;
-      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.34);
+    }
+
+    .action-title {
+      display: block;
+      margin-top: 14px;
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: 2px;
+    }
+
+    .action-desc {
+      display: block;
+      margin-top: 6px;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 11px;
+      line-height: 1.45;
+      letter-spacing: 0.5px;
+    }
+
+    .section {
+      margin-top: 18px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: 650;
+      letter-spacing: 2px;
+    }
+
+    .section-more {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--mist);
+      font-size: 12px;
+    }
+
+    .section-more::after {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-top: 1.5px solid currentColor;
+      border-right: 1.5px solid currentColor;
+      transform: rotate(45deg);
     }
 
     .member-card {
-      position: relative;
-      z-index: 5;
-      margin: -46px 14px 0;
       border-radius: 20px;
-      background: var(--white);
-      box-shadow: 0 10px 32px rgba(20, 20, 20, 0.08);
-      overflow: hidden;
-    }
-
-    .member-top {
-      display: grid;
-      grid-template-columns: auto auto 1fr auto auto;
-      align-items: center;
-      gap: 8px;
-      padding: 16px 16px 8px;
-      min-height: 52px;
-    }
-
-    .user-name {
-      font-size: 19px;
-      font-weight: 800;
-      letter-spacing: 0;
-      white-space: nowrap;
-    }
-
-    .level-pill {
-      height: 28px;
-      padding: 0 18px;
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      background: linear-gradient(180deg, #c8a36b, #b58d56);
+      padding: 18px;
+      background:
+        linear-gradient(135deg, rgba(26, 26, 26, 0.96), rgba(67, 57, 43, 0.96)),
+        #1A1A1A;
       color: #fff;
-      font-size: 14px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .points {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 22px;
-      color: var(--gold);
-      font-size: 20px;
-      font-weight: 800;
-    }
-
-    .tea-leaf {
-      justify-self: end;
-      width: 27px;
-      height: 30px;
-      color: #86a955;
-    }
-
-    .coupon-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 17px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-
-    .order-actions {
-      display: grid;
-      grid-template-columns: 1fr 1px 1fr;
-      align-items: stretch;
-      padding: 18px 8px 25px;
-    }
-
-    .divider {
-      width: 1px;
-      margin: 18px 0 12px;
-      background: #e5e2dc;
-    }
-
-    .order-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 146px;
-      cursor: pointer;
-    }
-
-    .polaroid {
-      width: 92px;
-      height: 74px;
-      margin-bottom: 8px;
-      padding: 5px 5px 15px;
-      background: #fff;
-      box-shadow: 0 5px 16px rgba(0, 0, 0, 0.14);
-      transform: rotate(-3deg);
-    }
-
-    .order-btn:nth-child(3) .polaroid {
-      transform: rotate(3deg);
-    }
-
-    .polaroid img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .order-title {
-      font-size: 27px;
-      font-weight: 900;
-      line-height: 1.1;
-      letter-spacing: -1px;
-    }
-
-    .order-desc {
-      margin-top: 7px;
-      color: #9b9b9b;
-      font-size: 17px;
-      font-weight: 500;
-    }
-
-    .service-card {
-      margin: 12px 14px 0;
-      border-radius: 16px;
-      background: var(--white);
-      box-shadow: 0 7px 26px rgba(20, 20, 20, 0.05);
+      box-shadow: var(--shadow);
       overflow: hidden;
-    }
-
-    .promo-row {
-      display: grid;
-      grid-template-columns: 1fr 1px 1fr;
-      align-items: center;
-      min-height: 82px;
-      padding: 0 16px;
-    }
-
-    .promo-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      min-width: 0;
-      cursor: pointer;
-    }
-
-    .promo-item + .promo-item {
-      padding-left: 14px;
-    }
-
-    .promo-title {
-      font-size: 19px;
-      font-weight: 900;
-      letter-spacing: -0.6px;
-      white-space: nowrap;
-    }
-
-    .promo-desc {
-      margin-top: 5px;
-      color: #9a9a9a;
-      font-size: 12px;
-      line-height: 1.2;
-      white-space: nowrap;
-    }
-
-    .promo-icon {
-      flex: 0 0 auto;
-      width: 44px;
-      height: 44px;
-      color: #7da65a;
-    }
-
-    .line {
-      height: 1px;
-      margin: 0 16px;
-      background: var(--line);
-    }
-
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 0;
-      padding: 17px 8px 18px;
-    }
-
-    .feature {
-      display: flex;
-      min-width: 0;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      color: #171717;
-    }
-
-    .feature svg {
-      width: 33px;
-      height: 33px;
-      margin-bottom: 7px;
-      color: var(--soft-gold);
-      stroke-width: 1.7;
-    }
-
-    .feature-title {
-      width: 100%;
-      font-size: 13px;
-      font-weight: 800;
-      line-height: 1.1;
-      white-space: nowrap;
-      letter-spacing: -0.4px;
-    }
-
-    .feature-desc {
-      margin-top: 3px;
-      width: 100%;
-      color: #9c9c9c;
-      font-size: 9px;
-      line-height: 1.2;
-      white-space: nowrap;
-    }
-
-    .content-card {
-      margin: 16px 14px 0;
-      border-radius: 12px;
-      background: var(--white);
-      overflow: hidden;
-      box-shadow: 0 7px 24px rgba(20, 20, 20, 0.05);
-    }
-
-    .wide-image {
       position: relative;
-      height: 132px;
-      overflow: hidden;
-      background: #2b3824;
     }
 
-    .wide-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .wide-image::after {
+    .member-card::after {
       content: "";
       position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.04));
+      right: -42px;
+      top: -42px;
+      width: 128px;
+      height: 128px;
+      border-radius: 50%;
+      border: 1px solid rgba(201, 169, 98, 0.28);
     }
 
-    .wide-copy {
-      position: absolute;
+    .member-main {
+      position: relative;
       z-index: 1;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      color: #fff;
-      text-align: center;
-      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.36);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
     }
 
-    .wide-copy strong {
-      display: block;
-      font-size: 25px;
-      line-height: 1.55;
+    .member-label {
+      color: rgba(255, 255, 255, 0.62);
+      font-size: 11px;
       letter-spacing: 2px;
     }
 
-    .wide-copy span {
+    .member-level {
+      margin-top: 8px;
+      font-size: 22px;
+      font-weight: 650;
+      letter-spacing: 3px;
+    }
+
+    .member-desc {
+      margin-top: 8px;
+      color: rgba(255, 255, 255, 0.70);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .member-badge {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(201, 169, 98, 0.55);
+      color: #E5C582;
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .member-stats {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.10);
+    }
+
+    .stat strong {
       display: block;
-      margin-top: 4px;
-      font-size: 13px;
-      letter-spacing: 4px;
+      color: #F0D89C;
+      font-size: 18px;
+      line-height: 1.1;
     }
 
-    .card-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 16px 15px;
+    .stat span {
+      display: block;
+      margin-top: 5px;
+      color: rgba(255, 255, 255, 0.60);
+      font-size: 11px;
     }
 
-    .card-row-title {
-      font-size: 21px;
-      font-weight: 900;
-      letter-spacing: -0.6px;
+    .intro-card {
+      display: grid;
+      grid-template-columns: 112px 1fr;
+      gap: 14px;
+      align-items: stretch;
+      min-height: 132px;
+      padding: 12px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.80);
+      box-shadow: var(--shadow);
     }
 
-    .more-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      color: #999;
+    .intro-img {
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--beige);
+    }
+
+    .intro-img img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    .intro-body {
+      min-width: 0;
+      padding: 4px 2px 2px 0;
+    }
+
+    .intro-tag {
+      color: var(--gold);
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    .intro-title {
+      margin-top: 7px;
       font-size: 17px;
-      font-weight: 700;
-      white-space: nowrap;
+      font-weight: 650;
+      letter-spacing: 1px;
     }
 
-    .chevron {
-      width: 9px;
-      height: 9px;
-      border-top: 2px solid currentColor;
-      border-right: 2px solid currentColor;
+    .intro-text {
+      margin-top: 7px;
+      color: var(--ink-soft);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .activity-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .activity-card {
+      display: grid;
+      grid-template-columns: 86px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 92px;
+      padding: 10px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: var(--shadow);
+    }
+
+    .activity-img {
+      width: 86px;
+      height: 72px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--beige);
+    }
+
+    .activity-img img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    .activity-date {
+      color: var(--gold);
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    .activity-name {
+      margin-top: 5px;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0.5px;
+    }
+
+    .activity-desc {
+      margin-top: 5px;
+      color: var(--mist);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .activity-arrow {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(79, 111, 82, 0.08);
+      color: var(--green);
+    }
+
+    .activity-arrow::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-top: 1.7px solid currentColor;
+      border-right: 1.7px solid currentColor;
       transform: rotate(45deg);
+      margin-left: -2px;
     }
 
     .bottom-nav {
@@ -607,9 +539,9 @@
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       padding: 9px 8px calc(14px + env(safe-area-inset-bottom));
-      background: rgba(255, 255, 255, 0.96);
-      border-top: 1px solid rgba(0, 0, 0, 0.06);
-      box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.04);
+      background: rgba(255, 255, 255, 0.94);
+      border-top: 1px solid rgba(0, 0, 0, 0.055);
+      box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.035);
       backdrop-filter: blur(16px);
     }
 
@@ -619,49 +551,47 @@
       align-items: center;
       justify-content: center;
       gap: 5px;
-      color: #9b9b9b;
+      color: #9B9B9B;
       font-size: 12px;
-      cursor: pointer;
     }
 
     .nav-item.active {
-      color: var(--gold);
+      color: var(--green);
     }
 
     .nav-item svg {
-      width: 25px;
-      height: 25px;
+      width: 24px;
+      height: 24px;
       stroke-width: 1.65;
     }
 
     .nav-item.center svg {
       width: 32px;
       height: 18px;
-      margin: 4px 0 3px;
+      margin: 3px 0 3px;
     }
 
     @media (max-width: 360px) {
-      .member-top {
-        gap: 8px;
-        padding-left: 16px;
-        padding-right: 16px;
+      .scroll {
+        padding-left: 13px;
+        padding-right: 13px;
       }
 
-      .user-name,
-      .coupon-label {
+      .hero {
+        height: 164px;
+      }
+
+      .action-card {
+        min-height: 108px;
+        padding: 14px;
+      }
+
+      .action-title {
         font-size: 17px;
       }
 
-      .level-pill {
-        padding: 0 15px;
-      }
-
-      .promo-title {
-        font-size: 16px;
-      }
-
-      .feature-title {
-        font-size: 11px;
+      .intro-card {
+        grid-template-columns: 96px 1fr;
       }
     }
   </style>
@@ -669,163 +599,112 @@
 <body>
   <main class="app">
     <section class="scroll" aria-label="首页内容">
-      <header class="hero">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark"><img src="../部分图片/logo1.png" alt="停云山居"></span>
+          <span>
+            <span class="brand-name">停云山居</span>
+            <span class="brand-sub">青岛崂山 · 禅意生活空间</span>
+          </span>
+        </div>
+        <span class="weather-chip"><i class="weather-dot"></i>山风微凉</span>
+      </header>
+
+      <section class="hero" aria-label="山居轮播">
         <div class="hero-slide one active"></div>
         <div class="hero-slide two"></div>
         <div class="hero-slide three"></div>
-
-        <div class="status" aria-hidden="true">
-          <span>16:40</span>
-          <div class="system-icons">
-            <span class="signal"><span></span><span></span><span></span><span></span></span>
-            <span class="wifi"></span>
-            <span class="battery">26</span>
-          </div>
-        </div>
-
-        <div class="wechat-capsule" aria-hidden="true">
-          <span class="dots"><span></span><span></span><span></span></span>
-          <span class="circle-dot"></span>
-        </div>
-
         <div class="hero-copy">
-          <h1 class="hero-title">停云山居<br>会员有礼</h1>
-          <p class="hero-subtitle">5月21日-31日消费满额<br>赠山居茶席体验券</p>
-          <p class="hero-note">点单、预约、活动权益均可在小程序内完成</p>
+          <span class="hero-kicker">今日山居</span>
+          <h1 class="hero-title">停云待客<br>茶饭皆有时</h1>
+          <p class="hero-text">扫码点餐、预约到店、查看活动，都从这里开始。</p>
         </div>
+        <div class="hero-dots" aria-hidden="true">
+          <span class="hero-dot active"></span>
+          <span class="hero-dot"></span>
+          <span class="hero-dot"></span>
+        </div>
+      </section>
 
-        <div class="hero-vertical" aria-hidden="true">山里请云上坐</div>
-      </header>
-
-      <section class="member-card" aria-label="会员与点单入口">
-        <div class="member-top">
-          <div class="user-name">微信用户</div>
-          <div class="level-pill">v1 初见云</div>
-          <svg class="tea-leaf" viewBox="0 0 32 36" fill="none" aria-hidden="true">
-            <path d="M16 34V10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M16 16C11 9 5 8 2 13c5 4 10 4 14 3Z" fill="currentColor" opacity=".72"/>
-            <path d="M17 12c3-7 9-9 13-5-3 6-8 8-13 5Z" fill="currentColor" opacity=".92"/>
-            <path d="M18 24c4-5 9-5 12-1-4 4-8 4-12 1Z" fill="currentColor" opacity=".62"/>
-            <path d="M10 29h13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <section class="quick-actions" aria-label="快捷入口">
+        <button class="action-card order" type="button" onclick="goTo('menu')">
+          <svg class="action-icon" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 8h20v20H8z"/><path d="M13 13h5"/><path d="M13 18h10"/><path d="M13 23h7"/><path d="M25 24l4 4"/><path d="M29 24l-4 4"/>
           </svg>
-          <span class="points">0</span>
-          <div class="coupon-label">优惠券 <span class="points">0</span></div>
-        </div>
-
-        <div class="order-actions">
-          <button class="order-btn" type="button" onclick="goTo('menu')">
-            <span class="polaroid"><img src="../部分图片/茶空间.jpg" alt=""></span>
-            <span class="order-title">门店自取</span>
-            <span class="order-desc">山里见面</span>
-          </button>
-          <div class="divider" aria-hidden="true"></div>
-          <button class="order-btn" type="button" onclick="goTo('booking')">
-            <span class="polaroid"><img src="../部分图片/茶.jpg" alt=""></span>
-            <span class="order-title">预约预订</span>
-            <span class="order-desc">好茶好席</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="service-card" aria-label="功能入口">
-        <div class="promo-row">
-          <button class="promo-item" type="button" onclick="goTo('profile')">
-            <span>
-              <span class="promo-title">停云会员礼</span>
-              <span class="promo-desc">解锁山居茶席权益</span>
-            </span>
-            <svg class="promo-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-              <path d="M24 39V18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M23 17c-6-8-13-6-16-1 5 5 11 6 16 1Z" fill="currentColor" opacity=".75"/>
-              <path d="M25 14c2-8 10-10 16-5-3 7-10 10-16 5Z" fill="currentColor"/>
-              <rect x="13" y="29" width="22" height="11" rx="4" fill="currentColor" opacity=".25"/>
-            </svg>
-          </button>
-          <div class="divider" aria-hidden="true"></div>
-          <button class="promo-item" type="button" onclick="goToIntro()">
-            <span>
-              <span class="promo-title">停云山居社群</span>
-              <span class="promo-desc">欢迎加入茶友社区</span>
-            </span>
-            <svg class="promo-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-              <circle cx="19" cy="20" r="8" stroke="currentColor" stroke-width="2.2"/>
-              <circle cx="31" cy="18" r="6" stroke="currentColor" stroke-width="2.2" opacity=".75"/>
-              <path d="M8 39c2-8 8-12 15-12s13 4 15 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="line"></div>
-
-        <div class="feature-grid">
-          <button class="feature" type="button" onclick="goTo('booking')">
-            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 15h16l-2 13H10L8 15Z"/><path d="M12 15v-4a6 6 0 0 1 12 0v4"/><path d="M25 17h5l-1 11h-5"/>
-            </svg>
-            <span class="feature-title">山居团餐</span>
-            <span class="feature-desc">多人宴聚优惠</span>
-          </button>
-          <button class="feature" type="button" onclick="goTo('profile')">
-            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="7" y="10" width="22" height="16" rx="3"/><path d="M7 15h22"/><path d="M13 22c3-3 7-3 10 0"/><path d="M14 10l10-4"/>
-            </svg>
-            <span class="feature-title">会友卡</span>
-            <span class="feature-desc">送一杯清心意</span>
-          </button>
-          <button class="feature" type="button" onclick="goTo('orders')">
-            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 11h14l4 6v10H8V11Z"/><path d="M22 11v6h4"/><path d="M13 27v3"/><path d="M24 27v3"/><path d="M17 20h12"/>
-            </svg>
-            <span class="feature-title">山居小店</span>
-            <span class="feature-desc">GET 最新周边</span>
-          </button>
-          <button class="feature" type="button" onclick="goToIntro()">
-            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 26l4-13 12-4 4 4-4 12-13 4-3-3Z"/><path d="M21 12l3 3"/><path d="M13 23l7-7"/>
-            </svg>
-            <span class="feature-title">自定义福帖</span>
-            <span class="feature-desc">写下专属祝愿</span>
-          </button>
-          <button class="feature" type="button" onclick="goTo('menu')">
-            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="8" y="7" width="20" height="23" rx="3"/><path d="M13 14h10"/><path d="M13 20h5"/><path d="M22 23l5 5"/><path d="M27 23l-5 5"/>
-            </svg>
-            <span class="feature-title">健康计算器</span>
-            <span class="feature-desc">查饮品营养</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="content-card">
-        <div class="wide-image">
-          <img src="../部分图片/会员活动.png" alt="会员活动">
-          <div class="wide-copy">
-            <span>
-              <strong>GET会员</strong>
-              <strong>最新山居活动攻略</strong>
-            </span>
-          </div>
-        </div>
-        <button class="card-row" type="button" onclick="goTo('profile')">
-          <span class="card-row-title">会员活动指南</span>
-          <span class="more-link">点击查看 <i class="chevron"></i></span>
+          <span class="action-title">扫码点餐</span>
+          <span class="action-desc">堂食下单，模拟支付后通知厨房</span>
+        </button>
+        <button class="action-card booking" type="button" onclick="goTo('booking')">
+          <svg class="action-icon" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="7" y="9" width="22" height="20" rx="4"/><path d="M12 7v5"/><path d="M24 7v5"/><path d="M7 15h22"/><path d="M13 21h4"/><path d="M21 21h2"/>
+          </svg>
+          <span class="action-title">预约预订</span>
+          <span class="action-desc">住宿、用餐、空间先展示咨询</span>
         </button>
       </section>
 
-      <section class="content-card">
-        <div class="wide-image">
-          <img src="../部分图片/茶活动.png" alt="品牌资讯">
-          <div class="wide-copy">
-            <span>
-              <strong>停云山居</strong>
-              <span>感受山间清寂时光</span>
-            </span>
-          </div>
+      <section class="section" aria-label="会员摘要">
+        <div class="section-head">
+          <h2 class="section-title">停云会员</h2>
+          <button class="section-more" type="button" onclick="goTo('profile')">查看权益</button>
         </div>
-        <button class="card-row" type="button" onclick="goToIntro()">
-          <span class="card-row-title">查看最新品牌资讯</span>
-          <span class="more-link">获取福利信息 <i class="chevron"></i></span>
+        <button class="member-card" type="button" onclick="goTo('profile')">
+          <div class="member-main">
+            <span>
+              <span class="member-label">当前等级</span>
+              <span class="member-level">山客</span>
+              <span class="member-desc">注册即享 9.5 折，活动可优先咨询预留名额。</span>
+            </span>
+            <span class="member-badge">模拟数据</span>
+          </div>
+          <div class="member-stats">
+            <span class="stat"><strong>9.5折</strong><span>点餐权益</span></span>
+            <span class="stat"><strong>¥680</strong><span>累计消费</span></span>
+            <span class="stat"><strong>3次</strong><span>活动权益</span></span>
+          </div>
         </button>
+      </section>
+
+      <section class="section" aria-label="山居介绍">
+        <div class="section-head">
+          <h2 class="section-title">山居一隅</h2>
+          <button class="section-more" type="button" onclick="goToIntro()">了解更多</button>
+        </div>
+        <button class="intro-card" type="button" onclick="goToIntro()">
+          <span class="intro-img"><img src="../部分图片/茶空间.jpg" alt="山居茶空间"></span>
+          <span class="intro-body">
+            <span class="intro-tag">茶 · 饭 · 住 · 修</span>
+            <span class="intro-title">隐于崂山，归于自然</span>
+            <span class="intro-text">这里不是匆忙打卡的景点，更像一处可以慢慢坐下来的山间客厅。</span>
+          </span>
+        </button>
+      </section>
+
+      <section class="section" aria-label="近期活动">
+        <div class="section-head">
+          <h2 class="section-title">近期活动</h2>
+          <button class="section-more" type="button" onclick="goToIntro()">电话咨询</button>
+        </div>
+        <div class="activity-list">
+          <button class="activity-card" type="button" onclick="goToIntro()">
+            <span class="activity-img"><img src="../部分图片/禅修活动正1.jpg" alt="禅修活动"></span>
+            <span>
+              <span class="activity-date">6月15日 14:00</span>
+              <span class="activity-name">禅修冥想体验课</span>
+              <span class="activity-desc">专业导师带领，适合第一次接触禅修的来客。</span>
+            </span>
+            <i class="activity-arrow" aria-hidden="true"></i>
+          </button>
+          <button class="activity-card" type="button" onclick="goToIntro()">
+            <span class="activity-img"><img src="../部分图片/茶活动正.jpg" alt="茶艺活动"></span>
+            <span>
+              <span class="activity-date">6月20日 16:00</span>
+              <span class="activity-name">山间茶艺品鉴会</span>
+              <span class="activity-desc">品茶、听山、会友，报名先通过客服确认。</span>
+            </span>
+            <i class="activity-arrow" aria-hidden="true"></i>
+          </button>
+        </div>
       </section>
     </section>
 
@@ -838,15 +717,15 @@
       </button>
       <button class="nav-item" type="button" onclick="goTo('menu')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M8 3h8l-1 18H9L8 3Z"/><path d="M7 7h10"/><path d="M9 21h6"/>
+          <path d="M8 4h8l-1 17H9L8 4Z"/><path d="M7 8h10"/><path d="M9 21h6"/>
         </svg>
-        <span>点单</span>
+        <span>点餐</span>
       </button>
       <button class="nav-item center" type="button" onclick="goToIntro()">
         <svg viewBox="0 0 46 22" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 18c6-1 10-8 16-8 4 0 6 4 10 4 5 0 8-5 16-6"/><path d="M12 17c5-1 7-4 11-4 3 0 5 3 10 2"/>
         </svg>
-        <span>山居</span>
+        <span>介绍</span>
       </button>
       <button class="nav-item" type="button" onclick="goTo('orders')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -865,12 +744,15 @@
 
   <script>
     const slides = Array.from(document.querySelectorAll(".hero-slide"));
+    const dots = Array.from(document.querySelectorAll(".hero-dot"));
     let currentSlide = 0;
 
     setInterval(() => {
       slides[currentSlide].classList.remove("active");
+      dots[currentSlide].classList.remove("active");
       currentSlide = (currentSlide + 1) % slides.length;
       slides[currentSlide].classList.add("active");
+      dots[currentSlide].classList.add("active");
     }, 4200);
 
     function goTo(page) {
@@ -884,13 +766,7 @@
     }
 
     function goToIntro() {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({
-          type: "navigate",
-          target: "intro",
-          page: "intro.html"
-        }, "*");
-      }
+      goTo("intro");
     }
   </script>
 </body>
