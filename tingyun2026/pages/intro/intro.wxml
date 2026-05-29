@@ -1,0 +1,10 @@
+<view class="page">
+  <view class="placeholder">
+    <view class="mountain-icon">
+      <view class="mountain-peak"></view>
+      <view class="mountain-base"></view>
+    </view>
+    <text class="placeholder-title">山居介绍</text>
+    <text class="placeholder-desc">页面开发中，敬请期待</text>
+  </view>
+</view>

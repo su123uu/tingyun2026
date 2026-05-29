@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>停云山居 · 住宿预订</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>tailwind.config={theme:{extend:{colors:{'ink':'#1A1A1A','ink-gray':'#4A4A4A','green':'#4F6F52','mist':'#7C8A8C','paper':'#F8F6F1','beige':'#E8E4DC','gold':'#C9A962'},fontFamily:{'serif':['Noto Serif SC','serif']}}}}</script>
+  <style>
+    :root { color-scheme:light; --green:#4F6F52; --gold:#C9A962; --paper:#F8F6F1; --beige:#E8E4DC; --ink:#1A1A1A; --mist:#7C8A8C; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Noto Serif SC',serif; background:var(--paper); color:var(--ink); -webkit-font-smoothing:antialiased; }
+    .landscape-bg {
+      background: radial-gradient(ellipse 120% 60% at 30% 0%, rgba(79,111,82,0.10) 0%, transparent 60%),
+                  radial-gradient(ellipse 100% 50% at 70% 70%, rgba(124,138,140,0.06) 0%, transparent 50%),
+                  linear-gradient(180deg, #F8F6F1 0%, #F3F1EC 100%);
+      min-height:100vh;
+    }
+    .scroll-container { height:100vh; overflow-y:auto; }
+    .scroll-container::-webkit-scrollbar { display:none; }
+
+    /* 顶部 */
+    .hero {
+      background:linear-gradient(150deg,#4F6F52 0%,#2d4a30 100%);
+      padding:56px 24px 30px; color:#fff; border-radius:0 0 32px 32px;
+      position:relative; overflow:hidden;
+    }
+    .hero::after {
+      content:''; position:absolute; top:-30%; right:-20%;
+      width:250px; height:250px; border-radius:50%;
+      background:radial-gradient(circle,rgba(255,255,255,0.05) 0%,transparent 70%);
+    }
+    .hero .back {
+      display:inline-flex; align-items:center; gap:4px;
+      color:rgba(255,255,255,0.65); font-size:12px; letter-spacing:2px;
+      cursor:pointer; margin-bottom:16px; position:relative; z-index:1;
+      transition:color 0.2s;
+    }
+    .hero .back:hover { color:#fff; }
+    .hero .back svg { width:14px; height:14px; }
+    .hero h1 { font-size:22px; font-weight:500; letter-spacing:6px; position:relative; z-index:1; }
+    .hero p { font-size:12px; color:rgba(255,255,255,0.55); letter-spacing:3px; margin-top:6px; position:relative; z-index:1; }
+    .hero .line { width:32px; height:1px; background:var(--gold); margin-top:14px; position:relative; z-index:1; }
+
+    /* 区块标题 */
+    .sect { padding:22px 16px 12px; }
+    .sect-hd { display:flex; align-items:center; gap:10px; }
+    .sect-hd .bar { width:2px; height:16px; background:var(--gold); border-radius:1px; flex-shrink:0; }
+    .sect-hd h3 { font-size:14px; font-weight:600; letter-spacing:3px; }
+
+    /* 日期选择 */
+    .date-picker {
+      margin:0 16px; background:rgba(255,255,255,0.82); backdrop-filter:blur(12px);
+      border-radius:16px; padding:16px; display:flex; align-items:center; justify-content:space-between;
+      box-shadow:0 1px 12px rgba(0,0,0,0.025),0 0 0 1px rgba(0,0,0,0.03);
+      cursor:pointer; transition:transform 0.15s;
+    }
+    .date-picker:active { transform:scale(0.98); }
+    .date-col { text-align:center; flex:1; }
+    .date-col .lbl { font-size:10px; color:var(--mist); letter-spacing:2px; margin-bottom:2px; display:block; }
+    .date-col .val { font-size:15px; font-weight:500; letter-spacing:2px; }
+    .date-col .val.placeholder { color:#bbb; font-weight:400; }
+    .date-sep { color:var(--gold); font-size:18px; padding:0 10px; }
+    .night-msg { text-align:center; font-size:11px; color:var(--green); letter-spacing:2px; margin-top:6px; }
+
+    /* 房间列表 */
+    .room-list { padding:0 16px; display:flex; flex-direction:column; gap:10px; }
+    .room-card {
+      background:rgba(255,255,255,0.82); backdrop-filter:blur(12px);
+      border-radius:16px; padding:14px 16px;
+      display:flex; align-items:center; gap:14px;
+      box-shadow:0 1px 12px rgba(0,0,0,0.025),0 0 0 1px rgba(0,0,0,0.03);
+      border:1.5px solid transparent; cursor:pointer;
+      transition:all 0.25s;
+    }
+    .room-card:active { transform:scale(0.98); }
+    .room-card.selected {
+      border-color:var(--green); background:rgba(79,111,82,0.03);
+    }
+    .room-icon {
+      width:48px; height:48px; border-radius:12px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(79,111,82,0.06);
+    }
+    .room-icon svg { width:22px; height:22px; }
+    .room-info { flex:1; }
+    .room-info .rname { font-size:14px; font-weight:500; letter-spacing:3px; }
+    .room-info .rtype { font-size:11px; color:var(--mist); letter-spacing:1px; margin-top:2px; }
+    .room-check {
+      width:20px; height:20px; border-radius:50%; flex-shrink:0;
+      border:1.5px solid var(--beige); transition:all 0.25s;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .room-card.selected .room-check { border-color:var(--green); background:var(--green); }
+    .room-card.selected .room-check svg { display:block; }
+    .room-check svg { display:none; width:12px; height:12px; }
+
+    /* 提交 */
+    .submit-area { padding:20px 16px 36px; }
+    .submit-btn {
+      width:100%; padding:15px; border:none; border-radius:16px;
+      background:linear-gradient(150deg,#4F6F52 0%,#3d5a40 100%);
+      color:#fff; font-family:'Noto Serif SC',serif;
+      font-size:15px; letter-spacing:6px; cursor:pointer;
+      transition:opacity 0.2s,transform 0.2s;
+    }
+    .submit-btn:active { transform:scale(0.98); opacity:0.9; }
+    .submit-btn:disabled { opacity:0.35; cursor:not-allowed; }
+    .submit-btn .hint { display:block; font-size:10px; letter-spacing:2px; color:rgba(255,255,255,0.55); margin-top:3px; }
+  </style>
+</head>
+<body>
+  <div class="landscape-bg">
+    <div class="scroll-container">
+      <div class="hero">
+        <a class="back" onclick="history.back()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L5 8l5 5"/></svg>
+          返回预订
+        </a>
+        <h1>住宿预订</h1>
+        <p>择一间雅室，枕山而眠</p>
+        <div class="line"></div>
+      </div>
+
+      <!-- 日期 -->
+      <div class="sect"><div class="sect-hd"><div class="bar"></div><h3>选择日期</h3></div></div>
+      <div class="date-picker" onclick="toggleDate()">
+        <div class="date-col"><span class="lbl">入住</span><span class="val placeholder" id="inDate">请选择</span></div>
+        <div class="date-sep">→</div>
+        <div class="date-col"><span class="lbl">退房</span><span class="val placeholder" id="outDate">请选择</span></div>
+      </div>
+      <div class="night-msg" id="nightMsg">共 0 晚</div>
+
+      <!-- 房间 -->
+      <div class="sect"><div class="sect-hd"><div class="bar"></div><h3>选择房间</h3></div></div>
+      <div class="room-list" id="roomContainer"></div>
+
+      <!-- 提交 -->
+      <div class="submit-area">
+        <button class="submit-btn" id="submitBtn" disabled onclick="doSubmit()">
+          提交预订
+          <span class="hint" id="submitHint">请先选择日期和房间</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const rooms = [
+      { id:'chunyue', name:'春悦', type:'亲子房',
+        icon:'<circle cx="12" cy="8" r="3"/><circle cx="18" cy="13" r="2"/><circle cx="8" cy="13" r="2"/><path d="M4 20c0-4.4 3.6-8 8-8 2.7 0 5 1.3 6.5 3.3"/>' },
+      { id:'xiashe', name:'夏舍', type:'大床房',
+        icon:'<path d="M4 14V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7"/><rect x="5" y="14" width="14" height="6" rx="1"/><circle cx="9" cy="17" r="0.8"/><circle cx="15" cy="17" r="0.8"/>' },
+      { id:'qiude', name:'秋得', type:'标准间',
+        icon:'<path d="M3 14V8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/><circle cx="7" cy="17" r="0.6"/><circle cx="17" cy="17" r="0.6"/>' },
+      { id:'dongyu', name:'冬裕', type:'榻榻米房',
+        icon:'<rect x="3" y="8" width="18" height="14" rx="2"/><line x1="3" y1="11" x2="21" y2="11"/><line x1="3" y1="16" x2="21" y2="16"/><line x1="10" y1="11" x2="10" y2="16"/>' },
+      { id:'gengyan', name:'耕烟', type:'套房',
+        icon:'<path d="M5 20V10l7-7 7 7v10"/><rect x="9" y="13" width="6" height="7"/><line x1="17" y1="13" x2="17" y2="20"/><line x1="7" y1="13" x2="7" y2="20"/>' },
+      { id:'cangmiao', name:'苍妙', type:'榻榻米房',
+        icon:'<rect x="4" y="6" width="16" height="16" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="4" y1="14" x2="20" y2="14"/><line x1="11" y1="10" x2="11" y2="14"/>' },
+      { id:'chancha', name:'禅茶四人房', type:'禅茶房',
+        icon:'<rect x="4" y="12" width="16" height="10" rx="1"/><path d="M8 12V6l4-2 4 2v6"/><circle cx="12" cy="8" r="1.5"/><circle cx="8" cy="18" r="1"/><circle cx="12" cy="18" r="1"/><circle cx="16" cy="18" r="1"/>' }
+    ];
+
+    let selRoom = null, dateSet = false;
+
+    function render() {
+      const c = document.getElementById('roomContainer');
+      c.innerHTML = rooms.map(r => `
+        <div class="room-card" onclick="selectRoom('${r.id}')" data-id="${r.id}">
+          <div class="room-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#4F6F52" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${r.icon}</svg>
+          </div>
+          <div class="room-info"><div class="rname">${r.name}</div><div class="rtype">${r.type}</div></div>
+          <div class="room-check">
+            <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8 7,12 13,4"/></svg>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectRoom(id) {
+      selRoom = id;
+      document.querySelectorAll('.room-card').forEach(el => el.classList.toggle('selected', el.dataset.id===id));
+      updateSubmit();
+    }
+
+    function toggleDate() {
+      const i = document.getElementById('inDate'), o = document.getElementById('outDate');
+      dateSet = !dateSet;
+      if (dateSet) {
+        i.textContent = '5月28日'; i.classList.remove('placeholder');
+        o.textContent = '5月29日'; o.classList.remove('placeholder');
+        document.getElementById('nightMsg').textContent = '共 1 晚';
+      } else {
+        i.textContent = '请选择'; i.classList.add('placeholder');
+        o.textContent = '请选择'; o.classList.add('placeholder');
+        document.getElementById('nightMsg').textContent = '共 0 晚';
+      }
+      updateSubmit();
+    }
+
+    function updateSubmit() {
+      const btn = document.getElementById('submitBtn'), hint = document.getElementById('submitHint');
+      if (dateSet && selRoom) {
+        btn.disabled = false;
+        hint.textContent = '到店支付 · 无需在线付款';
+      } else {
+        btn.disabled = true;
+        if (!dateSet && !selRoom) hint.textContent = '请先选择日期和房间';
+        else if (!dateSet) hint.textContent = '请先选择入住日期';
+        else hint.textContent = '请选择房间';
+      }
+    }
+
+    function doSubmit() {
+      if (!selRoom || !dateSet) return;
+      const room = rooms.find(r => r.id===selRoom);
+      alert(`预订成功！\n房间：${room.name}（${room.type}）\n入住：${document.getElementById('inDate').textContent}\n退房：${document.getElementById('outDate').textContent}\n\n到店支付，无需在线付款`);
+    }
+
+    render();
+  </script>
+</body>
+</html>

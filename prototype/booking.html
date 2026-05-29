@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>停云山居 · 预约预订</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>tailwind.config={theme:{extend:{colors:{'ink':'#1A1A1A','ink-gray':'#4A4A4A','green':'#4F6F52','mist':'#7C8A8C','paper':'#F8F6F1','beige':'#E8E4DC','gold':'#C9A962','bronze':'#8B7355'},fontFamily:{'serif':['Noto Serif SC','serif']}}}}</script>
+  <style>
+    :root { color-scheme: light; --green: #4F6F52; --gold: #C9A962; --paper: #F8F6F1; --beige: #E8E4DC; --ink: #1A1A1A; --mist: #7C8A8C; --bronze: #8B7355; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Noto Serif SC',serif; background:var(--paper); color:var(--ink); -webkit-font-smoothing:antialiased; }
+
+    .landscape-bg {
+      background: radial-gradient(ellipse 120% 60% at 30% 0%, rgba(79,111,82,0.10) 0%, transparent 60%),
+                  radial-gradient(ellipse 100% 50% at 70% 70%, rgba(124,138,140,0.06) 0%, transparent 50%),
+                  linear-gradient(180deg, #F8F6F1 0%, #F3F1EC 100%);
+      min-height:100vh;
+    }
+
+    .scroll-container { height:100vh; overflow-y:auto; }
+    .scroll-container::-webkit-scrollbar { display:none; }
+
+    /* 顶部标题 */
+    .hero {
+      padding: 56px 24px 28px; text-align:center;
+    }
+    .hero .back {
+      display:inline-flex; align-items:center; gap:4px;
+      color:var(--mist); font-size:13px; letter-spacing:2px; cursor:pointer;
+      margin-bottom:20px; text-decoration:none; transition:color 0.2s;
+    }
+    .hero .back:hover { color:var(--green); }
+    .hero .back svg { width:14px; height:14px; }
+    .hero h1 { font-size:22px; font-weight:600; letter-spacing:8px; }
+    .hero p { font-size:12px; color:var(--mist); letter-spacing:3px; margin-top:8px; }
+    .hero .line { width:32px; height:1px; background:var(--gold); margin:16px auto 0; }
+
+    /* 预订类型卡片 */
+    .type-card {
+      background:rgba(255,255,255,0.82); backdrop-filter:blur(12px);
+      border-radius:20px; overflow:hidden; cursor:pointer;
+      box-shadow:0 1px 16px rgba(0,0,0,0.025),0 0 0 1px rgba(0,0,0,0.03);
+      transition:transform 0.2s,box-shadow 0.2s;
+    }
+    .type-card:active { transform:scale(0.98); }
+
+    .type-card .card-hero {
+      height:148px; position:relative;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .type-card .card-hero .hero-text {
+      position:absolute; bottom:14px; left:18px;
+      color:#fff; font-size:18px; font-weight:500; letter-spacing:4px;
+    }
+    .type-card .card-hero .hero-icon { opacity:0.25; }
+    .type-card .card-hero .hero-icon svg { width:70px; height:70px; }
+
+    .type-card .card-body { padding:16px 18px 18px; }
+    .type-card .card-body h3 { font-size:15px; font-weight:600; letter-spacing:3px; margin-bottom:6px; }
+    .type-card .card-body p { font-size:12px; color:var(--mist); line-height:1.7; letter-spacing:1px; }
+    .type-card .card-body .tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+    .type-card .card-body .tag {
+      padding:4px 12px; font-size:10px; letter-spacing:1px;
+      background:rgba(79,111,82,0.06); color:var(--green); border-radius:20px;
+    }
+    .type-card .card-body .arrow-row {
+      display:flex; align-items:center; justify-content:flex-end; gap:4px;
+      margin-top:12px; color:var(--green); font-size:11px; letter-spacing:2px;
+    }
+
+    /* 温馨提示 */
+    .tips {
+      margin:20px 16px 30px;
+      background:rgba(255,255,255,0.65); backdrop-filter:blur(10px);
+      border:1px solid rgba(201,169,98,0.12); border-radius:16px;
+      padding:18px 20px;
+    }
+    .tips h4 { font-size:13px; font-weight:600; color:var(--gold); letter-spacing:3px; margin-bottom:10px; }
+    .tips .tip { display:flex; align-items:flex-start; gap:8px; font-size:11px; color:var(--mist); letter-spacing:1px; line-height:1.7; margin-bottom:5px; }
+    .tips .tip .bullet { color:var(--gold); flex-shrink:0; }
+  </style>
+</head>
+<body>
+  <div class="landscape-bg">
+    <div class="scroll-container">
+      <div class="hero">
+        <a class="back" onclick="history.back()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L5 8l5 5"/></svg>
+          返回
+        </a>
+        <h1>预约预订</h1>
+        <p>提前预约，尊享最佳体验</p>
+        <div class="line"></div>
+      </div>
+
+      <!-- 住宿 -->
+      <div class="px-4 mb-5">
+        <div class="type-card" onclick="goTo('booking-accommodation')">
+          <div class="card-hero" style="background:linear-gradient(150deg,#4F6F52 0%,#2d4a30 100%);">
+            <div class="hero-icon">
+              <svg viewBox="0 0 70 70" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 60 L10 25 L35 8 L60 25 L60 60"/>
+                <rect x="18" y="35" width="14" height="25"/><rect x="38" y="35" width="14" height="25"/>
+              </svg>
+            </div>
+            <span class="hero-text">山居夜宿</span>
+          </div>
+          <div class="card-body">
+            <h3>住宿预订</h3>
+            <p>七间雅室，各具风情。春悦、夏舍、秋得、冬裕……每一扇窗都是一幅山水画卷。</p>
+            <div class="tags">
+              <span class="tag">春悦 · 亲子房</span>
+              <span class="tag">夏舍 · 大床房</span>
+              <span class="tag">秋得 · 标准间</span>
+              <span class="tag">冬裕 · 榻榻米</span>
+            </div>
+            <div class="arrow-row">
+              查看详情
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3l5 5-5 5"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 用餐 -->
+      <div class="px-4 mb-5">
+        <div class="type-card" onclick="goTo('booking-dining')">
+          <div class="card-hero" style="background:linear-gradient(150deg,#8B7355 0%,#6B5940 100%);">
+            <div class="hero-icon">
+              <svg viewBox="0 0 70 70" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="18" y="12" width="34" height="46" rx="4"/>
+                <line x1="18" y1="22" x2="52" y2="22"/>
+                <circle cx="35" cy="38" r="8"/>
+                <line x1="28" y1="52" x2="42" y2="52"/>
+              </svg>
+            </div>
+            <span class="hero-text">雅阁飨宴</span>
+          </div>
+          <div class="card-body">
+            <h3>用餐预订</h3>
+            <p>四间古典餐厅，各具韵致。兮古、栖鹿、梦堂、心语，在雅致空间中品味山间至味。</p>
+            <div class="tags">
+              <span class="tag">兮古 · 古典餐厅</span>
+              <span class="tag">栖鹿 · 自然餐厅</span>
+              <span class="tag">梦堂 · 古风餐厅</span>
+              <span class="tag">心语 · 私密餐厅</span>
+            </div>
+            <div class="arrow-row">
+              查看详情
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3l5 5-5 5"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 温馨提示 -->
+      <div class="tips">
+        <h4>✦ 温馨提示</h4>
+        <div class="tip"><span class="bullet">·</span>建议提前预订，确保心仪的房间与时段</div>
+        <div class="tip"><span class="bullet">·</span>会员享受专属优惠政策</div>
+        <div class="tip"><span class="bullet">·</span>如需取消，请提前 24 小时联系</div>
+        <div class="tip"><span class="bullet">·</span>到店支付，支持微信 / 支付宝 / 现金</div>
+      </div>
+
+      <div style="height:30px;"></div>
+    </div>
+  </div>
+
+  <script>
+    function goTo(page) {
+      if (window.parent !== window) {
+        window.parent.postMessage({ type:'navigate', target:page, page:page+'.html' }, '*');
+      }
+    }
+  </script>
+</body>
+</html>

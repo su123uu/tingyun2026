@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>停云山居 - 原型展示</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'ink-black': '#1a1a1a',
+            'ink-gray': '#4a4a4a',
+            'mountain-green': '#4F6F52',
+            'mist-gray': '#7C8A8C',
+            'paper-white': '#F8F6F1',
+            'warm-beige': '#E8E4DC',
+            'accent-gold': '#C9A962',
+          },
+          fontFamily: {
+            'serif': ['Noto Serif SC', 'serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #e8e4dc 0%, #d4cfc4 50%, #c9c4b8 100%);
+      min-height: 100vh;
+      font-family: 'Noto Serif SC', serif;
+    }
+    
+    /* iPhone 16 Pro 尺寸: 393×852px */
+    .phone-frame {
+      width: 393px;
+      height: 852px;
+      background: #1a1a1a;
+      border-radius: 50px;
+      padding: 12px;
+      box-shadow: 
+        0 50px 100px rgba(0,0,0,0.3),
+        0 30px 60px rgba(0,0,0,0.2),
+        inset 0 2px 4px rgba(255,255,255,0.1);
+      position: relative;
+    }
+    
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      background: #F8F6F1;
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .phone-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 126px;
+      height: 35px;
+      background: #1a1a1a;
+      border-bottom-left-radius: 18px;
+      border-bottom-right-radius: 18px;
+      z-index: 100;
+    }
+    
+    .page-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #F8F6F1;
+    }
+    
+    .page-label {
+      position: absolute;
+      bottom: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(26, 26, 26, 0.9);
+      color: #C9A962;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      white-space: nowrap;
+      letter-spacing: 2px;
+    }
+    
+    .ink-wash-bg {
+      background: 
+        radial-gradient(ellipse at 20% 30%, rgba(79, 111, 82, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(124, 138, 140, 0.06) 0%, transparent 50%),
+        linear-gradient(180deg, #F8F6F1 0%, #F0EDE6 100%);
+    }
+    
+    .mountain-silhouette {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%234F6F52' fill-opacity='0.05' d='M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") no-repeat bottom;
+      background-size: cover;
+      pointer-events: none;
+      z-index: 0;
+    }
+  </style>
+</head>
+<body class="py-16 px-8">
+  <div class="mountain-silhouette"></div>
+  
+  <!-- 标题区域 -->
+  <div class="text-center mb-16 relative z-10">
+    <h1 class="text-5xl font-bold text-ink-black mb-4 tracking-widest" style="font-family: 'Noto Serif SC', serif;">停云山居</h1>
+    <p class="text-mist-gray text-lg tracking-widest">静心禅居 · 品味生活</p>
+    <div class="w-24 h-0.5 bg-accent-gold mx-auto mt-6"></div>
+  </div>
+  
+  <!-- 手机展示区域 -->
+  <div class="flex flex-wrap justify-center gap-20 relative z-10">
+    <!-- 首页 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="home.html" class="page-iframe" id="frame-home"></iframe>
+      </div>
+      <div class="page-label">首页</div>
+    </div>
+    
+    <!-- 扫码点单 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="menu.html" class="page-iframe" id="frame-menu"></iframe>
+      </div>
+      <div class="page-label">扫码点单</div>
+    </div>
+    
+    <!-- 订单管理 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="orders.html" class="page-iframe" id="frame-orders"></iframe>
+      </div>
+      <div class="page-label">我的订单</div>
+    </div>
+    
+    <!-- 个人中心 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="profile.html" class="page-iframe" id="frame-profile"></iframe>
+      </div>
+      <div class="page-label">个人中心</div>
+    </div>
+    
+    <!-- 预订大厅 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="booking.html" class="page-iframe" id="frame-booking"></iframe>
+      </div>
+      <div class="page-label">预订大厅</div>
+    </div>
+    
+    <!-- 住宿预订 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="booking-accommodation.html" class="page-iframe" id="frame-booking-accommodation"></iframe>
+      </div>
+      <div class="page-label">住宿预订</div>
+    </div>
+    
+    <!-- 用餐预订 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="booking-dining.html" class="page-iframe" id="frame-booking-dining"></iframe>
+      </div>
+      <div class="page-label">用餐预订</div>
+    </div>
+    
+    <!-- 山居介绍 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="intro.html" class="page-iframe" id="frame-intro"></iframe>
+      </div>
+      <div class="page-label">山居介绍</div>
+    </div>
+  </div>
+  
+  <!-- 说明文字 -->
+  <div class="text-center mt-20 text-ink-gray text-sm tracking-wider relative z-10">
+    <p>停云山居小程序 v1.0 原型设计</p>
+    <p class="mt-2 text-mist-gray">散客版 · 扫码点单 · 预约预订 · 山居介绍</p>
+  </div>
+
+  <script>
+    // 监听 iframe 消息，处理页面跳转
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'navigate') {
+        const targetFrame = document.getElementById('frame-' + e.data.target);
+        if (targetFrame) {
+          targetFrame.src = e.data.page;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

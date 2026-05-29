@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="placeholder">
+    <t-icon name="view-list" size="80rpx" color="#C9A962" />
+    <text class="placeholder-title">我的订单</text>
+    <text class="placeholder-desc">页面开发中，敬请期待</text>
+  </view>
+</view>

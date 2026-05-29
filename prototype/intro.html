@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>停云山居 · 山居介绍</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>tailwind.config={theme:{extend:{colors:{'ink':'#1A1A1A','ink-gray':'#4A4A4A','green':'#4F6F52','mist':'#7C8A8C','paper':'#F8F6F1','beige':'#E8E4DC','gold':'#C9A962'},fontFamily:{'serif':['Noto Serif SC','serif']}}}}</script>
+  <style>
+    :root { color-scheme:light; --green:#4F6F52; --gold:#C9A962; --paper:#F8F6F1; --beige:#E8E4DC; --ink:#1A1A1A; --mist:#7C8A8C; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Noto Serif SC',serif; background:var(--paper); color:var(--ink); -webkit-font-smoothing:antialiased; }
+    .landscape-bg { background:radial-gradient(ellipse 120% 60% at 30% 0%, rgba(79,111,82,0.08) 0%, transparent 60%),radial-gradient(ellipse 100% 50% at 70% 70%, rgba(124,138,140,0.04) 0%, transparent 50%),linear-gradient(180deg, #F8F6F1 0%, #F4F2ED 100%); min-height:100vh; }
+    .scroll-wrap { height:100vh; overflow-y:auto; padding-bottom:40px; }
+    .scroll-wrap::-webkit-scrollbar { display:none; }
+
+    /* ── 顶部大图 ── */
+    .hero { position:relative; height:240px; overflow:hidden; }
+    .hero-bg { position:absolute; inset:0; background:linear-gradient(160deg,#4F6F52 0%,#2d4a30 60%,#1b2a1e 100%); }
+    .hero::after { content:''; position:absolute; top:-30%; right:-15%; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,0.04) 0%,transparent 70%); }
+    .hero-content { position:absolute; bottom:28px; left:24px; z-index:2; }
+    .hero-content .label { font-size:11px; letter-spacing:5px; color:rgba(255,255,255,0.6); display:block; }
+    .hero-content h1 { font-size:26px; font-weight:500; letter-spacing:8px; color:#fff; margin-top:6px; }
+    .hero-content p { font-size:12px; color:rgba(255,255,255,0.45); letter-spacing:3px; margin-top:6px; }
+
+    /* ── 区块 ── */
+    .section { padding:0 16px; margin-top:24px; }
+    .section-hd { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    .section-hd .bar { width:2px; height:16px; background:var(--gold); border-radius:1px; flex-shrink:0; }
+    .section-hd h3 { font-size:15px; font-weight:600; letter-spacing:3px; }
+
+    /* ── 关于卡片 ── */
+    .about-card { background:rgba(255,255,255,0.82); backdrop-filter:blur(12px); border-radius:18px; padding:20px; box-shadow:0 1px 12px rgba(0,0,0,0.02),0 0 0 1px rgba(0,0,0,0.03); }
+    .about-card p { font-size:13px; color:var(--ink-gray); line-height:2; letter-spacing:1px; }
+
+    /* ── 特色网格 ── */
+    .feature-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .feature-card { background:rgba(255,255,255,0.82); backdrop-filter:blur(12px); border-radius:16px; padding:18px 16px; text-align:center; box-shadow:0 1px 12px rgba(0,0,0,0.02),0 0 0 1px rgba(0,0,0,0.03); }
+    .feature-card .ficon { width:42px; height:42px; margin:0 auto 10px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:rgba(79,111,82,0.06); }
+    .feature-card .ficon svg { width:20px; height:20px; }
+    .feature-card .fname { font-size:13px; font-weight:600; letter-spacing:2px; }
+    .feature-card .fdesc { font-size:10px; color:var(--mist); letter-spacing:1px; margin-top:4px; line-height:1.5; }
+
+    /* ── 房间餐厅列表 ── */
+    .info-row { display:flex; flex-direction:column; gap:10px; }
+    .info-item { display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.82); backdrop-filter:blur(12px); border-radius:14px; padding:12px 16px; box-shadow:0 1px 12px rgba(0,0,0,0.02),0 0 0 1px rgba(0,0,0,0.03); }
+    .info-item .idot { width:6px; height:6px; border-radius:50%; background:var(--gold); flex-shrink:0; }
+    .info-item .iname { font-size:13px; font-weight:500; letter-spacing:2px; flex:1; }
+    .info-item .itype { font-size:10px; color:var(--mist); letter-spacing:1px; }
+
+    /* ── 联系方式 ── */
+    .contact-card { background:rgba(255,255,255,0.82); backdrop-filter:blur(12px); border-radius:18px; padding:20px; box-shadow:0 1px 12px rgba(0,0,0,0.02),0 0 0 1px rgba(0,0,0,0.03); }
+    .contact-row { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--ink-gray); letter-spacing:1px; padding:8px 0; }
+    .contact-row + .contact-row { border-top:1px solid rgba(0,0,0,0.04); }
+    .contact-row .clabel { color:var(--mist); min-width:48px; flex-shrink:0; }
+
+    /* ── 底部导航 ── */
+    .bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:50; background:rgba(255,255,255,0.92); backdrop-filter:blur(20px); border-top:1px solid rgba(0,0,0,0.05); padding:4px 0 calc(4px + env(safe-area-inset-bottom,16px)); display:flex; justify-content:space-around; }
+    .nav-item { display:flex; flex-direction:column; align-items:center; gap:1px; padding:4px 8px; color:var(--mist); cursor:pointer; transition:color 0.25s; }
+    .nav-item.active { color:var(--green); }
+    .nav-item svg { width:20px; height:20px; }
+    .nav-item span { font-size:9px; letter-spacing:1px; }
+  </style>
+</head>
+<body>
+  <div class="landscape-bg">
+    <!-- 顶部大图 -->
+    <div class="hero">
+      <div class="hero-bg"></div>
+      <div class="hero-content">
+        <span class="label">TINGYUN RETREAT</span>
+        <h1>停云山居</h1>
+        <p>隐于崂山 · 归于自然</p>
+      </div>
+    </div>
+
+    <div class="scroll-wrap">
+      <!-- 关于 -->
+      <div class="section">
+        <div class="section-hd"><div class="bar"></div><h3>关于我们</h3></div>
+        <div class="about-card">
+          <p>停云山居坐落于青岛崂山青山绿水之间，是一处集禅修、茶艺、美食、住宿于一体的文化空间。我们取意"行到水穷处，坐看云起时"，希望每一位来客都能在此放下纷扰，静心感受山间的风、林间的光、杯中的茶。</p>
+        </div>
+      </div>
+
+      <!-- 山居特色 -->
+      <div class="section">
+        <div class="section-hd"><div class="bar"></div><h3>山居特色</h3></div>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="ficon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#4F6F52" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            </div>
+            <div class="fname">禅修体验</div>
+            <div class="fdesc">专业导师带领，感受内心宁静</div>
+          </div>
+          <div class="feature-card">
+            <div class="ficon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#4F6F52" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h4l3 6h7v5a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3z"/><circle cx="8" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg>
+            </div>
+            <div class="fname">茶艺品鉴</div>
+            <div class="fdesc">资深茶艺师现场演示名茶冲泡</div>
+          </div>
+          <div class="feature-card">
+            <div class="ficon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#4F6F52" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="4" y1="10" x2="20" y2="10"/><circle cx="12" cy="14" r="2"/></svg>
+            </div>
+            <div class="fname">精品素斋</div>
+            <div class="fdesc">当季时令食材，匠心烹制</div>
+          </div>
+          <div class="feature-card">
+            <div class="ficon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#4F6F52" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L12 6l8 14"/><path d="M8 20l4-7 4 7"/></svg>
+            </div>
+            <div class="fname">宁静住宿</div>
+            <div class="fdesc">七间雅室，各具风情韵味</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 雅室一览 -->
+      <div class="section">
+        <div class="section-hd"><div class="bar"></div><h3>雅室一览</h3></div>
+        <div class="info-row">
+          <div class="info-item"><div class="idot"></div><span class="iname">春悦</span><span class="itype">亲子房</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">夏舍</span><span class="itype">大床房</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">秋得</span><span class="itype">标准间</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">冬裕</span><span class="itype">榻榻米房</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">耕烟</span><span class="itype">套房</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">苍妙</span><span class="itype">榻榻米房</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">禅茶四人房</span><span class="itype">禅茶房</span></div>
+        </div>
+      </div>
+
+      <!-- 餐厅一览 -->
+      <div class="section">
+        <div class="section-hd"><div class="bar"></div><h3>餐厅一览</h3></div>
+        <div class="info-row">
+          <div class="info-item"><div class="idot"></div><span class="iname">兮古</span><span class="itype">古典餐厅</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">栖鹿</span><span class="itype">自然餐厅</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">梦堂</span><span class="itype">古风餐厅</span></div>
+          <div class="info-item"><div class="idot"></div><span class="iname">心语</span><span class="itype">私密餐厅</span></div>
+        </div>
+      </div>
+
+      <!-- 联系方式 -->
+      <div class="section" style="margin-bottom:24px;">
+        <div class="section-hd"><div class="bar"></div><h3>联系方式</h3></div>
+        <div class="contact-card">
+          <div class="contact-row"><span class="clabel">地址</span><span>青岛市崂山区停云路 88 号</span></div>
+          <div class="contact-row"><span class="clabel">电话</span><span>400-888-6666</span></div>
+          <div class="contact-row"><span class="clabel">时间</span><span>每日 09:00 — 21:00</span></div>
+        </div>
+      </div>
+
+      <div style="height:70px;"></div>
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="goTo('home')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1"/></svg>
+        <span>首页</span>
+      </div>
+      <div class="nav-item" onclick="goTo('menu')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+        <span>点单</span>
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L12 6l8 14"/><path d="M8 20l4-7 4 7"/></svg>
+        <span>介绍</span>
+      </div>
+      <div class="nav-item" onclick="goTo('orders')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>订单</span>
+      </div>
+      <div class="nav-item" onclick="goTo('profile')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        <span>我的</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function goTo(p) { if (window.parent!==window) window.parent.postMessage({ type:'navigate',target:p,page:p+'.html' },'*'); }
+  </script>
+</body>
+</html>

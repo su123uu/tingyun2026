@@ -1,0 +1,48 @@
+.page {
+  min-height: 100vh;
+  background: #F8F6F1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+.placeholder-title {
+  font-size: 32rpx;
+  color: #1A1A1A;
+  font-weight: 600;
+}
+.placeholder-desc {
+  font-size: 26rpx;
+  color: #7C8A8C;
+}
+/* 山图标 CSS 绘制 */
+.mountain-icon {
+  width: 80rpx;
+  height: 68rpx;
+  position: relative;
+}
+.mountain-peak {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 32rpx solid transparent;
+  border-right: 32rpx solid transparent;
+  border-bottom: 50rpx solid #4F6F52;
+}
+.mountain-base {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 20rpx;
+  background: #4F6F52;
+  border-radius: 6rpx 6rpx 0 0;
+}

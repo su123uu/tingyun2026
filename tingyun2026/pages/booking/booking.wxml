@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="placeholder">
+    <t-icon name="calendar" size="80rpx" color="#C9A962" />
+    <text class="placeholder-title">预约预订</text>
+    <text class="placeholder-desc">禅修/茶会/空间预订功能开发中</text>
+  </view>
+</view>
