@@ -58,7 +58,7 @@
     .scroll {
       height: 100%;
       overflow-y: auto;
-      padding: 18px 16px 104px;
+      padding-bottom: 104px;
       scrollbar-width: none;
     }
 
@@ -66,79 +66,12 @@
       display: none;
     }
 
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 0 14px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .brand-mark {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      background: rgba(255, 255, 255, 0.72);
-      box-shadow: 0 1px 12px rgba(26, 26, 26, 0.04);
-    }
-
-    .brand-mark img {
-      width: 34px;
-      height: 34px;
-      object-fit: contain;
-    }
-
-    .brand-name {
-      display: block;
-      font-size: 19px;
-      font-weight: 650;
-      letter-spacing: 3px;
-      line-height: 1.2;
-    }
-
-    .brand-sub {
-      display: block;
-      margin-top: 3px;
-      color: var(--mist);
-      font-size: 11px;
-      letter-spacing: 1.5px;
-    }
-
-    .weather-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 32px;
-      padding: 0 11px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.68);
-      color: var(--ink-soft);
-      font-size: 12px;
-      box-shadow: 0 1px 10px rgba(26, 26, 26, 0.035);
-    }
-
-    .weather-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--gold);
-    }
-
     .hero {
       position: relative;
-      height: 174px;
-      border-radius: 22px;
+      aspect-ratio: 3 / 4;
+      height: auto;
       overflow: hidden;
       background: #24331F;
-      box-shadow: var(--shadow);
     }
 
     .hero-slide {
@@ -163,8 +96,8 @@
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(90deg, rgba(0, 0, 0, 0.48) 0%, rgba(0, 0, 0, 0.18) 58%, rgba(0, 0, 0, 0.04) 100%),
-        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.22) 100%);
+        linear-gradient(180deg, rgba(0, 0, 0, 0.10) 0%, rgba(0, 0, 0, 0.02) 34%, rgba(0, 0, 0, 0.44) 100%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.30), transparent 62%);
       pointer-events: none;
     }
 
@@ -175,7 +108,7 @@
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: 22px;
+      padding: 42px 24px 74px;
       color: #fff;
       text-shadow: 0 2px 16px rgba(0, 0, 0, 0.28);
     }
@@ -183,7 +116,7 @@
     .hero-kicker {
       width: fit-content;
       padding: 4px 9px;
-      border-radius: 999px;
+      border-radius: 12px;
       background: rgba(255, 255, 255, 0.18);
       font-size: 11px;
       letter-spacing: 2px;
@@ -192,9 +125,9 @@
 
     .hero-title {
       margin-top: 12px;
-      font-size: 26px;
+      font-size: 30px;
       font-weight: 650;
-      letter-spacing: 4px;
+      letter-spacing: 5px;
       line-height: 1.25;
     }
 
@@ -209,8 +142,8 @@
     .hero-dots {
       position: absolute;
       z-index: 2;
-      right: 18px;
-      bottom: 17px;
+      right: 22px;
+      bottom: 58px;
       display: flex;
       gap: 5px;
     }
@@ -231,64 +164,71 @@
     .quick-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 14px;
+      gap: 0;
+      margin: -50px 14px 0;
+      border-radius: 18px;
+      overflow: hidden;
+      background: var(--white);
+      box-shadow: 0 14px 34px rgba(26, 26, 26, 0.08);
+      position: relative;
+      z-index: 3;
     }
 
     .action-card {
-      min-height: 116px;
-      border-radius: 20px;
-      padding: 16px;
-      color: #fff;
+      width: 100%;
+      min-height: 158px;
+      padding: 22px 12px 20px;
+      color: var(--ink);
       overflow: hidden;
       position: relative;
-      box-shadow: var(--shadow);
+      text-align: center;
+      background: var(--white);
+    }
+
+    .action-card + .action-card {
+      border-left: 1px solid var(--line);
     }
 
     .action-card.order {
-      background: linear-gradient(145deg, #4F6F52 0%, #2F4F34 100%);
+      color: var(--green);
     }
 
     .action-card.booking {
-      background: linear-gradient(145deg, #8B7355 0%, #63513C 100%);
+      color: var(--bronze);
     }
 
     .action-card::after {
-      content: "";
-      position: absolute;
-      right: -24px;
-      bottom: -34px;
-      width: 118px;
-      height: 118px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 50%;
+      display: none;
     }
 
     .action-icon {
-      width: 34px;
-      height: 34px;
-      color: rgba(255, 255, 255, 0.88);
+      width: 42px;
+      height: 42px;
+      margin: 0 auto;
+      color: currentColor;
     }
 
     .action-title {
       display: block;
-      margin-top: 14px;
-      font-size: 18px;
+      margin-top: 13px;
+      color: var(--ink);
+      font-size: 19px;
       font-weight: 650;
-      letter-spacing: 2px;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
     }
 
     .action-desc {
       display: block;
-      margin-top: 6px;
-      color: rgba(255, 255, 255, 0.76);
-      font-size: 11px;
+      margin-top: 7px;
+      color: var(--mist);
+      font-size: 12px;
       line-height: 1.45;
       letter-spacing: 0.5px;
     }
 
     .section {
-      margin-top: 18px;
+      margin: 20px 14px 0;
     }
 
     .section-head {
@@ -321,107 +261,20 @@
       transform: rotate(45deg);
     }
 
-    .member-card {
-      border-radius: 20px;
-      padding: 18px;
-      background:
-        linear-gradient(135deg, rgba(26, 26, 26, 0.96), rgba(67, 57, 43, 0.96)),
-        #1A1A1A;
-      color: #fff;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      position: relative;
-    }
-
-    .member-card::after {
-      content: "";
-      position: absolute;
-      right: -42px;
-      top: -42px;
-      width: 128px;
-      height: 128px;
-      border-radius: 50%;
-      border: 1px solid rgba(201, 169, 98, 0.28);
-    }
-
-    .member-main {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-    }
-
-    .member-label {
-      color: rgba(255, 255, 255, 0.62);
-      font-size: 11px;
-      letter-spacing: 2px;
-    }
-
-    .member-level {
-      margin-top: 8px;
-      font-size: 22px;
-      font-weight: 650;
-      letter-spacing: 3px;
-    }
-
-    .member-desc {
-      margin-top: 8px;
-      color: rgba(255, 255, 255, 0.70);
-      font-size: 12px;
-      line-height: 1.55;
-    }
-
-    .member-badge {
-      flex: 0 0 auto;
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(201, 169, 98, 0.55);
-      color: #E5C582;
-      font-size: 12px;
-      letter-spacing: 1px;
-    }
-
-    .member-stats {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 18px;
-      padding-top: 14px;
-      border-top: 1px solid rgba(255, 255, 255, 0.10);
-    }
-
-    .stat strong {
-      display: block;
-      color: #F0D89C;
-      font-size: 18px;
-      line-height: 1.1;
-    }
-
-    .stat span {
-      display: block;
-      margin-top: 5px;
-      color: rgba(255, 255, 255, 0.60);
-      font-size: 11px;
-    }
-
     .intro-card {
-      display: grid;
-      grid-template-columns: 112px 1fr;
-      gap: 14px;
-      align-items: stretch;
-      min-height: 132px;
-      padding: 12px;
-      border-radius: 20px;
+      display: block;
+      width: 100%;
+      min-height: 0;
+      padding: 0;
+      border-radius: 14px;
       background: rgba(255, 255, 255, 0.80);
       box-shadow: var(--shadow);
+      overflow: hidden;
     }
 
     .intro-img {
-      border-radius: 16px;
+      display: block;
+      height: 154px;
       overflow: hidden;
       background: var(--beige);
     }
@@ -434,51 +287,32 @@
     }
 
     .intro-body {
+      display: block;
       min-width: 0;
-      padding: 4px 2px 2px 0;
-    }
-
-    .intro-tag {
-      color: var(--gold);
-      font-size: 11px;
-      letter-spacing: 2px;
+      padding: 15px 17px 16px;
     }
 
     .intro-title {
-      margin-top: 7px;
+      display: block;
       font-size: 17px;
       font-weight: 650;
       letter-spacing: 1px;
     }
 
-    .intro-text {
-      margin-top: 7px;
-      color: var(--ink-soft);
-      font-size: 12px;
-      line-height: 1.65;
-    }
-
-    .activity-list {
-      display: grid;
-      gap: 10px;
-    }
-
     .activity-card {
-      display: grid;
-      grid-template-columns: 86px 1fr auto;
-      gap: 12px;
-      align-items: center;
-      min-height: 92px;
-      padding: 10px;
-      border-radius: 18px;
+      display: block;
+      width: 100%;
+      padding: 0;
+      border-radius: 14px;
       background: rgba(255, 255, 255, 0.82);
       box-shadow: var(--shadow);
+      overflow: hidden;
     }
 
     .activity-img {
-      width: 86px;
-      height: 72px;
-      border-radius: 14px;
+      display: block;
+      width: 100%;
+      height: 154px;
       overflow: hidden;
       background: var(--beige);
     }
@@ -490,44 +324,16 @@
       object-fit: cover;
     }
 
-    .activity-date {
-      color: var(--gold);
-      font-size: 11px;
-      letter-spacing: 1px;
+    .activity-body {
+      display: block;
+      padding: 15px 17px 16px;
     }
 
     .activity-name {
-      margin-top: 5px;
-      font-size: 15px;
+      display: block;
+      font-size: 17px;
       font-weight: 650;
       letter-spacing: 0.5px;
-    }
-
-    .activity-desc {
-      margin-top: 5px;
-      color: var(--mist);
-      font-size: 11px;
-      line-height: 1.35;
-    }
-
-    .activity-arrow {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: rgba(79, 111, 82, 0.08);
-      color: var(--green);
-    }
-
-    .activity-arrow::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-top: 1.7px solid currentColor;
-      border-right: 1.7px solid currentColor;
-      transform: rotate(45deg);
-      margin-left: -2px;
     }
 
     .bottom-nav {
@@ -572,26 +378,23 @@
     }
 
     @media (max-width: 360px) {
-      .scroll {
-        padding-left: 13px;
-        padding-right: 13px;
-      }
-
       .hero {
-        height: 164px;
+        aspect-ratio: 3 / 4;
+        height: auto;
       }
 
       .action-card {
-        min-height: 108px;
-        padding: 14px;
+        min-height: 126px;
+        padding-left: 10px;
+        padding-right: 10px;
       }
 
       .action-title {
         font-size: 17px;
       }
 
-      .intro-card {
-        grid-template-columns: 96px 1fr;
+      .hero-title {
+        font-size: 27px;
       }
     }
   </style>
@@ -599,17 +402,6 @@
 <body>
   <main class="app">
     <section class="scroll" aria-label="首页内容">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-mark"><img src="../部分图片/logo1.png" alt="停云山居"></span>
-          <span>
-            <span class="brand-name">停云山居</span>
-            <span class="brand-sub">青岛崂山 · 禅意生活空间</span>
-          </span>
-        </div>
-        <span class="weather-chip"><i class="weather-dot"></i>山风微凉</span>
-      </header>
-
       <section class="hero" aria-label="山居轮播">
         <div class="hero-slide one active"></div>
         <div class="hero-slide two"></div>
@@ -617,7 +409,7 @@
         <div class="hero-copy">
           <span class="hero-kicker">今日山居</span>
           <h1 class="hero-title">停云待客<br>茶饭皆有时</h1>
-          <p class="hero-text">扫码点餐、预约到店、查看活动，都从这里开始。</p>
+          <p class="hero-text">青岛崂山 · 禅修、茶艺、美食与山居夜宿。</p>
         </div>
         <div class="hero-dots" aria-hidden="true">
           <span class="hero-dot active"></span>
@@ -632,36 +424,14 @@
             <path d="M8 8h20v20H8z"/><path d="M13 13h5"/><path d="M13 18h10"/><path d="M13 23h7"/><path d="M25 24l4 4"/><path d="M29 24l-4 4"/>
           </svg>
           <span class="action-title">扫码点餐</span>
-          <span class="action-desc">堂食下单，模拟支付后通知厨房</span>
+          <span class="action-desc">堂食下单 · 在线支付</span>
         </button>
         <button class="action-card booking" type="button" onclick="goTo('booking')">
           <svg class="action-icon" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <rect x="7" y="9" width="22" height="20" rx="4"/><path d="M12 7v5"/><path d="M24 7v5"/><path d="M7 15h22"/><path d="M13 21h4"/><path d="M21 21h2"/>
           </svg>
           <span class="action-title">预约预订</span>
-          <span class="action-desc">住宿、用餐、空间先展示咨询</span>
-        </button>
-      </section>
-
-      <section class="section" aria-label="会员摘要">
-        <div class="section-head">
-          <h2 class="section-title">停云会员</h2>
-          <button class="section-more" type="button" onclick="goTo('profile')">查看权益</button>
-        </div>
-        <button class="member-card" type="button" onclick="goTo('profile')">
-          <div class="member-main">
-            <span>
-              <span class="member-label">当前等级</span>
-              <span class="member-level">山客</span>
-              <span class="member-desc">注册即享 9.5 折，活动可优先咨询预留名额。</span>
-            </span>
-            <span class="member-badge">模拟数据</span>
-          </div>
-          <div class="member-stats">
-            <span class="stat"><strong>9.5折</strong><span>点餐权益</span></span>
-            <span class="stat"><strong>¥680</strong><span>累计消费</span></span>
-            <span class="stat"><strong>3次</strong><span>活动权益</span></span>
-          </div>
+          <span class="action-desc">住宿用餐 · 到店支付</span>
         </button>
       </section>
 
@@ -673,38 +443,22 @@
         <button class="intro-card" type="button" onclick="goToIntro()">
           <span class="intro-img"><img src="../部分图片/茶空间.jpg" alt="山居茶空间"></span>
           <span class="intro-body">
-            <span class="intro-tag">茶 · 饭 · 住 · 修</span>
             <span class="intro-title">隐于崂山，归于自然</span>
-            <span class="intro-text">这里不是匆忙打卡的景点，更像一处可以慢慢坐下来的山间客厅。</span>
           </span>
         </button>
       </section>
 
       <section class="section" aria-label="近期活动">
         <div class="section-head">
-          <h2 class="section-title">近期活动</h2>
-          <button class="section-more" type="button" onclick="goToIntro()">电话咨询</button>
+          <h2 class="section-title">会员活动</h2>
+          <button class="section-more" type="button" onclick="openActivity()">进入活动页</button>
         </div>
-        <div class="activity-list">
-          <button class="activity-card" type="button" onclick="goToIntro()">
-            <span class="activity-img"><img src="../部分图片/禅修活动正1.jpg" alt="禅修活动"></span>
-            <span>
-              <span class="activity-date">6月15日 14:00</span>
-              <span class="activity-name">禅修冥想体验课</span>
-              <span class="activity-desc">专业导师带领，适合第一次接触禅修的来客。</span>
-            </span>
-            <i class="activity-arrow" aria-hidden="true"></i>
-          </button>
-          <button class="activity-card" type="button" onclick="goToIntro()">
-            <span class="activity-img"><img src="../部分图片/茶活动正.jpg" alt="茶艺活动"></span>
-            <span>
-              <span class="activity-date">6月20日 16:00</span>
-              <span class="activity-name">山间茶艺品鉴会</span>
-              <span class="activity-desc">品茶、听山、会友，报名先通过客服确认。</span>
-            </span>
-            <i class="activity-arrow" aria-hidden="true"></i>
-          </button>
-        </div>
+        <button class="activity-card" type="button" onclick="openActivity()">
+          <span class="activity-img"><img src="../部分图片/会员活动.png" alt="会员活动"></span>
+          <span class="activity-body">
+            <span class="activity-name">停云会员活动指南</span>
+          </span>
+        </button>
       </section>
     </section>
 
@@ -767,6 +521,10 @@
 
     function goToIntro() {
       goTo("intro");
+    }
+
+    function openActivity() {
+      window.location.href = "activity.html";
     }
   </script>
 </body>

@@ -155,6 +155,69 @@
         </div>
       </div>
 
+      <!-- 空间 -->
+      <div class="px-4 mb-5">
+        <div class="type-card" onclick="showConsult('空间预定')">
+          <div class="card-hero" style="background:linear-gradient(150deg,#6E7F63 0%,#44543B 100%);">
+            <div class="hero-icon">
+              <svg viewBox="0 0 70 70" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="12" y="18" width="46" height="34" rx="5"/>
+                <path d="M20 52V28h30v24"/>
+                <path d="M24 34h22M24 41h16"/>
+                <path d="M18 58h34"/>
+              </svg>
+            </div>
+            <span class="hero-text">雅室清谈</span>
+          </div>
+          <div class="card-body">
+            <h3>空间预定</h3>
+            <p>会议室、禅修室、VIP茶室、展厅，可用于小型雅集、课程、会谈与静修。</p>
+            <div class="tags">
+              <span class="tag">多功能会议室</span>
+              <span class="tag">禅修室</span>
+              <span class="tag">VIP茶室</span>
+              <span class="tag">展厅</span>
+            </div>
+            <div class="arrow-row">
+              咨询预定
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3l5 5-5 5"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 包场 -->
+      <div class="px-4 mb-5">
+        <div class="type-card" onclick="showConsult('举办活动')">
+          <div class="card-hero" style="background:linear-gradient(150deg,#9A6A4F 0%,#62402F 100%);">
+            <div class="hero-icon">
+              <svg viewBox="0 0 70 70" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 54V22l20-10 20 10v32"/>
+                <path d="M23 54V32h24v22"/>
+                <path d="M27 38h16M27 44h16"/>
+                <path d="M12 58h46"/>
+                <path d="M35 12v10"/>
+              </svg>
+            </div>
+            <span class="hero-text">山居包场</span>
+          </div>
+          <div class="card-body">
+            <h3>举办活动</h3>
+            <p>适合企业团建、私享茶会、主题沙龙、禅修课程等包场活动，按需求定制方案。</p>
+            <div class="tags">
+              <span class="tag">全场包场</span>
+              <span class="tag">茶会沙龙</span>
+              <span class="tag">企业团建</span>
+              <span class="tag">课程活动</span>
+            </div>
+            <div class="arrow-row">
+              咨询方案
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3l5 5-5 5"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 温馨提示 -->
       <div class="tips">
         <h4>✦ 温馨提示</h4>
@@ -173,6 +236,10 @@
       if (window.parent !== window) {
         window.parent.postMessage({ type:'navigate', target:page, page:page+'.html' }, '*');
       }
+    }
+
+    function showConsult(type) {
+      alert(type + '暂以电话/客服咨询为主，后续可扩展为独立预订页。');
     }
   </script>
 </body>
