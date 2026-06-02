@@ -1,10 +1,6 @@
 <view class="page">
-  <view class="placeholder">
-    <view class="mountain-icon">
-      <view class="mountain-peak"></view>
-      <view class="mountain-base"></view>
-    </view>
-    <text class="placeholder-title">山居介绍</text>
-    <text class="placeholder-desc">页面开发中，敬请期待</text>
-  </view>
+  <image class="cover" src="/images/轮播3.png" mode="aspectFill" />
+  <view class="copy"><text class="title">隐于崂山，归于自然</text><text class="subtitle">停云山居</text><text class="body">一处安静的山间生活空间。可在此饮茶、用餐、夜宿，也可参与禅修与主题活动。</text></view>
+  <text class="section-title">山居体验</text>
+  <view class="grid"><view class="card"><image src="/images/tea.jpg" mode="aspectFill"/><text>茶空间</text></view><view class="card"><image src="/images/dinner.jpg" mode="aspectFill"/><text>山居餐食</text></view><view class="card"><image src="/images/meditation.jpg" mode="aspectFill"/><text>禅修静室</text></view></view>
 </view>

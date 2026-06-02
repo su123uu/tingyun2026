@@ -1,0 +1,49 @@
+<view class="page member-page">
+  <view class="hero" style="padding-top: {{navTop}}px;">
+    <view class="hero-nav" style="height: {{navHeight}}px;">
+      <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+    </view>
+    <text class="eyebrow">TINGYUN MEMBER</text>
+    <text class="hero-title">停云会员</text>
+    <text class="hero-copy">在山居的四时流转里，留一份属于常客的自在与礼遇。</text>
+  </view>
+
+  <view class="content">
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">五级会员卡</text>
+        <text class="section-note">线下储值办理</text>
+      </view>
+      <view class="stack">
+        <view wx:for="{{tiers}}" wx:key="name" class="card tier">
+          <view class="tier-head">
+            <text class="tier-name">{{item.no}} · {{item.name}}</text>
+            <text class="tier-value">储值 {{item.stored}} 万元</text>
+          </view>
+          <text class="tier-copy">到账 {{item.points}} 万积分 · 权益有效期 {{item.duration}} 个月</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">十大会员权益</text>
+      </view>
+      <view class="card benefits">
+        <view wx:for="{{benefits}}" wx:key="no" class="benefit">
+          <text class="benefit-no">{{item.no}}</text>
+          <text class="benefit-name">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">办理说明</text>
+      </view>
+      <view class="card rule">会员卡仅支持线下联系店长办理。小程序不提供在线购卡、续卡、升档、退款、转赠或提现入口。</view>
+    </view>
+  </view>
+
+  <view class="footer"><button bindtap="contact">联系店长办理</button></view>
+</view>

@@ -1,0 +1,5 @@
+<view class="page coupons">
+  <text class="title">我的优惠券</text>
+  <text class="subtitle">可使用的山居礼遇将在这里展示</text>
+  <view class="empty card"><text>暂无优惠券</text><small>新的优惠券会自动放入你的账户</small></view>
+</view>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>停云山居 · 确认订单</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    .scroll { padding-bottom: 92px; }
+    .dining { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:14px; text-align:center; }
+    .dining span { display:block; color:var(--mist); font-size:11px; }
+    .dining strong { display:block; margin-top:6px; font-size:15px; }
+    .items { padding: 0 14px; }
+    .item { display:flex; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
+    .item:last-child { border-bottom:0; }
+    .item-copy { min-width:0; flex:1; }
+    .item-copy h3 { font-size:14px; }
+    .item-copy p { margin-top:7px; color:var(--mist); font-size:12px; }
+    .item-total { font-size:14px; font-weight:700; }
+    .tags { display:flex; flex-wrap:wrap; gap:7px; padding:12px 0 0; }
+    .quick { min-height:30px; padding:0 11px; border:1px solid rgba(79,111,82,.16); border-radius:15px; color:var(--mist); background:#fff; font-size:12px; }
+    .quick.active { border-color:rgba(79,111,82,.36); color:var(--green); background:#EEF4EE; }
+    .summary { padding:8px 14px; }
+    .summary .info-line:last-child { padding-top:14px; font-size:15px; }
+    .summary .info-line:last-child strong { color:var(--bronze); font-size:20px; }
+    .pay-copy { min-width:0; flex:1; }
+    .pay-copy span { display:block; color:var(--mist); font-size:11px; }
+    .pay-copy strong { display:block; margin-top:3px; font-size:20px; }
+    .pay-success { text-align:center; }
+    .pay-check { display:grid; width:62px; height:62px; margin:0 auto 14px; place-items:center; border-radius:50%; color:#fff; background:var(--green); font-size:32px; }
+    .pay-success h2 { font-size:19px; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="scroll">
+      <header class="topbar"><button class="back" onclick="goBack('menu')" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15 18l-6-6 6-6"/></svg></button><div><h1 class="title">确认订单</h1><p class="subtitle">确认菜品与就餐信息</p></div></header>
+      <section class="content">
+        <div class="card dining">
+          <div><span>桌号</span><strong id="table">A01</strong></div>
+          <div><span>类型</span><strong>堂食</strong></div>
+          <div><span>用餐人数</span><strong id="people">2 位</strong></div>
+        </div>
+        <section class="section">
+          <div class="section-head"><h2 class="section-title">菜品明细</h2><span class="section-note" id="itemCount"></span></div>
+          <div class="card items" id="items"></div>
+        </section>
+        <section class="section">
+          <div class="section-head"><h2 class="section-title">订单备注</h2></div>
+          <div class="card" style="padding:14px">
+            <textarea class="field" placeholder="填写口味、忌口或其他需求"></textarea>
+            <div class="tags"><button class="quick" onclick="toggleQuick(this)">少辣</button><button class="quick" onclick="toggleQuick(this)">不要香菜</button><button class="quick" onclick="toggleQuick(this)">有儿童</button><button class="quick" onclick="toggleQuick(this)">稍后上菜</button></div>
+          </div>
+        </section>
+        <section class="section">
+          <div class="section-head"><h2 class="section-title">金额汇总</h2></div>
+          <div class="card summary">
+            <div class="info-line"><span class="info-label">商品金额</span><strong id="goodsTotal"></strong></div>
+            <div class="info-line"><span>微信支付</span><strong id="payTotal"></strong></div>
+          </div>
+        </section>
+      </section>
+    </div>
+    <footer class="fixed-action"><div class="pay-copy"><span>应付金额</span><strong id="fixedTotal"></strong></div><button class="button" type="button" onclick="pay()">微信支付</button></footer>
+  </main>
+  <div class="modal" id="payModal"><div class="sheet pay-success"><div class="pay-check">✓</div><h2 id="payTitle">支付成功</h2><p class="sheet-copy" id="payDesc">订单已提交，正在通知厨房</p></div></div>
+  <script src="common.js"></script>
+  <script>
+    const catalog = {
+      tea:{name:"下午茶套餐",price:38,img:"../部分图片/茶.jpg"}, chicken:{name:"停云·林鸡野趣套餐",price:168,img:"../部分图片/晚饭.jpg"},
+      fish:{name:"停云·泉鱼隐逸套餐",price:198,img:"../部分图片/晚饭.jpg"}, double:{name:"停云双鲜·鱼跃鸡鸣",price:318,img:"../部分图片/晚饭.jpg"},
+      cucumber:{name:"黄瓜拌",price:18,img:"../部分图片/茶2.jpg"}, ginseng:{name:"干煸崂山参",price:48,img:"../部分图片/晚饭.jpg"},
+      dumpling:{name:"海鲜水饺",price:38,img:"../部分图片/晚饭.jpg"}, wine:{name:"桂花酒",price:28,img:"../部分图片/茶2.jpg"}
+    };
+    let cart = JSON.parse(localStorage.getItem("tingyunCart") || "{}");
+    if (!Object.keys(cart).length) cart = {chicken:1,cucumber:1,wine:1};
+    let total = Object.keys(cart).reduce((s,id)=>s+(catalog[id]?.price||0)*cart[id],0);
+    function render(){
+      document.getElementById("table").textContent=localStorage.getItem("tingyunTable")||"A01";
+      document.getElementById("people").textContent=(localStorage.getItem("tingyunPeople")||"2")+" 位";
+      document.getElementById("itemCount").textContent=Object.values(cart).reduce((a,b)=>a+b,0)+" 件菜品";
+      document.getElementById("items").innerHTML=Object.keys(cart).map(id=>{const p=catalog[id];return `<article class="item"><img class="product-thumb" src="${p.img}" alt="${p.name}"><div class="item-copy"><h3>${p.name}</h3><p>${money(p.price)} × ${cart[id]}</p></div><strong class="item-total">${money(p.price*cart[id])}</strong></article>`}).join("");
+      document.getElementById("goodsTotal").textContent=money(total);
+      document.getElementById("payTotal").textContent=money(total);
+      document.getElementById("fixedTotal").textContent=money(total);
+    }
+    function toggleQuick(el){el.classList.toggle("active");}
+    function pay(){document.getElementById("payModal").classList.add("open");setTimeout(()=>{document.getElementById("payTitle").textContent="订单已提交";document.getElementById("payDesc").textContent="正在通知厨房，请稍候";},700);setTimeout(()=>navigateTo("order-detail","?type=meal&no=TY20260601001"),1800);}
+    render();
+  </script>
+</body>
+</html>

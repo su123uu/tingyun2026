@@ -1,7 +1,54 @@
-<view class="page">
-  <view class="placeholder">
-    <t-icon name="user" size="80rpx" color="#C9A962" />
-    <text class="placeholder-title">个人中心</text>
-    <text class="placeholder-desc">页面开发中，敬请期待</text>
+<view class="page profile">
+  <view class="user-card">
+    <view class="user-main">
+      <view class="avatar"><t-icon name="user-circle" size="60rpx" /></view>
+      <view>
+        <text class="user-name">{{isMember ? user.nickname : '微信用户'}}</text>
+        <text class="user-copy">{{isMember ? '欢迎回到停云山居' : '欢迎来到停云山居'}}</text>
+        <text class="level">{{isMember ? (user.member_level || '山居会员') : '散客'}}</text>
+      </view>
+    </view>
   </view>
+
+  <button class="member-entry" bindtap="member">
+    <view>
+      <text class="member-eyebrow">TINGYUN MEMBER</text>
+      <text class="member-title">{{isMember ? '会员中心' : '成为会员'}}</text>
+      <text class="member-copy">{{isMember ? '查看会员权益与专属礼遇' : '了解停云会员与山居礼遇'}}</text>
+    </view>
+    <view class="member-arrow"><t-icon name="chevron-right" size="32rpx" /></view>
+  </button>
+
+  <view class="list card">
+    <view class="list-item" bindtap="orders">
+      <view class="list-main"><view class="list-icon"><t-icon name="assignment" size="34rpx" /></view><text>我的订单</text></view>
+      <t-icon class="chevron" name="chevron-right" size="32rpx" />
+    </view>
+    <view class="list-item" bindtap="rights">
+      <view class="list-main"><view class="list-icon gold"><t-icon name="cardmembership" size="34rpx" /></view><text>我的权益</text></view>
+      <t-icon class="chevron" name="chevron-right" size="32rpx" />
+    </view>
+    <view class="list-item" bindtap="coupons">
+      <view class="list-main"><view class="list-icon gold"><t-icon name="ticket" size="34rpx" /></view><text>优惠券</text></view>
+      <t-icon class="chevron" name="chevron-right" size="32rpx" />
+    </view>
+  </view>
+
+  <button wx:if="{{!isMember}}" class="bind-button" bindtap="bindMember">授权手机号并匹配会员</button>
+
+  <view class="list card secondary-list">
+    <view class="list-item" bindtap="contact">
+      <view class="list-main"><view class="list-icon rose"><t-icon name="call" size="34rpx" /></view><text>联系客服</text></view>
+      <t-icon class="chevron" name="chevron-right" size="32rpx" />
+    </view>
+    <view class="list-item" bindtap="about">
+      <view class="list-main"><view class="list-icon"><t-icon name="info-circle" size="34rpx" /></view><text>关于我们</text></view>
+      <t-icon class="chevron" name="chevron-right" size="32rpx" />
+    </view>
+    <view wx:if="{{isStaff}}" class="list-item" bindtap="settings">
+      <view class="list-main"><view class="list-icon"><t-icon name="setting" size="34rpx" /></view><text>设置</text></view>
+      <t-icon class="chevron" name="chevron-right" size="32rpx" />
+    </view>
+  </view>
+  <text class="version">停云山居 v1.0.0</text>
 </view>

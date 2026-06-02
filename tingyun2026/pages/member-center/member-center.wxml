@@ -1,0 +1,61 @@
+<view class="page member-center">
+  <view class="topbar" style="padding-top: {{navTop}}px;">
+    <view class="nav-row" style="height: {{navHeight}}px;">
+      <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+      <view class="heading">
+        <text class="title">会员中心</text>
+        <text class="subtitle">山居常客的自在与礼遇</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{isMember}}" class="member-card">
+    <text class="eyebrow">TINGYUN MEMBER · ACTIVE</text>
+    <text class="level">{{user.member_level || '辰升会员'}}</text>
+    <view class="member-meta">
+      <view><text>会员</text><strong>{{user.nickname}}</strong></view>
+      <view><text>手机号</text><strong>{{mobileText}}</strong></view>
+    </view>
+  </view>
+  <view wx:else class="guest-card">
+    <text class="guest-title">尚未匹配会员档案</text>
+    <text class="guest-copy">授权手机号后，可查看并使用属于你的会员权益。</text>
+    <button bindtap="bindMember">授权手机号并匹配会员</button>
+  </view>
+
+  <view class="content">
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">权益使用</text>
+        <text class="section-note" bindtap="contact">联系店长</text>
+      </view>
+      <view class="benefits card">
+        <view wx:for="{{benefits}}" wx:key="no" class="benefit">
+          <text class="benefit-no">{{item.no}}</text>
+          <view>
+            <text class="benefit-name">{{item.name}}</text>
+            <text class="benefit-copy">{{isMember ? item.usage : '成为会员后可使用'}}</text>
+          </view>
+        </view>
+      </view>
+      <button wx:if="{{!isMember}}" class="intro-button" bindtap="intro">了解停云会员</button>
+    </view>
+
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">我的会员活动</text>
+        <text class="section-note" bindtap="viewActivities">查看活动</text>
+      </view>
+      <view wx:if="{{activities.length}}" class="activity card">
+        <view wx:for="{{activities}}" wx:key="activity_id" class="activity-row" data-id="{{item.activity_id}}" bindtap="openActivity">
+          <view>
+            <text class="activity-title">{{item.title}}</text>
+            <text class="activity-copy">{{item.date}} · {{item.location}} · {{item.people_count}} 人</text>
+          </view>
+          <text class="activity-tag">{{item.status_text}}</text>
+        </view>
+      </view>
+      <view wx:else class="empty card">暂无会员活动记录</view>
+    </view>
+  </view>
+</view>

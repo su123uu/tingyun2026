@@ -1,6 +1,47 @@
-<view class="page">
-  <view class="placeholder">
-    <text class="placeholder-title">活动详情</text>
-    <text class="placeholder-desc">页面开发中，敬请期待</text>
+<view wx:if="{{activity}}" class="page detail-page">
+  <view class="topbar" style="padding-top: {{navTop}}px;">
+    <view class="nav-row" style="height: {{navHeight}}px;">
+      <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+      <view class="heading">
+        <text class="title">活动详情</text>
+        <text class="subtitle">停云会员专属活动</text>
+      </view>
+    </view>
+  </view>
+
+  <image class="cover" src="{{activity.image_url}}" mode="aspectFill" />
+  <view class="detail-title">
+    <text class="tag {{activity.status_tone}}">{{activity.status_text}}</text>
+    <text class="activity-title">{{activity.title}}</text>
+    <text class="summary">{{activity.detail_summary}}</text>
+  </view>
+
+  <view class="content">
+    <view class="section">
+      <text class="section-title">活动信息</text>
+      <view class="detail-card card">
+        <view class="info-line"><text class="info-label">活动时间</text><text>{{activity.date}} {{activity.time}}</text></view>
+        <view class="info-line"><text class="info-label">活动地点</text><text>{{activity.location}}</text></view>
+        <view class="info-line"><text class="info-label">人数上限</text><text>{{activity.capacity}} 人</text></view>
+        <view class="info-line"><text class="info-label">报名截止</text><text>{{activity.signup_deadline}}</text></view>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="section-title">活动介绍</text>
+      <view class="copy card">
+        <text wx:for="{{activity.intro}}" wx:key="*this">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="section-title">活动须知</text>
+      <view class="copy card"><text>{{activity.notice}}</text></view>
+    </view>
+  </view>
+
+  <view class="fixed-action">
+    <button class="action-button secondary" bindtap="contact">联系客服</button>
+    <button class="action-button" disabled="{{!activity.can_signup}}" bindtap="signup">{{activity.can_signup ? '立即报名' : '活动已满员'}}</button>
   </view>
 </view>

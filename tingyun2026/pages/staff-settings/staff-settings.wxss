@@ -1,0 +1,2 @@
+.settings { padding:42rpx 28rpx; }
+.info { margin-top:34rpx; padding:30rpx; color:#5F625E; font-size:25rpx; line-height:1.8; }

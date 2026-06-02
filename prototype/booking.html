@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>停云山居 · 预约预订</title>
+  <link rel="stylesheet" href="tabbar.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script>tailwind.config={theme:{extend:{colors:{'ink':'#1A1A1A','ink-gray':'#4A4A4A','green':'#4F6F52','mist':'#7C8A8C','paper':'#F8F6F1','beige':'#E8E4DC','gold':'#C9A962','bronze':'#8B7355'},fontFamily:{'serif':['Noto Serif SC','serif']}}}}</script>
@@ -24,7 +25,9 @@
 
     /* 顶部标题 */
     .hero {
+      position:sticky; top:0; z-index:30;
       padding: 56px 24px 28px; text-align:center;
+      background:rgba(248,246,241,.94); backdrop-filter:blur(18px);
     }
     .hero .back {
       display:inline-flex; align-items:center; gap:4px;
@@ -78,6 +81,10 @@
       padding:18px 20px;
     }
     .tips h4 { font-size:13px; font-weight:600; color:var(--gold); letter-spacing:3px; margin-bottom:10px; }
+    .bottom-nav { position:fixed; z-index:50; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(5,1fr); padding:8px 0 19px; border-top:1px solid rgba(26,26,26,.07); background:rgba(255,255,255,.95); backdrop-filter:blur(18px); }
+    .nav-item { display:flex; align-items:center; flex-direction:column; gap:3px; color:#929C96; font-size:11px; cursor:pointer; }
+    .nav-item.active { color:var(--green); }
+    .nav-item svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.55; stroke-linecap:round; stroke-linejoin:round; }
     .tips .tip { display:flex; align-items:flex-start; gap:8px; font-size:11px; color:var(--mist); letter-spacing:1px; line-height:1.7; margin-bottom:5px; }
     .tips .tip .bullet { color:var(--gold); flex-shrink:0; }
   </style>
@@ -142,10 +149,10 @@
             <h3>用餐预订</h3>
             <p>四间古典餐厅，各具韵致。兮古、栖鹿、梦堂、心语，在雅致空间中品味山间至味。</p>
             <div class="tags">
-              <span class="tag">兮古 · 古典餐厅</span>
-              <span class="tag">栖鹿 · 自然餐厅</span>
-              <span class="tag">梦堂 · 古风餐厅</span>
-              <span class="tag">心语 · 私密餐厅</span>
+              <span class="tag">兮古 · 6-10人</span>
+              <span class="tag">栖鹿 · 8-12人</span>
+              <span class="tag">梦堂 · 8-12人</span>
+              <span class="tag">心语 · 8-12人</span>
             </div>
             <div class="arrow-row">
               查看详情
@@ -157,7 +164,7 @@
 
       <!-- 空间 -->
       <div class="px-4 mb-5">
-        <div class="type-card" onclick="showConsult('空间预定')">
+        <div class="type-card" onclick="showConsult('空间预订')">
           <div class="card-hero" style="background:linear-gradient(150deg,#6E7F63 0%,#44543B 100%);">
             <div class="hero-icon">
               <svg viewBox="0 0 70 70" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -170,7 +177,7 @@
             <span class="hero-text">雅室清谈</span>
           </div>
           <div class="card-body">
-            <h3>空间预定</h3>
+            <h3>空间预订</h3>
             <p>会议室、禅修室、VIP茶室、展厅，可用于小型雅集、课程、会谈与静修。</p>
             <div class="tags">
               <span class="tag">多功能会议室</span>
@@ -179,7 +186,7 @@
               <span class="tag">展厅</span>
             </div>
             <div class="arrow-row">
-              咨询预定
+              咨询预订
               <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3l5 5-5 5"/></svg>
             </div>
           </div>
@@ -188,7 +195,7 @@
 
       <!-- 包场 -->
       <div class="px-4 mb-5">
-        <div class="type-card" onclick="showConsult('举办活动')">
+        <div class="type-card" onclick="showConsult('包场预订')">
           <div class="card-hero" style="background:linear-gradient(150deg,#9A6A4F 0%,#62402F 100%);">
             <div class="hero-icon">
               <svg viewBox="0 0 70 70" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -227,19 +234,28 @@
         <div class="tip"><span class="bullet">·</span>到店支付，支持微信 / 支付宝 / 现金</div>
       </div>
 
-      <div style="height:30px;"></div>
+      <div style="height:92px;"></div>
     </div>
   </div>
+  <nav class="bottom-nav" aria-label="底部导航">
+    <button class="nav-item" onclick="goTo('home')"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M6 10.5V21h12V10.5"/><path d="M10 21v-6h4v6"/></svg><span>首页</span></button>
+    <button class="nav-item" onclick="goTo('menu')"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>点餐</span></button>
+    <button class="nav-item" onclick="goTo('intro')"><svg viewBox="0 0 24 24"><path d="M4 19l5-7 4 3 3-5 4 9"/><path d="M4 21h16"/><circle cx="16" cy="5" r="2"/></svg><span>介绍</span></button>
+    <button class="nav-item active"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 19v-8h12v8"/><path d="M8 11V7h8v4"/></svg><span>预订</span></button>
+    <button class="nav-item" onclick="goTo('profile')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>我的</span></button>
+  </nav>
 
   <script>
     function goTo(page) {
       if (window.parent !== window) {
         window.parent.postMessage({ type:'navigate', target:page, page:page+'.html' }, '*');
+      } else {
+        window.location.href = page + '.html';
       }
     }
 
     function showConsult(type) {
-      alert(type + '暂以电话/客服咨询为主，后续可扩展为独立预订页。');
+      alert(type + '请拨打电话咨询：15192670475');
     }
   </script>
 </body>

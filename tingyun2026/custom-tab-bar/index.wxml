@@ -1,35 +1,6 @@
 <view class="tab-bar">
-  <view
-    wx:for="{{list}}"
-    wx:key="index"
-    class="tab-item {{selected === index ? 'tab-item-active' : ''}}"
-    data-path="{{item.pagePath}}"
-    data-index="{{index}}"
-    bindtap="switchTab"
-  >
-    <!-- 首页 -->
-    <view wx:if="{{index === 0}}" class="tab-icon-wrap">
-      <t-icon name="home" size="44rpx" color="{{selected === index ? '#C9A962' : '#7C8A8C'}}" />
-    </view>
-    <!-- 点餐 -->
-    <view wx:elif="{{index === 1}}" class="tab-icon-wrap">
-      <t-icon name="shop" size="44rpx" color="{{selected === index ? '#C9A962' : '#7C8A8C'}}" />
-    </view>
-    <!-- 介绍 - 山图标 -->
-    <view wx:elif="{{index === 2}}" class="tab-icon-wrap tab-icon-mountain">
-      <view class="mountain-icon {{selected === index ? 'mountain-active' : ''}}">
-        <view class="mountain-peak"></view>
-        <view class="mountain-base"></view>
-      </view>
-    </view>
-    <!-- 订单 -->
-    <view wx:elif="{{index === 3}}" class="tab-icon-wrap">
-      <t-icon name="view-list" size="44rpx" color="{{selected === index ? '#C9A962' : '#7C8A8C'}}" />
-    </view>
-    <!-- 我的 -->
-    <view wx:else class="tab-icon-wrap">
-      <t-icon name="user" size="44rpx" color="{{selected === index ? '#C9A962' : '#7C8A8C'}}" />
-    </view>
-    <text class="tab-text {{selected === index ? 'tab-text-active' : ''}}">{{item.text}}</text>
+  <view wx:for="{{list}}" wx:key="pagePath" class="tab-item {{selected === index ? 'active' : ''}}" data-path="{{item.pagePath}}" bindtap="switchTab">
+    <t-icon class="tab-icon" name="{{item.icon}}" size="42rpx" />
+    <text>{{item.text}}</text>
   </view>
 </view>

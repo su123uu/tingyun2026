@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>停云山居 · 会员中心</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    .member-card { position:relative; overflow:hidden; margin:0 14px; padding:20px; border:1px solid rgba(201,169,98,.55); border-radius:15px; color:#F4DFA6; background:radial-gradient(circle at 90% 14%,rgba(201,169,98,.20),transparent 28%),linear-gradient(135deg,#171715,#2A2722); box-shadow:0 12px 24px rgba(26,26,26,.17); }
+    .member-card::after { position:absolute; right:-48px; bottom:-70px; width:170px; height:170px; border:1px solid rgba(201,169,98,.17); border-radius:50%; content:""; box-shadow:0 0 0 24px rgba(201,169,98,.035); }
+    .eyebrow { color:rgba(244,223,166,.65); font-size:10px; letter-spacing:3px; }
+    .level { margin-top:14px; font-family:"Noto Serif SC","Songti SC",serif; font-size:26px; font-weight:700; }
+    .member-meta { display:flex; justify-content:space-between; gap:12px; margin-top:22px; color:rgba(255,255,255,.68); font-size:11px; }
+    .member-meta strong { display:block; margin-top:4px; color:#fff; font-size:13px; }
+    .benefit { display:flex; gap:11px; align-items:center; padding:13px 14px; border-bottom:1px solid var(--line); }
+    .benefit:last-child { border-bottom:0; }
+    .benefit-no { display:grid; width:29px; height:29px; flex:0 0 29px; place-items:center; border-radius:50%; color:#876A37; background:#FAF4E7; font-size:11px; }
+    .benefit h3 { font-size:13px; }
+    .benefit p { margin-top:4px; color:var(--mist); font-size:11px; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="scroll">
+      <header class="topbar"><button class="back" onclick="goBack('profile')" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15 18l-6-6 6-6"/></svg></button><div><h1 class="title">会员中心</h1><p class="subtitle">山居常客的自在与礼遇</p></div></header>
+      <section class="member-card">
+        <div class="eyebrow">TINGYUN MEMBER · ACTIVE</div>
+        <h2 class="level">辰升会员</h2>
+        <div class="member-meta"><div>会员<br><strong>山里人</strong></div><div>手机号<br><strong>138****6688</strong></div></div>
+      </section>
+      <section class="content">
+        <section class="section"><div class="section-head"><h2 class="section-title">权益使用</h2><button class="section-note" onclick="showToast('店长联系方式将在正式上线前补充')">联系店长</button></div><div class="card">
+          <div class="benefit"><span class="benefit-no">01</span><div><h3>免费住宿</h3><p>已使用 2 次 · 剩余 8 次</p></div></div>
+          <div class="benefit"><span class="benefit-no">02</span><div><h3>自然采摘</h3><p>已使用 6 人次 · 剩余 14 人次</p></div></div>
+          <div class="benefit"><span class="benefit-no">03</span><div><h3>茶室雅集</h3><p>已使用 3 次 · 剩余 7 次</p></div></div>
+          <div class="benefit"><span class="benefit-no">04</span><div><h3>私人纪念日布置</h3><p>已使用 1 次 · 剩余 2 次</p></div></div>
+        </div></section>
+        <section class="section"><div class="section-head"><h2 class="section-title">我的会员活动</h2><button class="section-note" onclick="navigateTo('activity')">查看活动</button></div><div class="card" style="padding:14px"><div class="row"><div><strong style="font-size:14px">山间茶艺品鉴会</strong><p class="small muted" style="margin-top:5px">2026-06-20 · 茶空间 · 2 人</p></div><span class="tag gold">待确认</span></div></div></section>
+      </section>
+    </div>
+  </main>
+  <script src="common.js"></script>
+</body>
+</html>

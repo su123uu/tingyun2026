@@ -23,7 +23,7 @@
     .hero {
       background:linear-gradient(150deg,#8B7355 0%,#6B5940 100%);
       padding:56px 24px 30px; color:#fff; border-radius:0 0 32px 32px;
-      position:relative; overflow:hidden;
+      position:sticky; top:0; z-index:30; overflow:hidden;
     }
     .hero::after {
       content:''; position:absolute; top:-30%; right:-20%;
@@ -109,23 +109,9 @@
     .rst-ck svg { display:none; width:12px; height:12px; }
     .rest-card.selected .rst-ck svg { display:block; }
 
-    /* 餐饮标准 */
-    .std-grid {
-      padding:0 16px; display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
-    }
-    .std-card {
-      background:rgba(255,255,255,0.82); backdrop-filter:blur(12px);
-      border-radius:14px; padding:16px; text-align:center;
-      box-shadow:0 1px 12px rgba(0,0,0,0.025),0 0 0 1px rgba(0,0,0,0.03);
-      border:1.5px solid transparent; cursor:pointer;
-      transition:all 0.25s;
-    }
-    .std-card:active { transform:scale(0.98); }
-    .std-card.selected { border-color:var(--green); background:rgba(79,111,82,0.04); }
-    .std-card .sn { font-size:13px; font-weight:600; letter-spacing:2px; }
-    .std-card .sp { font-size:20px; font-weight:700; color:var(--green); margin-top:4px; }
-    .std-card .sp span { font-size:11px; font-weight:400; }
-    .std-card .sd { font-size:10px; color:var(--mist); letter-spacing:1px; margin-top:3px; }
+    .form-card { margin:0 16px; padding:14px; border-radius:14px; background:rgba(255,255,255,0.82); box-shadow:0 1px 12px rgba(0,0,0,0.025),0 0 0 1px rgba(0,0,0,0.03); }
+    .form-card input,.form-card textarea { width:100%; padding:10px 0; border:0; border-bottom:1px solid rgba(26,26,26,.07); outline:0; color:var(--ink); background:transparent; font-family:inherit; font-size:12px; }
+    .form-card textarea { min-height:68px; resize:none; }
 
     .submit-area { padding:20px 16px 36px; }
     .submit-btn {
@@ -172,7 +158,7 @@
         <span class="plbl">人数</span>
         <div class="people-ctl">
           <div class="pbtn" onclick="changePpl(-1)">−</div>
-          <span class="pnum" id="ppl">2</span>
+          <span class="pnum" id="ppl">6</span>
           <div class="pbtn" onclick="changePpl(1)">+</div>
         </div>
       </div>
@@ -181,9 +167,12 @@
       <div class="sect"><div class="sect-hd"><div class="bar"></div><h3>选择餐厅</h3></div></div>
       <div class="rest-grid" id="restContainer"></div>
 
-      <!-- 餐饮标准 -->
-      <div class="sect"><div class="sect-hd"><div class="bar"></div><h3>餐饮标准</h3></div></div>
-      <div class="std-grid" id="stdContainer"></div>
+      <div class="sect"><div class="sect-hd"><div class="bar"></div><h3>联系信息</h3></div></div>
+      <div class="form-card">
+        <input value="山里人" aria-label="联系人" placeholder="联系人">
+        <input value="13866886688" aria-label="手机号" placeholder="手机号">
+        <textarea aria-label="备注" placeholder="备注：填写用餐需求或其他说明"></textarea>
+      </div>
 
       <!-- 提交 -->
       <div class="submit-area">
@@ -197,24 +186,17 @@
 
   <script>
     const restaurants = [
-      { id:'xigu', name:'兮古', type:'古典餐厅',
+      { id:'xigu', name:'兮古', capacity:'6-10人',
         icon:'<rect x="4" y="6" width="16" height="14" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><rect x="7" y="10" width="4" height="10"/><rect x="13" y="10" width="4" height="10"/>' },
-      { id:'qilu', name:'栖鹿', type:'自然餐厅',
+      { id:'qilu', name:'栖鹿', capacity:'8-12人',
         icon:'<path d="M5 20V12L12 6l7 6v8"/><path d="M8 20v-6h8v6"/><circle cx="12" cy="14" r="1.5"/><rect x="5" y="4" width="14" height="5" rx="1"/>' },
-      { id:'mengtang', name:'梦堂', type:'古风餐厅',
+      { id:'mengtang', name:'梦堂', capacity:'8-12人',
         icon:'<path d="M5 20V8l7-5 7 5v12"/><rect x="8" y="11" width="8" height="9"/><circle cx="12" cy="11" r="2"/>' },
-      { id:'xinyu', name:'心语', type:'私密餐厅',
+      { id:'xinyu', name:'心语', capacity:'8-12人',
         icon:'<circle cx="12" cy="10" r="7"/><path d="M8 14c.83 0 1.5.67 1.5 1.5v2.5h5v-2.5c0-.83.67-1.5 1.5-1.5"/><circle cx="10" cy="9" r="0.8"/><circle cx="14" cy="9" r="0.8"/>' }
     ];
 
-    const standards = [
-      { id:'s1', name:'素斋', price:40, desc:'3菜1汤1主食，时令蔬菜' },
-      { id:'s2', name:'团餐', price:50, desc:'4菜1汤1主食，精选肉类' },
-      { id:'s3', name:'行云', price:168, desc:'4凉10热1主食，山间野味' },
-      { id:'s4', name:'归云', price:218, desc:'5凉10热1主食1个吃' },
-    ];
-
-    let selRest = null, selStd = null, ppl = 2;
+    let selRest = [], ppl = 6;
     let dateOk = false, timeOk = false;
 
     function render() {
@@ -223,24 +205,16 @@
           <div class="rst-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="#8B7355" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${r.icon}</svg>
           </div>
-          <div class="rst-info"><div class="rn">${r.name}</div><div class="rt">${r.type}</div></div>
+          <div class="rst-info"><div class="rn">${r.name}</div><div class="rt">容纳 ${r.capacity}</div></div>
           <div class="rst-ck">
             <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="3,8 7,12 13,4"/></svg>
           </div>
         </div>
       `).join('');
 
-      document.getElementById('stdContainer').innerHTML = standards.map(s => `
-        <div class="std-card" onclick="selectStd('${s.id}')" data-id="${s.id}">
-          <div class="sn">${s.name}</div>
-          <div class="sp">¥${s.price}<span>/人</span></div>
-          <div class="sd">${s.desc}</div>
-        </div>
-      `).join('');
     }
 
-    function selectRest(id) { selRest=id; document.querySelectorAll('.rest-card').forEach(el=>el.classList.toggle('selected', el.dataset.id===id)); check(); }
-    function selectStd(id) { selStd=id; document.querySelectorAll('.std-card').forEach(el=>el.classList.toggle('selected', el.dataset.id===id)); check(); }
+    function selectRest(id) { selRest=selRest.includes(id)?selRest.filter(x=>x!==id):[...selRest,id]; document.querySelectorAll('.rest-card').forEach(el=>el.classList.toggle('selected', selRest.includes(el.dataset.id))); check(); }
 
     function toggleVal(id, val) {
       const el = document.getElementById(id);
@@ -255,27 +229,25 @@
 
     function check() {
       const btn = document.getElementById('submitBtn'), hint = document.getElementById('submitHint');
-      const ok = dateOk && timeOk && selRest && selStd;
+      const ok = dateOk && timeOk && selRest.length;
       if (ok) {
         btn.disabled = false;
-        const s = standards.find(x=>x.id===selStd);
-        hint.textContent = `合计 ¥${s.price * ppl} · 到店支付`;
+        hint.textContent = `已选 ${selRest.length} 个包间 · 到店支付`;
       } else {
         btn.disabled = true;
         const m = [];
         if (!dateOk) m.push('日期');
         if (!timeOk) m.push('时段');
-        if (!selRest) m.push('餐厅');
-        if (!selStd) m.push('标准');
+        if (!selRest.length) m.push('餐厅');
         hint.textContent = `请选择${m.join('、')}`;
       }
     }
 
     function doSubmit() {
-      if (!selRest || !selStd) return;
-      const r = restaurants.find(x=>x.id===selRest);
-      const s = standards.find(x=>x.id===selStd);
-      alert(`预订成功！\n餐厅：${r.name}（${r.type}）\n日期：${document.getElementById('dineDate').textContent} ${document.getElementById('dineTime').textContent}\n人数：${ppl}位\n标准：${s.name} ¥${s.price}/人\n合计：¥${s.price * ppl}\n\n到店支付，无需在线付款`);
+      if (!selRest.length) return;
+      const names = restaurants.filter(x=>selRest.includes(x.id)).map(x=>x.name).join('、');
+      alert(`需求已提交，当前状态为待店长确认。\n餐厅：${names}\n日期：${document.getElementById('dineDate').textContent} ${document.getElementById('dineTime').textContent}\n人数：${ppl}位\n\n到店支付，客服将电话联系您确认信息。`);
+      window.location.href = 'order-detail.html?type=dining&no=TY20260601011';
     }
 
     render();

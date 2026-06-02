@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>停云山居 · 订单详情</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    .scroll { padding-bottom: 88px; }
+    .content { padding-bottom:24px; }
+    .detail-card { padding:4px 14px; }
+    .dish { display:flex; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); }
+    .dish:last-child { border-bottom:0; }
+    .dish img { width:54px; height:54px; border-radius:9px; object-fit:cover; }
+    .dish h3 { font-size:13px; }
+    .dish p { margin-top:7px; color:var(--mist); font-size:12px; }
+    .dish strong { margin-left:auto; font-size:13px; }
+    .timeline { padding:14px; }
+    .step { position:relative; padding:0 0 17px 22px; color:var(--mist); font-size:12px; line-height:1.45; }
+    .step:last-child { padding-bottom:0; }
+    .step::before { position:absolute; top:3px; left:2px; width:8px; height:8px; border:2px solid #CBD0CB; border-radius:50%; background:#fff; content:""; }
+    .step::after { position:absolute; top:15px; bottom:0; left:7px; width:1px; background:#D8DDD8; content:""; }
+    .step:last-child::after { display:none; }
+    .step.done { color:var(--green); }
+    .step.done::before { border-color:var(--green); background:var(--green); }
+    .actions { display:flex; gap:9px; padding:0 14px 20px; }
+    .actions .button { flex:1; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="scroll">
+      <header class="topbar"><button class="back" onclick="goBack('orders')" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15 18l-6-6 6-6"/></svg></button><div><h1 class="title">订单详情</h1><p class="subtitle" id="orderNo"></p></div></header>
+      <section class="status-banner" id="banner"><h1 id="status"></h1><p id="statusDesc"></p></section>
+      <section class="content" id="detail"></section>
+      <div class="actions"><button class="button secondary" onclick="showToast('客服联系方式将在正式上线前补充')">联系客服</button><button class="button" id="cancel" onclick="showToast('已模拟取消预约')">取消预约</button></div>
+    </div>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    const q=new URLSearchParams(location.search), type=q.get("type")||"meal", no=q.get("no")||"TY20260601001";
+    const common=`<section class="section"><div class="section-head"><h2 class="section-title">基础信息</h2></div><div class="card detail-card"><div class="info-line"><span class="info-label">订单编号</span><span>${no}</span></div><div class="info-line"><span class="info-label">创建时间</span><span>2026-06-01 12:18</span></div></div></section>`;
+    function meal(){
+      document.getElementById("status").textContent="制作中";document.getElementById("statusDesc").textContent="厨房已接单，正在为您准备餐品。";
+      return `${common}<section class="section"><div class="section-head"><h2 class="section-title">就餐信息</h2></div><div class="card detail-card"><div class="info-line"><span class="info-label">桌号</span><strong>A01</strong></div><div class="info-line"><span class="info-label">用餐人数</span><span>2 位</span></div></div></section>
+      <section class="section"><div class="section-head"><h2 class="section-title">菜品明细</h2></div><div class="card detail-card"><div class="dish"><img src="../部分图片/晚饭.jpg"><div><h3>停云·林鸡野趣套餐</h3><p>¥168.00 × 1</p></div><strong>¥168.00</strong></div><div class="dish"><img src="../部分图片/茶2.jpg"><div><h3>黄瓜拌</h3><p>¥18.00 × 1</p></div><strong>¥18.00</strong></div><div class="dish"><img src="../部分图片/茶.jpg"><div><h3>桂花酒</h3><p>¥28.00 × 1</p></div><strong>¥28.00</strong></div></div></section>
+      <section class="section"><div class="section-head"><h2 class="section-title">支付信息</h2></div><div class="card detail-card"><div class="info-line"><span class="info-label">商品金额</span><span>¥214.00</span></div><div class="info-line"><span class="info-label">微信支付</span><strong>¥214.00</strong></div><div class="info-line"><span class="info-label">支付时间</span><span>2026-06-01 12:18</span></div></div></section>
+      <section class="section"><div class="section-head"><h2 class="section-title">备注信息</h2></div><div class="card detail-card"><div class="info-line"><span class="info-label">用户备注</span><span>少辣，不要香菜</span></div></div></section>
+      <section class="section"><div class="section-head"><h2 class="section-title">厨房进度</h2></div><div class="card timeline"><div class="step done">支付成功，正在通知厨房</div><div class="step done">已通知厨房</div><div class="step done">制作中</div><div class="step">已完成</div></div></section>`;
+    }
+    function booking(kind){
+      const stay=kind==="stay";document.getElementById("banner").classList.add("bronze");document.getElementById("status").textContent="待店长确认";document.getElementById("statusDesc").textContent="需求已提交，客服将电话联系您确认具体信息。";
+      return `${common}<section class="section"><div class="section-head"><h2 class="section-title">${stay?"住宿":"餐厅"}信息</h2></div><div class="card detail-card">${stay?`<div class="info-line"><span class="info-label">房间</span><span>春悦 · 亲子房</span></div><div class="info-line"><span class="info-label">入住</span><span>2026-06-12</span></div><div class="info-line"><span class="info-label">退房</span><span>2026-06-13 · 1 晚</span></div><div class="info-line"><span class="info-label">入住人数</span><span>2 位</span></div>`:`<div class="info-line"><span class="info-label">餐厅</span><span>栖鹿 · 容纳 8-12人</span></div><div class="info-line"><span class="info-label">日期</span><span>2026-06-06</span></div><div class="info-line"><span class="info-label">餐段</span><span>晚餐 17:00-21:00</span></div><div class="info-line"><span class="info-label">用餐人数</span><span>8 位</span></div>`}</div></section>
+      <section class="section"><div class="section-head"><h2 class="section-title">联系信息</h2></div><div class="card detail-card"><div class="info-line"><span class="info-label">联系人</span><span>山里人</span></div><div class="info-line"><span class="info-label">手机号</span><span>138****6688</span></div></div></section>
+      <section class="section"><div class="section-head"><h2 class="section-title">备注信息</h2></div><div class="card detail-card"><div class="info-line"><span class="info-label">用户备注</span><span>请电话确认具体安排</span></div></div></section>
+      <section class="section"><div class="section-head"><h2 class="section-title">结算说明</h2></div><div class="card detail-card"><div class="info-line"><span class="info-label">支付方式</span><strong>到店支付</strong></div></div></section>`;
+    }
+    document.getElementById("orderNo").textContent=no;
+    document.getElementById("detail").innerHTML=type==="meal"?meal():booking(type);
+    document.getElementById("cancel").style.display=type==="meal"?"none":"inline-flex";
+  </script>
+</body>
+</html>

@@ -1,7 +1,62 @@
 <view class="page">
-  <view class="placeholder">
-    <t-icon name="shop" size="80rpx" color="#C9A962" />
-    <text class="placeholder-title">扫码点餐</text>
-    <text class="placeholder-desc">页面开发中，敬请期待</text>
+  <view class="head" style="padding-top: {{navTop}}px;"><text class="title" style="height: {{navHeight}}px; line-height: {{navHeight}}px;">山居点餐</text><text class="subtitle">时令入味，慢享山中一席</text></view>
+  <view class="table card">
+    <view><text class="table-title">{{session ? '桌号 ' + session.table_id : '浏览菜单'}}</text><text class="table-desc">{{session ? session.people_count + ' 位用餐 · 可继续加购并结算' : '桌上扫码后可填写人数并结算'}}</text></view>
+    <button size="mini" class="scan" bindtap="simulateScan">模拟扫码</button>
   </view>
+  <view class="layout">
+    <view class="categories">
+      <view wx:for="{{categories}}" wx:key="category_id" class="category {{active === item.category_id ? 'active' : ''}}" data-id="{{item.category_id}}" bindtap="selectCategory">{{item.name}}</view>
+    </view>
+    <scroll-view class="goods" scroll-y>
+      <view wx:for="{{items}}" wx:key="item_id" class="product card">
+        <image class="product-image" src="{{item.image}}" mode="aspectFill" data-id="{{item.item_id}}" bindtap="showDishDetail" />
+        <view class="product-info">
+          <text class="dish-name">{{item.name}}</text><text class="dish-desc">{{item.description}}</text>
+          <view class="product-foot"><text class="price">¥{{item.price}}</text>
+            <view wx:if="{{item.is_available}}" class="counter"><view data-id="{{item.item_id}}" bindtap="minus">-</view><text>{{item.quantity}}</text><view class="plus" data-id="{{item.item_id}}" bindtap="add">+</view></view>
+            <text wx:else class="unavailable">价格待补充</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+  <view wx:if="{{showDishDetail}}" class="detail-mask" bindtap="hideDishDetail"></view>
+  <view wx:if="{{showDishDetail}}" class="detail-dialog" catchtap="stop">
+    <view class="detail-summary">
+      <image class="detail-image" src="{{selectedItem.image}}" mode="aspectFill" bindtap="previewDishImage" />
+      <view class="detail-body">
+        <view class="detail-head"><text class="dish-name">{{selectedItem.name}}</text><text bindtap="hideDishDetail">×</text></view>
+        <text class="dish-desc">{{selectedItem.description}}</text>
+        <view wx:if="{{selectedItem.is_available}}" class="detail-prices">
+          <text class="detail-price">¥{{selectedItem.price}}</text>
+          <text wx:if="{{selectedItem.member_price}}" class="detail-member-price">会员价 ¥{{selectedItem.member_price}}</text>
+        </view>
+        <view wx:if="{{selectedItem.is_available}}" class="detail-counter"><view data-id="{{selectedItem.item_id}}" bindtap="minus">-</view><text>{{selectedQuantity}}</text><view class="plus" data-id="{{selectedItem.item_id}}" bindtap="add">+</view></view>
+        <text wx:else class="unavailable">价格待补充</text>
+      </view>
+    </view>
+    <view class="detail-list">
+      <strong class="detail-title">详细描述：</strong>
+      <view wx:if="{{selectedItem.details}}">
+        <view wx:for="{{selectedItem.details}}" wx:key="name" class="detail-row"><text>{{item.name}}</text><text>{{item.quantity}}</text></view>
+      </view>
+      <view wx:else class="detail-row"><text>规格</text><text>{{selectedItem.specification}}</text></view>
+    </view>
+  </view>
+  <view wx:if="{{showCart}}" class="cart-mask" bindtap="hideCart"></view>
+  <view wx:if="{{showCart}}" class="cart-panel" catchtap="stop">
+    <view class="cart-panel-head"><strong>已选菜品</strong><text bindtap="hideCart">收起</text></view>
+    <scroll-view class="cart-list" scroll-y>
+      <view wx:for="{{cartGroups}}" wx:key="category_id" wx:for-item="cartGroup" class="cart-group">
+        <text class="cart-group-title">{{cartGroup.name}}</text>
+        <view wx:for="{{cartGroup.items}}" wx:key="item_id" wx:for-item="cartItem" class="cart-item">
+          <image class="cart-item-image" src="{{cartItem.image}}" mode="aspectFill" data-id="{{cartItem.item_id}}" bindtap="showDishDetail" />
+          <view class="cart-item-copy"><strong>{{cartItem.name}}</strong><text>¥{{cartItem.price}}</text></view>
+          <view class="counter"><view data-id="{{cartItem.item_id}}" bindtap="minus">-</view><text>{{cartItem.quantity}}</text><view class="plus" data-id="{{cartItem.item_id}}" bindtap="add">+</view></view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+  <view class="cart" bindtap="showCart"><view class="bag"><t-icon name="cart" size="38rpx" /><text>{{count}}</text></view><view class="cart-copy"><strong>¥{{cart.total_amount}}</strong><text>{{session ? '桌号 ' + session.table_id : '扫码后才能提交订单'}}</text></view><button catchtap="checkout">去结算</button></view>
 </view>

@@ -1,0 +1,244 @@
+const catalog = require('../../services/catalog');
+const reservations = require('../../services/reservation');
+
+const ROOM_IMAGE = '/images/兮古.png';
+const STANDARD_IMAGE = '/images/餐标示例.png';
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function addDays(timestamp, days) {
+  const date = new Date(timestamp);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days).getTime();
+}
+
+function formatDate(timestamp, separator = '-') {
+  const date = new Date(timestamp);
+  const pad = (value) => String(value).padStart(2, '0');
+  return [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join(separator);
+}
+
+function formatShortDate(timestamp) {
+  return formatDate(timestamp, '.').slice(5);
+}
+
+const today = startOfDay(new Date());
+
+Page({
+  data: {
+    date: formatDate(today),
+    dateDisplay: formatShortDate(today),
+    calendarVisible: false,
+    calendarValue: today,
+    minDate: today,
+    maxDate: addDays(today, 366),
+    slot: 'lunch',
+    people: 6,
+    rooms: [],
+    selectedRooms: [],
+    maxSelectableRooms: 1,
+    selectedCapacity: 0,
+    roomHint: '',
+    standards: [],
+    standardId: 'group_meal',
+    showStandardDetail: false,
+    selectedStandard: null,
+    contact: '山里人',
+    mobile: '13800136688',
+    remark: '',
+    amount: 240,
+    navTop: 28,
+    navHeight: 32,
+    heroHeight: 218,
+    heroSpacerHeight: 218,
+    heroTitleLeft: 24,
+    heroTitleBottom: 68,
+    heroTitleSize: 26,
+    heroSubtitleBottom: 42,
+    heroLineBottom: 23,
+    heroDetailOpacity: 1,
+  },
+  async onLoad() {
+    this.setNavigationMetrics();
+    const standards = await catalog.listMealStandards();
+    this.setData({ standards: standards.map((standard) => Object.assign({}, standard, { image: STANDARD_IMAGE })) });
+    await this.refreshRooms();
+    this.recalculate();
+  },
+  setNavigationMetrics() {
+    const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    const windowWidth = windowInfo.windowWidth || 375;
+    let navTop = (windowInfo.statusBarHeight || 20) + 6;
+    let navHeight = 32;
+    try {
+      const capsule = wx.getMenuButtonBoundingClientRect();
+      if (capsule && capsule.top && capsule.height) {
+        navTop = capsule.top;
+        navHeight = capsule.height;
+      }
+    } catch (error) {}
+    const rpxToPx = (rpx) => windowWidth * rpx / 750;
+    this.heroExpandedHeight = Math.max(210, Math.round(windowWidth * .58));
+    this.heroCollapsedHeight = navTop + navHeight + rpxToPx(54);
+    this.heroShrinkDistance = this.heroExpandedHeight - this.heroCollapsedHeight;
+    this.setData({ navTop, navHeight, heroSpacerHeight: this.heroExpandedHeight });
+    this.updateHero(0);
+  },
+  onPageScroll(event) { this.updateHero(event.scrollTop); },
+  updateHero(scrollTop) {
+    if (!this.heroShrinkDistance) return;
+    const progress = Math.min(1, Math.max(0, scrollTop / this.heroShrinkDistance));
+    if (Math.abs(progress - (this.heroProgress || 0)) < .012 && progress !== 0 && progress !== 1) return;
+    this.heroProgress = progress;
+    const interpolate = (from, to) => Math.round((from + (to - from) * progress) * 10) / 10;
+    const finalTitleBottom = this.heroCollapsedHeight - this.data.navTop - 26;
+    this.setData({
+      heroHeight: interpolate(this.heroExpandedHeight, this.heroCollapsedHeight),
+      heroTitleLeft: interpolate(24, 60),
+      heroTitleBottom: interpolate(68, finalTitleBottom),
+      heroTitleSize: interpolate(26, 22),
+      heroSubtitleBottom: interpolate(42, 9),
+      heroLineBottom: interpolate(23, 6),
+      heroDetailOpacity: Math.max(0, Math.round((1 - progress * 1.65) * 100) / 100),
+    });
+  },
+  goBack() {
+    wx.navigateBack({
+      delta: 1,
+      fail: () => wx.switchTab({ url: '/pages/booking/booking' }),
+    });
+  },
+  openCalendar() { this.setData({ calendarVisible: true }); },
+  closeCalendar() { this.setData({ calendarVisible: false }); },
+  async confirmCalendar(event) {
+    const value = event.detail.value;
+    this.setData({
+      calendarVisible: false,
+      calendarValue: value,
+      date: formatDate(value),
+      dateDisplay: formatShortDate(value),
+    });
+    await this.refreshRooms();
+  },
+  async slot(event) {
+    this.setData({ slot: event.currentTarget.dataset.slot });
+    await this.refreshRooms();
+  },
+  async adjustPeople(event) {
+    const people = Math.max(6, Number(this.data.people || 6) + Number(event.currentTarget.dataset.step));
+    this.setData({ people });
+    await this.refreshRooms();
+    this.recalculate();
+  },
+  peopleInput(event) { this.setData({ people: event.detail.value }); },
+  async normalizePeople() {
+    this.setData({ people: Math.max(6, Number(this.data.people) || 6) });
+    await this.refreshRooms();
+    this.recalculate();
+  },
+  async refreshRooms() {
+    const requestId = (this.roomsRequestId || 0) + 1;
+    this.roomsRequestId = requestId;
+    const people = Number(this.data.people) || 6;
+    const rooms = await reservations.listDiningRooms({
+      date: this.data.date,
+      time_slot: this.data.slot,
+      people_count: people,
+    });
+    if (requestId !== this.roomsRequestId) return;
+    const selectableIds = rooms.filter((room) => room.is_selectable).map((room) => room.room_id);
+    const maxSelectableRooms = reservations.getDiningRoomSelectionLimit(people);
+    let selectedRooms = this.data.selectedRooms.filter((id) => selectableIds.includes(id));
+    if (selectedRooms.length > maxSelectableRooms) selectedRooms = selectedRooms.slice(0, maxSelectableRooms);
+    this.allRooms = rooms.map((room) => Object.assign({}, room, { image: ROOM_IMAGE }));
+    this.updateRooms(selectedRooms, maxSelectableRooms);
+  },
+  room(event) {
+    const id = event.currentTarget.dataset.id;
+    const room = this.allRooms.find((item) => item.room_id === id);
+    if (!room || !room.is_selectable) return this.toast(room ? room.disabled_reason : '包间不可用');
+    let selectedRooms = this.data.selectedRooms;
+    if (selectedRooms.includes(id)) {
+      selectedRooms = selectedRooms.filter((roomId) => roomId !== id);
+    } else {
+      if (selectedRooms.length >= this.data.maxSelectableRooms) {
+        return this.toast(`当前人数最多选择 ${this.data.maxSelectableRooms} 个包间`);
+      }
+      selectedRooms = selectedRooms.concat([id]);
+    }
+    this.updateRooms(selectedRooms, this.data.maxSelectableRooms);
+  },
+  updateRooms(selectedRooms, maxSelectableRooms) {
+    const selectedCapacity = this.allRooms
+      .filter((room) => selectedRooms.includes(room.room_id))
+      .reduce((sum, room) => sum + room.max_capacity, 0);
+    const roomHint = selectedRooms.length
+      ? `已选 ${selectedRooms.length}/${maxSelectableRooms} 个包间，最多容纳 ${selectedCapacity} 人`
+      : `当前人数最多选择 ${maxSelectableRooms} 个包间`;
+    this.setData({
+      selectedRooms,
+      rooms: this.allRooms.map((room) => Object.assign({}, room, { selected: selectedRooms.includes(room.room_id) })),
+      maxSelectableRooms,
+      selectedCapacity,
+      roomHint,
+    });
+  },
+  openStandardDetail(event) {
+    const selectedStandard = this.data.standards.find((standard) => standard.meal_standard_id === event.currentTarget.dataset.id);
+    if (selectedStandard) this.setData({ selectedStandard, showStandardDetail: true });
+  },
+  hideStandardDetail() { this.setData({ selectedStandard: null, showStandardDetail: false }); },
+  chooseStandard() {
+    if (!this.data.selectedStandard) return;
+    this.setData({ standardId: this.data.selectedStandard.meal_standard_id });
+    this.recalculate();
+    this.hideStandardDetail();
+  },
+  stop() {},
+  contact(event) { this.setData({ contact: event.detail.value }); },
+  mobile(event) { this.setData({ mobile: event.detail.value }); },
+  remark(event) { this.setData({ remark: event.detail.value }); },
+  recalculate() {
+    const standard = this.data.standards.find((item) => item.meal_standard_id === this.data.standardId);
+    this.setData({ amount: standard ? this.data.people * standard.price_per_person : 0 });
+  },
+  submit() {
+    if (!this.data.date) return this.toast('请选择用餐日期');
+    if (!this.data.selectedRooms.length) return this.toast('请选择包间');
+    if (this.data.selectedCapacity < this.data.people) return this.toast('所选包间总容量不足');
+    if (!this.data.standardId) return this.toast('请选择餐标');
+    this.create();
+  },
+  async create() {
+    try {
+      let order = await reservations.createDiningReservation({
+        date: this.data.date,
+        time_slot: this.data.slot,
+        people_count: this.data.people,
+        room_ids: this.data.selectedRooms,
+        meal_standard_id: this.data.standardId,
+        contact_name: this.data.contact,
+        mobile: this.data.mobile,
+        remark: this.data.remark,
+      });
+      if (order.customer_type === 'guest') {
+        const ok = await this.confirmPay(order.amount);
+        if (!ok) return;
+        order = await reservations.simulateWechatPay({ order_id: order.order_id });
+      }
+      wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_id}` });
+    } catch (error) {
+      this.toast(error.message);
+    }
+  },
+  confirmPay(amount) {
+    return new Promise((resolve) => wx.showModal({
+      title: '模拟微信支付',
+      content: `本次支付 ¥${amount}，不会真实扣款。`,
+      confirmText: '模拟支付',
+      success: (result) => resolve(result.confirm),
+    }));
+  },
+  toast(title) { wx.showToast({ title, icon: 'none' }); },
+});

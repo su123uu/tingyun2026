@@ -1,0 +1,64 @@
+<view wx:if="{{order}}" class="page detail-page">
+  <view class="topbar">
+    <view class="head" style="padding-top: {{navTop}}px;">
+      <view class="nav-row" style="height: {{navHeight}}px;">
+        <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+        <text class="title">订单详情</text>
+      </view>
+      <text class="subtitle">{{order.order_id}}</text>
+    </view>
+  </view>
+
+  <view class="status-banner">
+    <text class="status-title">{{order.kitchen_text}}</text>
+    <text class="status-desc">{{order.kitchen_desc}}</text>
+  </view>
+
+  <view class="content">
+    <text class="section-title">基础信息</text>
+    <view class="detail-card card">
+      <view class="info-line"><text class="info-label">订单编号</text><text>{{order.order_id}}</text></view>
+      <view class="info-line"><text class="info-label">创建时间</text><text>{{order.created_text}}</text></view>
+    </view>
+
+    <text class="section-title">就餐信息</text>
+    <view class="detail-card card">
+      <view class="info-line"><text class="info-label">桌号</text><strong>{{order.table_id}}</strong></view>
+      <view class="info-line"><text class="info-label">用餐人数</text><text>{{order.people_count}} 位</text></view>
+    </view>
+
+    <text class="section-title">菜品明细</text>
+    <view class="detail-card card">
+      <view wx:for="{{order.items}}" wx:key="item_id" class="dish">
+        <image src="{{item.image}}" mode="aspectFill"/>
+        <view class="dish-copy">
+          <strong>{{item.name}}</strong>
+          <text>¥{{item.price}} × {{item.quantity}}</text>
+        </view>
+        <strong class="dish-price">¥{{item.price * item.quantity}}</strong>
+      </view>
+    </view>
+
+    <text class="section-title">支付信息</text>
+    <view class="detail-card card">
+      <view class="info-line"><text class="info-label">商品金额</text><text>¥{{order.amount}}</text></view>
+      <view class="info-line"><text class="info-label">{{order.payment_label}}</text><strong>¥{{order.amount}}</strong></view>
+      <view class="info-line"><text class="info-label">结算状态</text><text>{{order.settlement_text}}</text></view>
+      <view wx:if="{{order.paid_text}}" class="info-line"><text class="info-label">支付时间</text><text>{{order.paid_text}}</text></view>
+    </view>
+
+    <text class="section-title">备注信息</text>
+    <view class="detail-card card">
+      <view class="info-line remark-line"><text class="info-label">用户备注</text><text>{{order.remark_text}}</text></view>
+    </view>
+
+    <text class="section-title">厨房进度</text>
+    <view class="timeline card">
+      <view wx:for="{{steps}}" wx:key="text" class="step {{item.done ? 'done' : ''}}">{{item.text}}</view>
+    </view>
+  </view>
+
+  <view class="actions">
+    <button class="service-button" bindtap="contact">联系客服</button>
+  </view>
+</view>

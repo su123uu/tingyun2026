@@ -1,0 +1,36 @@
+<view class="page activity-page">
+  <view class="hero">
+    <image src="/images/member-activity.png" mode="aspectFill" />
+    <view class="hero-mask"></view>
+    <view class="back" style="top: {{navTop}}px; width: {{navHeight}}px; height: {{navHeight}}px;" bindtap="goBack">
+      <view class="back-arrow"></view>
+    </view>
+    <view class="hero-copy">
+      <text>TINGYUN ACTIVITIES</text>
+      <text class="hero-title">山中有会，茶席相逢</text>
+    </view>
+  </view>
+
+  <view class="content">
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">近期活动</text>
+        <text class="section-note">会员权益有效期内可报名</text>
+      </view>
+      <view class="stack">
+        <view wx:for="{{activities}}" wx:key="activity_id" class="activity card">
+          <image src="{{item.image_url}}" mode="aspectFill" />
+          <view class="activity-body">
+            <text class="date">{{item.date}} {{item.time}}</text>
+            <text class="activity-title">{{item.title}}</text>
+            <text class="activity-copy">{{item.list_description}}</text>
+            <view class="activity-foot">
+              <text class="tag {{item.status_tone}}">{{item.status_text}}</text>
+              <button class="detail-button {{item.status_tone === 'disabled' ? 'secondary' : ''}}" data-id="{{item.activity_id}}" bindtap="detail">查看详情</button>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

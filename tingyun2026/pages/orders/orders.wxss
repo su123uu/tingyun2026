@@ -1,4 +1,29 @@
-.page { min-height: 100vh; background: #F8F6F1; display: flex; align-items: center; justify-content: center; }
-.placeholder { display: flex; flex-direction: column; align-items: center; gap: 16rpx; }
-.placeholder-title { font-size: 32rpx; color: #1A1A1A; font-weight: 600; }
-.placeholder-desc { font-size: 26rpx; color: #7C8A8C; }
+.orders-page { padding-bottom: 64rpx; }
+.orders-sticky { position: sticky; z-index: 20; top: 0; padding-bottom: 18rpx; border-bottom: 1rpx solid rgba(26, 26, 26, .045); background: rgba(248, 246, 241, .95); backdrop-filter: blur(24rpx); }
+.head { display: flex; flex-direction: column; padding-right: 188rpx; padding-left: 20rpx; }
+.nav-row { display: flex; align-items: center; gap: 4rpx; }
+.back { display: flex; width: 48rpx; height: 100%; flex: none; align-items: center; justify-content: center; }
+.back-arrow { width: 18rpx; height: 18rpx; border-bottom: 3rpx solid #4A554F; border-left: 3rpx solid #4A554F; transform: rotate(45deg); }
+.title { font-size: 40rpx; letter-spacing: 4rpx; }
+.subtitle { margin: 12rpx 0 0 8rpx; }
+.tabs { margin-top: 18rpx; white-space: nowrap; }
+.tabs-track { display: inline-flex; gap: 14rpx; padding: 0 28rpx; }
+.tabs text { padding: 12rpx 20rpx; border-radius: 24rpx; color: #7C8A8C; background: #FFFFFF; font-size: 23rpx; }
+.tabs .on { color: #FFFFFF; background: #4F6F52; }
+.orders { display: grid; gap: 18rpx; padding: 20rpx 28rpx; }
+.order { padding: 22rpx; }
+.order-head,.foot { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
+.order-head { padding-bottom: 15rpx; border-bottom: 1rpx solid rgba(26, 26, 26, .06); }
+.order-head text { color: #4F6F52; font-size: 22rpx; }
+.products { padding: 5rpx 0; }
+.product { display: flex; align-items: center; gap: 16rpx; padding: 15rpx 0; border-bottom: 1rpx solid rgba(26, 26, 26, .045); }
+.product:last-child { border-bottom: 0; }
+.product-image { width: 104rpx; height: 104rpx; flex: none; border-radius: 14rpx; background: #E8E4DC; }
+.product-copy { min-width: 0; flex: 1; }
+.product-copy strong,.product-copy text { display: block; }
+.product-copy strong { overflow: hidden; font-size: 26rpx; text-overflow: ellipsis; white-space: nowrap; }
+.product-copy text { margin-top: 9rpx; color: #7C8A8C; font-size: 22rpx; }
+.summary { display: block; margin: 10rpx 0 20rpx; color: #7C8A8C; font-size: 23rpx; }
+.foot strong { color: #8B7355; font-size: 30rpx; }
+.foot button { margin: 0; font-size: 22rpx; }
+.empty { padding: 80rpx 10rpx; color: #7C8A8C; font-size: 24rpx; text-align: center; }

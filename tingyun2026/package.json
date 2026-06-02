@@ -1,0 +1,13 @@
+{
+  "name": "tingyun2026",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@babel/runtime": "^7.0.0",
+    "tdesign-miniprogram": "^1.0.0",
+    "tslib": "^2.0.0"
+  },
+  "devDependencies": {
+    "prettier": "3.8.3"
+  }
+}

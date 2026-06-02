@@ -3,542 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>停云山居 - 我的订单</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            'ink-black': '#1a1a1a',
-            'ink-gray': '#4a4a4a',
-            'mountain-green': '#4F6F52',
-            'mist-gray': '#7C8A8C',
-            'paper-white': '#F8F6F1',
-            'warm-beige': '#E8E4DC',
-            'accent-gold': '#C9A962',
-          },
-          fontFamily: {
-            'serif': ['Noto Serif SC', 'serif'],
-          },
-        }
-      }
-    }
-  </script>
+  <title>停云山居 · 我的订单</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="tabbar.css">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Noto Serif SC', serif;
-      background: #F8F6F1;
-      color: #1a1a1a;
-      overflow-x: hidden;
-    }
-    
-    .landscape-bg {
-      background: 
-        radial-gradient(ellipse at 30% 20%, rgba(79, 111, 82, 0.15) 0%, transparent 60%),
-        radial-gradient(ellipse at 70% 60%, rgba(124, 138, 140, 0.1) 0%, transparent 50%),
-        linear-gradient(180deg, #F8F6F1 0%, #F0EDE6 100%);
-      min-height: 100vh;
-    }
-    
-    .decorative-line {
-      width: 40px;
-      height: 2px;
-      background: #C9A962;
-    }
-    
-    /* 状态标签 */
-    .status-tab {
-      padding: 6px 16px;
-      border-radius: 16px;
-      font-size: 12px;
-      transition: all 0.3s;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    
-    .status-tab.active {
-      background: #4F6F52;
-      color: white;
-    }
-    
-    .status-tab:not(.active) {
-      background: white;
-      color: #4a4a4a;
-      border: 1px solid rgba(0,0,0,0.08);
-    }
-    
-    /* 订单卡片 */
-    .order-card {
-      background: white;
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    .order-product {
-      display: grid;
-      grid-template-columns: 72px 1fr auto;
-      gap: 12px;
-      align-items: center;
-      padding: 12px 0;
-      border-top: 1px solid rgba(0,0,0,0.04);
-      border-bottom: 1px solid rgba(0,0,0,0.04);
-      margin-bottom: 12px;
-    }
-
-    .order-product-img {
-      width: 72px;
-      height: 72px;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #E8E4DC;
-      flex-shrink: 0;
-    }
-
-    .order-product-img img {
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: cover;
-    }
-
-    .order-product-title {
-      display: block;
-      font-size: 14px;
-      font-weight: 600;
-      color: #1A1A1A;
-      line-height: 1.35;
-    }
-
-    .order-product-desc {
-      display: block;
-      margin-top: 6px;
-      color: #7C8A8C;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-
-    .order-product-count {
-      color: #7C8A8C;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-    
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 11px;
-    }
-    
-    .status-badge.pending {
-      background: #FFF8E7;
-      color: #C9A962;
-    }
-    
-    .status-badge.confirmed {
-      background: #E8F5E9;
-      color: #4F6F52;
-    }
-    
-    .status-badge.completed {
-      background: #F5F5F5;
-      color: #7C8A8C;
-    }
-    
-    .status-badge.cancelled {
-      background: #FFEBEE;
-      color: #C62828;
-    }
-    
-    /* 按钮 */
-    .btn-secondary {
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 12px;
-      background: #F0EDE6;
-      color: #4a4a4a;
-      border: none;
-      cursor: pointer;
-    }
-    
-    .btn-primary {
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 12px;
-      background: #4F6F52;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    
-    /* 空状态 */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-    }
-    
-    .empty-icon {
-      width: 80px;
-      height: 80px;
-      background: linear-gradient(135deg, #E8E4DC 0%, #d4cfc4 100%);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 16px;
-      font-size: 36px;
-    }
-    
-    /* 底部导航 */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: white;
-      border-top: 1px solid rgba(0,0,0,0.06);
-      padding: 8px 0 24px;
-      display: flex;
-      justify-content: space-around;
-      z-index: 100;
-    }
-    
-    .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 16px;
-      color: #7C8A8C;
-      transition: color 0.3s;
-    }
-    
-    .nav-item.active {
-      color: #4F6F52;
-    }
-    
-    .nav-icon {
-      width: 24px;
-      height: 24px;
-    }
-    
-    .scroll-container {
-      height: calc(100vh - 76px);
-      overflow-y: auto;
-      padding-bottom: 100px;
-    }
-    
-    .scroll-container::-webkit-scrollbar {
-      display: none;
-    }
+    .orders-sticky { position:sticky; top:0; z-index:35; padding-bottom:10px; border-bottom:1px solid rgba(26,26,26,.045); background:rgba(248,246,241,.94); backdrop-filter:blur(18px); }
+    .head { padding:24px 15px 8px; }
+    .tabs { display:flex; gap:8px; padding:12px 14px 0; overflow:auto; scrollbar-width:none; }
+    .tabs::-webkit-scrollbar { display:none; }
+    .tab { min-height:32px; padding:0 13px; border-radius:16px; color:var(--mist); background:#fff; font-size:12px; white-space:nowrap; }
+    .tab.active { color:#fff; background:var(--green); }
+    .orders { display:grid; gap:11px; padding:14px; }
+    .order-card { padding:14px; }
+    .order-head { display:flex; justify-content:space-between; gap:10px; padding-bottom:11px; border-bottom:1px solid var(--line); }
+    .order-type { font-size:14px; font-weight:750; }
+    .order-no { margin-top:4px; color:var(--mist); font-size:11px; }
+    .order-main { display:flex; gap:11px; padding:12px 0; }
+    .summary { min-width:0; flex:1; }
+    .summary h3 { font-size:14px; }
+    .summary p { margin-top:6px; color:var(--mist); font-size:12px; line-height:1.5; }
+    .order-info { display:flex; align-items:end; justify-content:space-between; gap:10px; }
+    .order-time { color:var(--mist); font-size:11px; }
+    .order-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+    .order-actions .button { min-height:35px; padding:0 12px; font-size:12px; }
   </style>
 </head>
 <body>
-  <div class="landscape-bg">
-    <!-- 顶部问候语 -->
-    <div class="bg-white px-4 py-3 sticky top-0 z-20">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs text-mist-gray tracking-wider" id="greeting">上午好</p>
-          <h1 class="text-lg font-bold text-ink-black tracking-wider mt-0.5">山里人</h1>
-        </div>
+  <main class="app">
+    <div class="scroll">
+      <div class="orders-sticky">
+        <header class="head"><h1 class="title">我的订单</h1><p class="subtitle">查看点餐与预约记录</p></header>
+        <div class="tabs" id="tabs"></div>
       </div>
+      <section class="orders" id="orders"></section>
     </div>
-    
-    <div class="scroll-container">
-      <!-- 状态筛选 -->
-      <div class="px-4 py-3">
-        <div class="flex gap-2 overflow-x-auto pb-2" style="scrollbar-width: none;">
-          <div class="status-tab active" data-status="all">全部</div>
-          <div class="status-tab" data-status="pending">待确认</div>
-          <div class="status-tab" data-status="confirmed">已确认</div>
-          <div class="status-tab" data-status="completed">已完成</div>
-        </div>
-      </div>
-      
-      <!-- 订单列表 -->
-      <div class="px-4 space-y-3" id="order-list">
-        <!-- 订单1 - 待确认 -->
-        <div class="order-card" data-status="pending">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <span class="text-lg"><svg viewBox="0 0 24 24" fill="none" stroke="#4F6F52" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v4l3 6h8l2-6V3"/><path d="M6 13v3a2 2 0 002 2h8a2 2 0 002-2v-3"/><line x1="10" y1="3" x2="14" y2="3"/></svg></span>
-              <span class="text-sm font-medium text-ink-black">用餐订单</span>
-            </div>
-            <span class="status-badge pending">
-              <span class="w-1.5 h-1.5 bg-accent-gold rounded-full"></span>
-              待确认
-            </span>
-          </div>
-          
-          <div class="order-product">
-            <div class="order-product-img">
-              <img src="../部分图片/晚饭.jpg" alt="停云双鲜套餐">
-            </div>
-            <div>
-              <span class="order-product-title">停云双鲜·鱼跃鸡鸣套餐</span>
-              <span class="order-product-desc">另含桂花酒、海鲜水饺等 2 件</span>
-            </div>
-            <span class="order-product-count">共 3 件</span>
-          </div>
-
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-mist-gray">订单号</span>
-              <span class="text-ink-gray">ORD20241215001</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">用餐时间</span>
-              <span class="text-ink-gray">12月15日 11:30</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">用餐人数</span>
-              <span class="text-ink-gray">4人</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">订单金额</span>
-              <span class="text-mountain-green font-bold">¥160</span>
-            </div>
-          </div>
-          
-          <div class="flex gap-2 mt-4 pt-3 border-t border-gray-100">
-            <button class="btn-secondary flex-1" onclick="contactService()">联系客服</button>
-            <button class="btn-primary flex-1" onclick="viewDetail('ORD20241215001')">查看详情</button>
-          </div>
-        </div>
-        
-        <!-- 订单2 - 已确认 -->
-        <div class="order-card" data-status="confirmed">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <span class="text-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;color:#8B7355"><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="4" y1="10" x2="20" y2="10"/></svg></span>
-              <span class="text-sm font-medium text-ink-black">用餐订单</span>
-            </div>
-            <span class="status-badge confirmed">
-              <span class="w-1.5 h-1.5 bg-mountain-green rounded-full"></span>
-              已确认
-            </span>
-          </div>
-          
-          <div class="order-product">
-            <div class="order-product-img">
-              <img src="../部分图片/茶.jpg" alt="下午茶套餐">
-            </div>
-            <div>
-              <span class="order-product-title">下午茶套餐</span>
-              <span class="order-product-desc">另含山间茶点、桂花酒等 5 件</span>
-            </div>
-            <span class="order-product-count">共 6 件</span>
-          </div>
-
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-mist-gray">订单号</span>
-              <span class="text-ink-gray">ORD20241210002</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">用餐时间</span>
-              <span class="text-ink-gray">12月10日 17:30</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">用餐人数</span>
-              <span class="text-ink-gray">6人</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">订单金额</span>
-              <span class="text-mountain-green font-bold">¥1,008</span>
-            </div>
-          </div>
-          
-          <div class="flex gap-2 mt-4 pt-3 border-t border-gray-100">
-            <button class="btn-secondary flex-1" onclick="contactService()">联系客服</button>
-            <button class="btn-primary flex-1" onclick="viewDetail('ORD20241210002')">查看详情</button>
-          </div>
-        </div>
-        
-        <!-- 订单3 - 已完成 -->
-        <div class="order-card" data-status="completed">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <span class="text-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;color:#4F6F52"><circle cx="12" cy="12" r="9"/><path d="M12 3v6l-4 3"/><path d="M12 3v6l4 3"/><path d="M8 14l4 3"/><path d="M16 14l-4 3"/></svg></span>
-              <span class="text-sm font-medium text-ink-black">用餐订单</span>
-            </div>
-            <span class="status-badge completed">
-              <span class="w-1.5 h-1.5 bg-mist-gray rounded-full"></span>
-              已完成
-            </span>
-          </div>
-          
-          <div class="order-product">
-            <div class="order-product-img">
-              <img src="../部分图片/茶2.jpg" alt="泉鱼隐逸套餐">
-            </div>
-            <div>
-              <span class="order-product-title">停云·泉鱼隐逸套餐</span>
-              <span class="order-product-desc">另含黄瓜拌、海鲜水饺等 1 件</span>
-            </div>
-            <span class="order-product-count">共 2 件</span>
-          </div>
-
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-mist-gray">订单号</span>
-              <span class="text-ink-gray">ORD20241205003</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">用餐时间</span>
-              <span class="text-ink-gray">12月5日 12:00</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">用餐人数</span>
-              <span class="text-ink-gray">2人</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-mist-gray">订单金额</span>
-              <span class="text-mountain-green font-bold">¥116</span>
-            </div>
-          </div>
-          
-          <div class="flex gap-2 mt-4 pt-3 border-t border-gray-100">
-            <button class="btn-secondary flex-1" onclick="contactService()">联系客服</button>
-            <button class="btn-primary flex-1" onclick="viewDetail('ORD20241205003')">查看详情</button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 空状态（默认隐藏） -->
-      <div class="empty-state hidden" id="empty-state">
-        <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#C5C5C5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
-        <h3 class="text-base font-medium text-ink-black mb-2">暂无订单</h3>
-        <p class="text-sm text-mist-gray">您还没有相关订单</p>
-        <button class="mt-6 px-6 py-2 bg-mountain-green text-white rounded-full text-sm" onclick="navigateTo('menu')">去点餐</button>
-      </div>
-    </div>
-    
-    <!-- 底部导航 -->
-    <div class="bottom-nav">
-      <div class="nav-item" onclick="navigateTo('home')">
-        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-        </svg>
-        <span class="text-xs tracking-wider">首页</span>
-      </div>
-      <div class="nav-item" onclick="navigateTo('menu')">
-        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-        </svg>
-        <span class="text-xs tracking-wider">点单</span>
-      </div>
-      <div class="nav-item active">
-        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-        </svg>
-        <span class="text-xs tracking-wider">订单</span>
-      </div>
-      <div class="nav-item" onclick="navigateTo('profile')">
-        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-        </svg>
-        <span class="text-xs tracking-wider">我的</span>
-      </div>
-    </div>
-  </div>
-
+    <nav class="bottom-nav" aria-label="底部导航">
+      <button class="nav-item" onclick="navigateTo('home')"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M6 10.5V21h12V10.5"/></svg><span>首页</span></button>
+      <button class="nav-item" onclick="navigateTo('menu')"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>点餐</span></button>
+      <button class="nav-item" onclick="navigateTo('intro')"><svg viewBox="0 0 24 24"><path d="M4 19l5-7 4 3 3-5 4 9"/><path d="M4 21h16"/></svg><span>介绍</span></button>
+      <button class="nav-item" onclick="navigateTo('booking')"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 19v-8h12v8"/><path d="M8 11V7h8v4"/></svg><span>预订</span></button>
+      <button class="nav-item" onclick="navigateTo('profile')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>我的</span></button>
+    </nav>
+  </main>
+  <script src="common.js"></script>
   <script>
-    // 设置问候语
-    function setGreeting() {
-      const hour = new Date().getHours();
-      let greeting = '上午好';
-      if (hour >= 12 && hour < 18) {
-        greeting = '下午好';
-      } else if (hour >= 18) {
-        greeting = '晚上好';
-      }
-      document.getElementById('greeting').textContent = greeting;
+    const data=[
+      {type:"meal",label:"点餐订单",no:"TY20260601001",status:"制作中",tone:"green",title:"停云·林鸡野趣套餐等 3 件",desc:"桌号 A01 · 2 位用餐",time:"2026-06-01 12:18",price:234,img:"../部分图片/晚饭.jpg"},
+      {type:"dining",label:"餐厅预订",no:"TY20260528008",status:"待店长确认",tone:"gold",title:"栖鹿 · 晚餐",desc:"2026-06-06 · 8 位 · 到店支付",time:"2026-05-28 16:40",price:0,img:"../部分图片/茶空间.jpg"},
+      {type:"stay",label:"住宿预订",no:"TY20260518003",status:"已确认",tone:"green",title:"春悦 · 亲子房",desc:"2026-06-12 至 2026-06-13 · 1 晚",time:"2026-05-18 10:26",price:0,img:"../部分图片/禅修3.jpg"},
+      {type:"meal",label:"点餐订单",no:"TY20260510021",status:"已完成",tone:"disabled",title:"下午茶套餐等 2 件",desc:"桌号 B03 · 3 位用餐",time:"2026-05-10 15:02",price:104,img:"../部分图片/茶.jpg"}
+    ];
+    let filter="all";
+    const filters=[["all","全部"],["meal","点餐订单"],["booking","预约订单"],["pending","待处理"],["done","已完成"]];
+    function list(){ return data.filter(o=>filter==="all"||(filter==="booking"&&(o.type==="dining"||o.type==="stay"))||(filter==="pending"&&o.status.includes("待"))||(filter==="done"&&o.status==="已完成")||o.type===filter); }
+    function render(){
+      document.getElementById("tabs").innerHTML=filters.map(f=>`<button class="tab ${filter===f[0]?"active":""}" onclick="filter='${f[0]}';render()">${f[1]}</button>`).join("");
+      document.getElementById("orders").innerHTML=list().map(o=>`<article class="order-card card">
+        <div class="order-head"><div><div class="order-type">${o.label}</div><div class="order-no">${o.no}</div></div><span class="tag ${o.tone}">${o.status}</span></div>
+        <div class="order-main"><img class="product-thumb" src="${o.img}" alt="${o.title}"><div class="summary"><h3>${o.title}</h3><p>${o.desc}</p></div></div>
+        <div class="order-info"><span class="order-time">${o.time}</span>${o.price?`<strong>${money(o.price)}</strong>`:"<span class='small muted'>到店支付</span>"}</div>
+        <div class="order-actions"><button class="button secondary" onclick="showToast('客服联系方式将在正式上线前补充')">联系客服</button><button class="button" onclick="navigateTo('order-detail','?type=${o.type}&no=${o.no}')">查看详情</button></div>
+      </article>`).join("") || "<div class='card' style='padding:24px;text-align:center;color:var(--mist);font-size:13px'>暂无对应订单</div>";
     }
-    setGreeting();
-    
-    // 状态筛选
-    document.querySelectorAll('.status-tab').forEach(tab => {
-      tab.addEventListener('click', function() {
-        document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-        
-        const status = this.dataset.status;
-        filterOrders(status);
-      });
-    });
-    
-    // 筛选订单
-    function filterOrders(status) {
-      const orders = document.querySelectorAll('.order-card');
-      let visibleCount = 0;
-      
-      orders.forEach(order => {
-        if (status === 'all' || order.dataset.status === status) {
-          order.style.display = 'block';
-          visibleCount++;
-        } else {
-          order.style.display = 'none';
-        }
-      });
-      
-      // 显示/隐藏空状态
-      const emptyState = document.getElementById('empty-state');
-      if (visibleCount === 0) {
-        emptyState.classList.remove('hidden');
-      } else {
-        emptyState.classList.add('hidden');
-      }
-    }
-    
-    // 取消订单
-    function cancelOrder(orderId) {
-      if (confirm('确定要取消该订单吗？')) {
-        alert('订单已取消');
-        // 实际项目中这里会调用API
-      }
-    }
-    
-    // 删除订单
-    function deleteOrder(orderId) {
-      if (confirm('确定要删除该订单吗？')) {
-        alert('订单已删除');
-        // 实际项目中这里会调用API
-      }
-    }
-    
-    // 查看详情
-    function viewDetail(orderId) {
-      alert('查看订单详情：' + orderId);
-    }
-    
-    // 联系客服
-    function contactService() {
-      alert('客服电话：400-123-4567');
-    }
-    
-    // 页面跳转
-    function navigateTo(page) {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({
-          type: 'navigate',
-          target: page,
-          page: page + '.html'
-        }, '*');
-      }
-    }
+    render();
   </script>
 </body>
 </html>

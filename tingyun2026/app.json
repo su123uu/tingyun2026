@@ -1,65 +1,43 @@
 {
-  "darkmode": true,
   "pages": [
     "pages/home/home",
     "pages/menu/menu",
     "pages/intro/intro",
-    "pages/orders/orders",
-    "pages/profile/profile",
     "pages/booking/booking",
-    "pages/feature/feature",
-    "pages/activity/activity"
+    "pages/profile/profile",
+    "pages/order-confirm/order-confirm",
+    "pages/order-detail/order-detail",
+    "pages/orders/orders",
+    "pages/booking-dining/booking-dining",
+    "pages/booking-accommodation/booking-accommodation",
+    "pages/reservation-detail/reservation-detail",
+    "pages/activity-list/activity-list",
+    "pages/activity/activity",
+    "pages/activity-signup/activity-signup",
+    "pages/member/member",
+    "pages/member-center/member-center",
+    "pages/coupons/coupons",
+    "pages/staff-settings/staff-settings"
   ],
-  "themeLocation": "theme.json",
-  "usingComponents": {
-    "t-icon": "tdesign-miniprogram/icon/icon"
-  },
   "window": {
     "navigationBarTitleText": "停云山居",
-    "navigationStyle": "custom",
-    "navigationBarTextStyle": "@navTxtStyle"
+    "navigationBarBackgroundColor": "#F8F6F1",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F8F6F1"
   },
   "tabBar": {
     "custom": true,
     "color": "#7C8A8C",
-    "selectedColor": "#C9A962",
+    "selectedColor": "#4F6F52",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
-      {
-        "pagePath": "pages/home/home",
-        "text": "首页"
-      },
-      {
-        "pagePath": "pages/menu/menu",
-        "text": "点餐"
-      },
-      {
-        "pagePath": "pages/intro/intro",
-        "text": "介绍"
-      },
-      {
-        "pagePath": "pages/orders/orders",
-        "text": "订单"
-      },
-      {
-        "pagePath": "pages/profile/profile",
-        "text": "我的"
-      }
+      { "pagePath": "pages/home/home", "text": "首页" },
+      { "pagePath": "pages/menu/menu", "text": "点餐" },
+      { "pagePath": "pages/intro/intro", "text": "介绍" },
+      { "pagePath": "pages/booking/booking", "text": "预订" },
+      { "pagePath": "pages/profile/profile", "text": "我的" }
     ]
   },
-  "resolveAlias": {
-    "@behaviors/*": "behaviors/*"
-  },
-  "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents",
-  "rendererOptions": {
-    "skyline": {
-      "disableABTest": true,
-      "defaultDisplayBlock": true,
-      "defaultContentBox": true,
-      "sdkVersionBegin": "3.4.3",
-      "sdkVersionEnd": "15.255.255"
-    }
-  }
+  "sitemapLocation": "sitemap.json"
 }

@@ -1,7 +1,3 @@
 {
-  "component": true,
-  "styleIsolation": "apply-shared",
-  "usingComponents": {
-    "t-notice-bar": "tdesign-miniprogram/notice-bar/notice-bar"
-  }
+  "component": true
 }

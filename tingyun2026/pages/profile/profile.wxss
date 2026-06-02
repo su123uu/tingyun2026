@@ -1,4 +1,24 @@
-.page { min-height: 100vh; background: #F8F6F1; display: flex; align-items: center; justify-content: center; }
-.placeholder { display: flex; flex-direction: column; align-items: center; gap: 16rpx; }
-.placeholder-title { font-size: 32rpx; color: #1A1A1A; font-weight: 600; }
-.placeholder-desc { font-size: 26rpx; color: #7C8A8C; }
+.profile { padding:34rpx 28rpx 156rpx; }
+.user-card { overflow:hidden; padding:36rpx; border-radius:26rpx; color:#fff; background:radial-gradient(circle at 86% 10%,rgba(255,255,255,.16),transparent 32%),linear-gradient(135deg,#597A5C,#38523C); box-shadow:0 10rpx 28rpx rgba(31,43,32,.08); }
+.user-main { display:flex; align-items:center; gap:24rpx; }
+.avatar { display:flex; width:106rpx; height:106rpx; flex:none; align-items:center; justify-content:center; border:1rpx solid rgba(255,255,255,.4); border-radius:50%; background:rgba(255,255,255,.12); }
+.user-name,.user-copy,.level,.member-eyebrow,.member-title,.member-copy { display:block; }
+.user-name { font-size:34rpx; font-weight:700; }
+.user-copy { margin-top:10rpx; color:rgba(255,255,255,.72); font-size:23rpx; }
+.level { width:max-content; margin-top:16rpx; padding:5rpx 16rpx; border:1rpx solid rgba(240,217,149,.42); border-radius:20rpx; color:#F0D995; background:rgba(26,26,26,.14); font-size:20rpx; letter-spacing:2rpx; }
+.member-entry { display:flex; width:100%; min-height:158rpx; margin-top:24rpx; align-items:center; justify-content:space-between; padding:27rpx 30rpx; border:1rpx solid rgba(212,174,98,.72); border-radius:24rpx; color:#F0D995; text-align:left; background:radial-gradient(circle at 92% 18%,rgba(212,174,98,.17),transparent 30%),linear-gradient(135deg,#141414,#24221E); box-shadow:0 12rpx 26rpx rgba(22,22,20,.15); box-sizing:border-box; }
+.member-eyebrow { color:rgba(240,217,149,.74); font-size:18rpx; letter-spacing:4rpx; }
+.member-title { margin-top:7rpx; font-family:"Songti SC",serif; font-size:36rpx; font-weight:700; }
+.member-copy { margin-top:5rpx; color:rgba(255,255,255,.52); font-size:21rpx; }
+.member-arrow { display:flex; width:60rpx; height:60rpx; flex:none; align-items:center; justify-content:center; border:1rpx solid rgba(240,217,149,.52); border-radius:50%; }
+.list { margin-top:26rpx; overflow:hidden; }
+.list-item { display:flex; min-height:112rpx; align-items:center; justify-content:space-between; padding:0 28rpx; border-bottom:1rpx solid rgba(26,26,26,.06); box-sizing:border-box; font-size:27rpx; }
+.list-item:last-child { border-bottom:0; }
+.list-main { display:flex; align-items:center; gap:20rpx; }
+.list-icon { display:flex; width:58rpx; height:58rpx; align-items:center; justify-content:center; border-radius:17rpx; color:#4F6F52; background:#EFF4EE; }
+.list-icon.gold { color:#9B793D; background:#FAF4E7; }
+.list-icon.rose { color:#A06464; background:#FAEEEE; }
+.chevron { color:#AEB4AF; }
+.bind-button { margin:26rpx 0 0; color:#4F6F52; border:1rpx solid rgba(79,111,82,.24); border-radius:12rpx; background:#fff; font-size:25rpx; }
+.secondary-list { margin-top:26rpx; }
+.version { display:block; padding-top:38rpx; color:#8A918B; font-size:20rpx; text-align:center; }

@@ -1,0 +1,64 @@
+<view wx:if="{{order}}" class="page detail-page">
+  <view class="topbar">
+    <view class="head" style="padding-top: {{navTop}}px;">
+      <view class="nav-row" style="height: {{navHeight}}px;">
+        <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+        <text class="title">预订详情</text>
+      </view>
+      <text class="subtitle">{{order.order_id}}</text>
+    </view>
+  </view>
+
+  <view class="status-banner {{order.status_tone}}">
+    <text class="status-title">{{order.status_text}}</text>
+    <text class="status-desc">{{order.status_desc}}</text>
+  </view>
+
+  <view class="content">
+    <text class="section-title">基础信息</text>
+    <view class="detail-card card">
+      <view class="info-line"><text class="info-label">订单编号</text><text>{{order.order_id}}</text></view>
+      <view class="info-line"><text class="info-label">预订类型</text><text>{{order.reservation_label}}</text></view>
+      <view class="info-line"><text class="info-label">创建时间</text><text>{{order.created_text}}</text></view>
+    </view>
+
+    <text class="section-title">{{order.detail_title}}</text>
+    <view class="detail-card card">
+      <view class="info-line"><text class="info-label">{{order.room_label}}</text><text>{{order.room_names}}</text></view>
+      <block wx:if="{{order.reservation_type === 'dining'}}">
+        <view class="info-line"><text class="info-label">日期</text><text>{{order.date}}</text></view>
+        <view class="info-line"><text class="info-label">餐段</text><text>{{order.time_slot_text}}</text></view>
+        <view class="info-line"><text class="info-label">用餐人数</text><text>{{order.people_count}} 位</text></view>
+        <view class="info-line"><text class="info-label">餐标</text><text>{{order.standard_text}}</text></view>
+      </block>
+      <block wx:else>
+        <view class="info-line"><text class="info-label">入住</text><text>{{order.check_in_date}}</text></view>
+        <view class="info-line"><text class="info-label">退房</text><text>{{order.check_out_date}} · {{order.nights}} 晚</text></view>
+        <view class="info-line"><text class="info-label">入住人数</text><text>{{order.people_count}} 位</text></view>
+      </block>
+    </view>
+
+    <text class="section-title">联系信息</text>
+    <view class="detail-card card">
+      <view class="info-line"><text class="info-label">联系人</text><text>{{order.contact_name}}</text></view>
+      <view class="info-line"><text class="info-label">手机号</text><text>{{order.mobile}}</text></view>
+    </view>
+
+    <text class="section-title">备注信息</text>
+    <view class="detail-card card">
+      <view class="info-line remark-line"><text class="info-label">用户备注</text><text>{{order.remark_text}}</text></view>
+    </view>
+
+    <text class="section-title">结算说明</text>
+    <view class="detail-card card">
+      <view class="info-line"><text class="info-label">预订金额</text><strong>¥{{order.amount}}</strong></view>
+      <view class="info-line"><text class="info-label">支付方式</text><text>{{order.payment_method}}</text></view>
+      <view class="info-line"><text class="info-label">结算状态</text><text>{{order.settlement_text}}</text></view>
+    </view>
+  </view>
+
+  <view class="notice">如需调整或取消预订，请联系客服。</view>
+  <view class="actions">
+    <button class="service-button" bindtap="contact">联系客服</button>
+  </view>
+</view>

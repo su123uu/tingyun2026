@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>停云山居 · 首页</title>
+  <link rel="stylesheet" href="tabbar.css">
   <style>
     :root {
       --ink: #1A1A1A;
@@ -72,6 +73,32 @@
       height: auto;
       overflow: hidden;
       background: #24331F;
+    }
+
+    .home-titlebar {
+      position: sticky;
+      top: 0;
+      z-index: 32;
+      display: flex;
+      height: 58px;
+      align-items: center;
+      margin-bottom: -58px;
+      padding: 18px 16px 10px;
+      color: #fff;
+      font-family: "Noto Serif SC", "Songti SC", serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-shadow: 0 1px 8px rgba(0,0,0,.24);
+      transition: .25s;
+    }
+
+    .home-titlebar.scrolled {
+      color: var(--ink);
+      border-bottom: 1px solid rgba(26,26,26,.045);
+      background: rgba(248,246,241,.92);
+      text-shadow: none;
+      backdrop-filter: blur(18px);
     }
 
     .hero-slide {
@@ -402,6 +429,7 @@
 <body>
   <main class="app">
     <section class="scroll" aria-label="首页内容">
+      <header class="home-titlebar" id="homeTitlebar">停云山居</header>
       <section class="hero" aria-label="山居轮播">
         <div class="hero-slide one active"></div>
         <div class="hero-slide two"></div>
@@ -470,22 +498,16 @@
         <span>首页</span>
       </button>
       <button class="nav-item" type="button" onclick="goTo('menu')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M8 4h8l-1 17H9L8 4Z"/><path d="M7 8h10"/><path d="M9 21h6"/>
-        </svg>
+        <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
         <span>点餐</span>
       </button>
-      <button class="nav-item center" type="button" onclick="goToIntro()">
-        <svg viewBox="0 0 46 22" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2 18c6-1 10-8 16-8 4 0 6 4 10 4 5 0 8-5 16-6"/><path d="M12 17c5-1 7-4 11-4 3 0 5 3 10 2"/>
-        </svg>
+      <button class="nav-item" type="button" onclick="goToIntro()">
+        <svg viewBox="0 0 24 24"><path d="M4 19l5-7 4 3 3-5 4 9"/><path d="M4 21h16"/><circle cx="16" cy="5" r="2"/></svg>
         <span>介绍</span>
       </button>
-      <button class="nav-item" type="button" onclick="goTo('orders')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="5" y="5" width="14" height="15" rx="2"/><path d="M8 5V3h8v2"/><path d="M8 10h8"/><path d="M8 14h5"/>
-        </svg>
-        <span>订单</span>
+      <button class="nav-item" type="button" onclick="goTo('booking')">
+        <svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 19v-8h12v8"/><path d="M8 11V7h8v4"/></svg>
+        <span>预订</span>
       </button>
       <button class="nav-item" type="button" onclick="goTo('profile')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -499,7 +521,13 @@
   <script>
     const slides = Array.from(document.querySelectorAll(".hero-slide"));
     const dots = Array.from(document.querySelectorAll(".hero-dot"));
+    const homeScroll = document.querySelector(".scroll");
+    const homeTitlebar = document.getElementById("homeTitlebar");
     let currentSlide = 0;
+
+    homeScroll.addEventListener("scroll", () => {
+      homeTitlebar.classList.toggle("scrolled", homeScroll.scrollTop > 36);
+    });
 
     setInterval(() => {
       slides[currentSlide].classList.remove("active");
@@ -516,6 +544,8 @@
           target: page,
           page: page + ".html"
         }, "*");
+      } else {
+        window.location.href = page + ".html";
       }
     }
 

@@ -1,7 +1,6 @@
 {
+  "navigationStyle": "custom",
   "usingComponents": {
     "t-icon": "tdesign-miniprogram/icon/icon"
-  },
-  "navigationBarTitleText": "停云山居",
-  "navigationStyle": "custom"
+  }
 }

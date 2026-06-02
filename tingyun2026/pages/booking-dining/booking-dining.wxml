@@ -1,0 +1,125 @@
+<view class="page form-page">
+  <view class="hero" style="height: {{heroHeight}}px;">
+    <view class="hero-nav" style="top: {{navTop}}px; height: {{navHeight}}px;">
+      <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+    </view>
+    <text class="hero-title" style="left: {{heroTitleLeft}}px; bottom: {{heroTitleBottom}}px; font-size: {{heroTitleSize}}px;">用餐预订</text>
+    <text class="hero-subtitle" style="bottom: {{heroSubtitleBottom}}px;">择一雅间，品味山间至味</text>
+    <view class="hero-line" style="bottom: {{heroLineBottom}}px; opacity: {{heroDetailOpacity}};"></view>
+  </view>
+  <view style="height: {{heroSpacerHeight}}px;"></view>
+
+  <text class="section-title">选择日期</text>
+  <view class="date-card card" bindtap="openCalendar">
+    <view>
+      <text class="date-label">用餐日期</text>
+      <text class="date-value">{{dateDisplay}}</text>
+    </view>
+    <view class="date-action">
+      <text>选择日期</text>
+      <text class="date-arrow">›</text>
+    </view>
+  </view>
+
+  <text class="section-title">选择时段</text>
+  <view class="slots">
+    <view class="slot {{slot==='lunch'?'on':''}}" data-slot="lunch" bindtap="slot">
+      <text class="slot-name">午餐</text>
+      <text class="slot-time">11:30 - 13:30</text>
+    </view>
+    <view class="slot {{slot==='dinner'?'on':''}}" data-slot="dinner" bindtap="slot">
+      <text class="slot-name">晚餐</text>
+      <text class="slot-time">17:30 - 20:30</text>
+    </view>
+  </view>
+
+  <text class="section-title">用餐人数</text>
+  <view class="people card">
+    <button class="people-button" data-step="-1" bindtap="adjustPeople">-</button>
+    <input class="people-input" type="number" value="{{people}}" bindinput="peopleInput" bindblur="normalizePeople"/>
+    <button class="people-button" data-step="1" bindtap="adjustPeople">+</button>
+  </view>
+  <text class="people-hint">用餐预订至少 6 人</text>
+
+  <text class="section-title">选择包间</text>
+  <view class="list">
+    <view wx:for="{{rooms}}" wx:key="room_id" class="select card {{item.selected?'selected':''}} {{item.is_selectable?'':'disabled'}}" data-id="{{item.room_id}}" bindtap="room">
+      <view class="room-cover">
+        <image class="room-image" src="{{item.image}}" mode="aspectFill"/>
+        <text wx:if="{{item.disabled_reason}}" class="room-status">{{item.disabled_reason}}</text>
+      </view>
+      <view class="room-info">
+        <strong>{{item.name}}</strong>
+        <text>{{item.category}}</text>
+        <small>容纳 {{item.min_capacity}}-{{item.max_capacity}} 人</small>
+      </view>
+      <view class="room-check"><text wx:if="{{item.selected}}">✓</text></view>
+    </view>
+  </view>
+  <text class="room-hint">{{roomHint}}</text>
+
+  <text class="section-title">选择餐标</text>
+  <view class="standard-list">
+    <view wx:for="{{standards}}" wx:key="meal_standard_id" class="standard card {{standardId===item.meal_standard_id?'selected':''}}" data-id="{{item.meal_standard_id}}" bindtap="openStandardDetail">
+      <image class="standard-image" src="{{item.image}}" mode="aspectFill"/>
+      <view class="standard-info">
+        <strong>{{item.name}}</strong>
+        <text>{{item.summary}}</text>
+        <view class="standard-foot">
+          <small class="standard-price">¥{{item.price_per_person}} / 人</small>
+          <small class="standard-detail-link">查看详情 ›</small>
+        </view>
+      </view>
+      <view class="standard-check"><text wx:if="{{standardId===item.meal_standard_id}}">✓</text></view>
+    </view>
+  </view>
+
+  <text class="section-title">联系信息</text>
+  <view class="inputs card">
+    <input value="{{contact}}" bindinput="contact" placeholder="联系人"/>
+    <input value="{{mobile}}" bindinput="mobile" type="number" placeholder="手机号"/>
+  </view>
+
+  <text class="section-title">备注信息</text>
+  <view class="remark-card card">
+    <textarea value="{{remark}}" maxlength="200" bindinput="remark" placeholder="填写口味、忌口或其他需求"/>
+  </view>
+
+  <view class="footer">
+    <view class="pay-copy"><text>预订总价</text><strong>¥{{amount}}</strong></view>
+    <button class="pay-button" bindtap="submit">提交预订</button>
+  </view>
+</view>
+
+<t-calendar
+  visible="{{calendarVisible}}"
+  value="{{calendarValue}}"
+  minDate="{{minDate}}"
+  maxDate="{{maxDate}}"
+  type="single"
+  usingCustomNavbar="{{true}}"
+  custom-style="--td-calendar-active-color: #8B7355; --td-brand-color: #8B7355; --td-brand-color-active: #665239; --td-brand-color-disabled: #C9BDAE; --td-brand-color-light: #F7F2EA; --td-brand-color-light-active: #EEE5D9; --td-button-primary-bg-color: #8B7355; --td-button-primary-border-color: #8B7355; --td-button-primary-active-bg-color: #665239; --td-button-primary-active-border-color: #665239;"
+  bind:change="confirmCalendar"
+  bind:confirm="confirmCalendar"
+  bind:close="closeCalendar"
+/>
+
+<view wx:if="{{showStandardDetail}}" class="standard-mask" bindtap="hideStandardDetail"></view>
+<view wx:if="{{showStandardDetail}}" class="standard-dialog" catchtap="stop">
+  <view class="standard-summary">
+    <image class="standard-detail-image" src="{{selectedStandard.image}}" mode="aspectFill"/>
+    <view class="standard-detail-body">
+      <view class="standard-detail-head">
+        <text class="standard-detail-name">{{selectedStandard.name}}餐标</text>
+        <text bindtap="hideStandardDetail">×</text>
+      </view>
+      <text class="standard-detail-desc">{{selectedStandard.summary}}</text>
+      <text class="standard-detail-price">¥{{selectedStandard.price_per_person}} <text class="standard-detail-unit">/ 人</text></text>
+    </view>
+  </view>
+  <view class="standard-detail-list">
+    <strong class="standard-detail-title">餐品说明</strong>
+    <view wx:for="{{selectedStandard.dishes}}" wx:key="name" class="standard-detail-row"><text>{{item.name}}</text><text>{{item.content}}</text></view>
+  </view>
+  <button class="standard-detail-button" bindtap="chooseStandard">{{standardId===selectedStandard.meal_standard_id?'已选择此餐标':'选择此餐标'}}</button>
+</view>

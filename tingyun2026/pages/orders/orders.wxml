@@ -1,7 +1,39 @@
-<view class="page">
-  <view class="placeholder">
-    <t-icon name="view-list" size="80rpx" color="#C9A962" />
-    <text class="placeholder-title">我的订单</text>
-    <text class="placeholder-desc">页面开发中，敬请期待</text>
+<view class="page orders-page">
+  <view class="orders-sticky">
+    <view class="head" style="padding-top: {{navTop}}px;">
+      <view class="nav-row" style="height: {{navHeight}}px;">
+        <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+        <text class="title">我的订单</text>
+      </view>
+      <text class="subtitle">查看点餐、预订与活动记录</text>
+    </view>
+    <scroll-view class="tabs" scroll-x enable-flex show-scrollbar="{{false}}">
+      <view class="tabs-track">
+        <text class="{{tab==='all'?'on':''}}" data-tab="all" bindtap="tab">全部</text>
+        <text class="{{tab==='meal'?'on':''}}" data-tab="meal" bindtap="tab">点餐订单</text>
+        <text class="{{tab==='reservation'?'on':''}}" data-tab="reservation" bindtap="tab">预订订单</text>
+        <text class="{{tab==='activity'?'on':''}}" data-tab="activity" bindtap="tab">活动报名</text>
+      </view>
+    </scroll-view>
+  </view>
+  <view class="orders">
+    <view wx:for="{{shown}}" wx:key="order_id" class="order card">
+      <view class="order-head"><strong>{{item.label}}</strong><text>{{item.status_text}}</text></view>
+      <view wx:if="{{item.preview_item}}" class="products">
+        <view class="product">
+          <image class="product-image" src="{{item.preview_item.image}}" mode="aspectFill"/>
+          <view class="product-copy">
+            <strong>{{item.preview_name}}</strong>
+            <text wx:if="{{item.preview_item.meta}}">{{item.preview_item.meta}}</text>
+          </view>
+        </view>
+      </view>
+      <text class="summary">{{item.summary}}</text>
+      <view class="foot">
+        <strong>{{item.amount_text}}</strong>
+        <button class="secondary-button" data-id="{{item.detail_id}}" data-type="{{item.type}}" bindtap="detail">{{item.action_text}}</button>
+      </view>
+    </view>
+    <view wx:if="{{!shown.length}}" class="empty">暂无记录，先去体验点餐、预订或活动吧。</view>
   </view>
 </view>

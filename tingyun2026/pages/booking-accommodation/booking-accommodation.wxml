@@ -1,0 +1,93 @@
+<view class="page form-page">
+  <view class="hero" style="height: {{heroHeight}}px;">
+    <view class="hero-nav" style="top: {{navTop}}px; height: {{navHeight}}px;">
+      <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+    </view>
+    <text class="hero-title" style="left: {{heroTitleLeft}}px; bottom: {{heroTitleBottom}}px; font-size: {{heroTitleSize}}px;">住宿预订</text>
+    <text class="hero-subtitle" style="bottom: {{heroSubtitleBottom}}px;">择一间雅室，枕山而眠</text>
+    <view class="hero-line" style="bottom: {{heroLineBottom}}px; opacity: {{heroDetailOpacity}};"></view>
+  </view>
+  <view style="height: {{heroSpacerHeight}}px;"></view>
+
+  <text class="section-title">选择日期</text>
+  <view class="date-card card" bindtap="openCalendar">
+    <view class="date-col">
+      <text class="date-label">入住</text>
+      <text class="date-value">{{checkInDisplay}}</text>
+    </view>
+    <view class="date-center">
+      <text class="date-arrow">—</text>
+      <text class="date-night">共 {{nights}} 晚</text>
+    </view>
+    <view class="date-col">
+      <text class="date-label">离店</text>
+      <text class="date-value">{{checkOutDisplay}}</text>
+    </view>
+  </view>
+
+  <text class="section-title">入住人数</text>
+  <view class="people card">
+    <button class="people-button" data-step="-1" bindtap="adjustPeople">-</button>
+    <input class="people-input" type="number" value="{{people}}" bindinput="peopleInput" bindblur="normalizePeople"/>
+    <button class="people-button" data-step="1" bindtap="adjustPeople">+</button>
+  </view>
+
+  <text class="section-title">选择房间</text>
+  <view class="list">
+    <view wx:for="{{rooms}}" wx:key="room_id" class="select card {{item.selected?'selected':''}}" data-id="{{item.room_id}}" bindtap="room">
+      <image class="room-image" src="{{item.image}}" mode="aspectFill" data-id="{{item.room_id}}" catchtap="openRoomDetail"/>
+      <view class="room-info">
+        <strong>{{item.name}}</strong>
+        <text>{{item.category}} · {{item.min_capacity}}-{{item.max_capacity}} 人</text>
+        <view class="room-price"><small class="member-price">会员价 ¥{{item.member_price}}</small><small class="regular-price">原价 ¥{{item.regular_price}}</small></view>
+      </view>
+      <view class="room-check"><text wx:if="{{item.selected}}">✓</text></view>
+    </view>
+  </view>
+
+  <text class="section-title">联系信息</text>
+  <view class="inputs card">
+    <input value="{{contact}}" bindinput="contact" placeholder="联系人"/>
+    <input value="{{mobile}}" bindinput="mobile" type="number" placeholder="手机号"/>
+  </view>
+
+  <text class="section-title">备注信息</text>
+  <view class="remark-card card">
+    <textarea value="{{remark}}" maxlength="200" bindinput="remark" placeholder="填写儿童入住、到店时间或其他需求"/>
+  </view>
+
+  <view class="footer">
+    <view class="pay-copy"><text>住宿总价</text><strong>¥{{amount}}</strong></view>
+    <button class="pay-button" bindtap="submit">提交预订</button>
+  </view>
+</view>
+
+<t-calendar
+  visible="{{calendarVisible}}"
+  value="{{calendarValue}}"
+  minDate="{{minDate}}"
+  maxDate="{{maxDate}}"
+  type="range"
+  usingCustomNavbar="{{true}}"
+  custom-style="--td-calendar-active-color: #4F6F52; --td-calendar-item-centre-color: rgba(79, 111, 82, .14); --td-brand-color: #4F6F52; --td-brand-color-active: #38523C; --td-brand-color-disabled: #A9B9AA; --td-brand-color-light: #EEF4EE; --td-brand-color-light-active: #E1ECE1; --td-button-primary-bg-color: #4F6F52; --td-button-primary-border-color: #4F6F52; --td-button-primary-active-bg-color: #38523C; --td-button-primary-active-border-color: #38523C;"
+  bind:confirm="confirmCalendar"
+  bind:close="closeCalendar"
+/>
+
+<view wx:if="{{showRoomDetail}}" class="room-mask" bindtap="hideRoomDetail"></view>
+<view wx:if="{{showRoomDetail}}" class="room-dialog" catchtap="stop">
+  <view class="room-dialog-close" bindtap="hideRoomDetail">×</view>
+  <image class="room-cover" src="{{selectedRoom.image}}" mode="aspectFill"/>
+  <text class="room-detail-name">{{selectedRoom.name}}</text>
+  <text class="room-detail-type">{{selectedRoom.category}}</text>
+  <view class="room-detail-grid">
+    <view class="room-detail-item"><text>容纳人数</text><strong>{{selectedRoom.min_capacity}}-{{selectedRoom.max_capacity}} 人</strong></view>
+    <view class="room-detail-item"><text>床型参数</text><strong>{{selectedRoom.bed}}</strong></view>
+    <view class="room-detail-item"><text>房间原价</text><strong>¥{{selectedRoom.regular_price}}</strong></view>
+    <view class="room-detail-item"><text>会员价格</text><strong>¥{{selectedRoom.member_price}}</strong></view>
+  </view>
+  <view class="room-detail-actions">
+    <button class="room-detail-button cancel" bindtap="hideRoomDetail">取消</button>
+    <button class="room-detail-button reserve" bindtap="reserveRoom">预订</button>
+  </view>
+</view>

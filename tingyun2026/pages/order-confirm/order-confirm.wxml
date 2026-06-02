@@ -1,0 +1,45 @@
+<view class="page inner">
+  <view class="topbar">
+    <view class="head" style="padding-top: {{navTop}}px;">
+      <view class="nav-row" style="height: {{navHeight}}px;">
+        <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+        <text class="title">确认订单</text>
+      </view>
+      <text class="subtitle">确认菜品与就餐信息</text>
+    </view>
+  </view>
+  <view class="content">
+    <view class="dining card">
+      <view><text>桌号</text><strong>{{session.table_id}}</strong></view>
+      <view><text>类型</text><strong>堂食</strong></view>
+      <view><text>用餐人数</text><strong>{{session.people_count}} 位</strong></view>
+    </view>
+
+    <view class="section-head">
+      <text class="section-title">菜品明细</text>
+      <text class="section-note">{{cartCount}} 件菜品</text>
+    </view>
+    <view class="card dishes">
+      <view wx:for="{{cart.items}}" wx:key="item_id" class="dish-item">
+        <image src="{{item.image}}" mode="aspectFill" />
+        <view class="dish-copy"><strong>{{item.name}}</strong><text>¥{{item.price}} × {{item.quantity}}</text></view>
+        <strong class="dish-price">¥{{item.price * item.quantity}}</strong>
+      </view>
+    </view>
+
+    <text class="section-title">订单备注</text>
+    <view class="remark-card card">
+      <textarea value="{{remark}}" maxlength="200" bindinput="remarkInput" placeholder="填写口味、忌口或其他需求"/>
+      <view class="quick-list">
+        <button wx:for="{{quickRemarks}}" wx:key="text" class="quick {{item.selected ? 'active' : ''}}" data-index="{{index}}" bindtap="toggleQuick">{{item.text}}</button>
+      </view>
+    </view>
+
+    <text class="section-title">金额汇总</text>
+    <view class="amount-summary card">
+      <view><text>商品金额</text><strong>¥{{cart.total_amount}}</strong></view>
+      <view class="amount-total"><text>{{user.customer_type === 'member' ? '线下积分扣款' : '微信支付'}}</text><strong>¥{{cart.total_amount}}</strong></view>
+    </view>
+  </view>
+  <view class="footer"><view class="pay-copy"><text>应付金额</text><strong>¥{{cart.total_amount}}</strong></view><button class="pay-button" bindtap="submit">{{user.customer_type === 'member' ? '提交订单' : '微信支付'}}</button></view>
+</view>

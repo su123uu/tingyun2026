@@ -108,6 +108,115 @@
       pointer-events: none;
       z-index: 0;
     }
+
+    .interactive-stage {
+      display: grid;
+      width: min(100%, 980px);
+      grid-template-columns: auto minmax(260px, 1fr);
+      gap: 72px;
+      align-items: center;
+      margin: 0 auto 112px;
+      padding: 36px 42px 48px;
+      border: 1px solid rgba(26, 26, 26, 0.06);
+      border-radius: 32px;
+      background: rgba(248, 246, 241, 0.72);
+      box-shadow: 0 18px 48px rgba(26, 26, 26, 0.08);
+      backdrop-filter: blur(16px);
+    }
+
+    .interactive-stage .phone-frame {
+      box-shadow:
+        0 36px 76px rgba(0,0,0,0.24),
+        0 20px 36px rgba(0,0,0,0.14),
+        inset 0 2px 4px rgba(255,255,255,0.1);
+    }
+
+    .simulator-eyebrow {
+      color: #8B7355;
+      font-size: 12px;
+      letter-spacing: 4px;
+    }
+
+    .simulator-title {
+      margin-top: 12px;
+      color: #1A1A1A;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: 4px;
+    }
+
+    .simulator-copy {
+      margin-top: 12px;
+      color: #7C8A8C;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .simulator-current {
+      margin-top: 24px;
+      padding: 14px 16px;
+      border-left: 2px solid #C9A962;
+      border-radius: 0 12px 12px 0;
+      color: #4A4A4A;
+      background: rgba(255, 255, 255, 0.64);
+      font-size: 13px;
+    }
+
+    .simulator-current strong {
+      color: #4F6F52;
+    }
+
+    .simulator-toolbar,
+    .simulator-pages {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .simulator-btn {
+      min-height: 38px;
+      padding: 0 15px;
+      border: 1px solid rgba(79, 111, 82, 0.22);
+      border-radius: 19px;
+      color: #4F6F52;
+      background: rgba(255, 255, 255, 0.76);
+      font-size: 13px;
+      transition: 0.2s;
+    }
+
+    .simulator-btn:hover {
+      border-color: #4F6F52;
+      background: #FFFFFF;
+    }
+
+    .simulator-btn.primary {
+      border-color: #4F6F52;
+      color: #FFFFFF;
+      background: #4F6F52;
+    }
+
+    .gallery-title {
+      margin-bottom: 86px;
+      color: #1A1A1A;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 5px;
+      text-align: center;
+    }
+
+    @media (max-width: 880px) {
+      .interactive-stage {
+        width: fit-content;
+        grid-template-columns: 1fr;
+        gap: 42px;
+        padding: 26px;
+      }
+
+      .simulator-panel {
+        max-width: 393px;
+      }
+    }
   </style>
 </head>
 <body class="py-16 px-8">
@@ -119,6 +228,37 @@
     <p class="text-mist-gray text-lg tracking-widest">静心禅居 · 品味生活</p>
     <div class="w-24 h-0.5 bg-accent-gold mx-auto mt-6"></div>
   </div>
+
+  <!-- 可交互手机演示 -->
+  <section class="interactive-stage relative z-10" aria-label="可交互手机演示">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="home.html" class="page-iframe" id="simulator-frame"></iframe>
+      </div>
+      <div class="page-label">交互演示</div>
+    </div>
+    <div class="simulator-panel">
+      <p class="simulator-eyebrow">INTERACTIVE PROTOTYPE</p>
+      <h2 class="simulator-title">模拟手机操作</h2>
+      <p class="simulator-copy">直接点击左侧手机内的入口和底部导航体验流程。下面仍保留全部页面总览，方便逐页对照。</p>
+      <p class="simulator-current">当前页面：<strong id="simulator-current">首页</strong></p>
+      <div class="simulator-toolbar">
+        <button class="simulator-btn" type="button" onclick="simulatorBack()">返回</button>
+        <button class="simulator-btn" type="button" onclick="simulatorReload()">刷新</button>
+        <button class="simulator-btn primary" type="button" onclick="openSimulator('menu.html?table=A01&people=2', '扫码点单 · 桌号 A01')">模拟扫码点餐</button>
+      </div>
+      <div class="simulator-pages">
+        <button class="simulator-btn" type="button" onclick="openSimulator('home.html', '首页')">首页</button>
+        <button class="simulator-btn" type="button" onclick="openSimulator('menu.html', '点餐')">点餐</button>
+        <button class="simulator-btn" type="button" onclick="openSimulator('intro.html', '介绍')">介绍</button>
+        <button class="simulator-btn" type="button" onclick="openSimulator('booking.html', '预约大厅')">住宿</button>
+        <button class="simulator-btn" type="button" onclick="openSimulator('profile.html', '我的')">我的</button>
+      </div>
+    </div>
+  </section>
+
+  <h2 class="gallery-title relative z-10">全部页面总览</h2>
   
   <!-- 手机展示区域 -->
   <div class="flex flex-wrap justify-center gap-20 relative z-10">
@@ -147,6 +287,24 @@
         <iframe src="orders.html" class="page-iframe" id="frame-orders"></iframe>
       </div>
       <div class="page-label">我的订单</div>
+    </div>
+
+    <!-- 确认订单 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="order-confirm.html" class="page-iframe" id="frame-order-confirm"></iframe>
+      </div>
+      <div class="page-label">确认订单</div>
+    </div>
+
+    <!-- 订单详情 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="order-detail.html?type=meal" class="page-iframe" id="frame-order-detail"></iframe>
+      </div>
+      <div class="page-label">订单详情</div>
     </div>
     
     <!-- 个人中心 -->
@@ -202,6 +360,42 @@
       </div>
       <div class="page-label">会员活动</div>
     </div>
+
+    <!-- 会员介绍 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="member.html" class="page-iframe" id="frame-member"></iframe>
+      </div>
+      <div class="page-label">会员介绍</div>
+    </div>
+
+    <!-- 已入会会员中心 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="member-center.html" class="page-iframe" id="frame-member-center"></iframe>
+      </div>
+      <div class="page-label">会员中心</div>
+    </div>
+
+    <!-- 活动详情 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="activity-detail.html" class="page-iframe" id="frame-activity-detail"></iframe>
+      </div>
+      <div class="page-label">活动详情</div>
+    </div>
+
+    <!-- 活动报名 -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <iframe src="activity-signup.html" class="page-iframe" id="frame-activity-signup"></iframe>
+      </div>
+      <div class="page-label">活动报名</div>
+    </div>
   </div>
   
   <!-- 说明文字 -->
@@ -211,9 +405,59 @@
   </div>
 
   <script>
+    const simulatorFrame = document.getElementById('simulator-frame');
+    const simulatorCurrent = document.getElementById('simulator-current');
+    const pageNames = {
+      'home.html': '首页',
+      'menu.html': '点餐',
+      'intro.html': '介绍',
+      'booking.html': '预约大厅',
+      'booking-accommodation.html': '住宿预订',
+      'booking-dining.html': '用餐预订',
+      'profile.html': '我的',
+      'member.html': '会员介绍',
+      'member-center.html': '会员中心',
+      'orders.html': '我的订单',
+      'order-confirm.html': '确认订单',
+      'order-detail.html': '订单详情',
+      'activity.html': '会员活动',
+      'activity-detail.html': '活动详情',
+      'activity-signup.html': '活动报名'
+    };
+
+    function getPageName(page) {
+      return pageNames[page.split('?')[0]] || '原型页面';
+    }
+
+    function openSimulator(page, label) {
+      simulatorFrame.src = page;
+      simulatorCurrent.textContent = label || getPageName(page);
+    }
+
+    function simulatorBack() {
+      simulatorFrame.contentWindow.history.back();
+    }
+
+    function simulatorReload() {
+      simulatorFrame.contentWindow.location.reload();
+    }
+
+    simulatorFrame.addEventListener('load', function() {
+      try {
+        const page = simulatorFrame.contentWindow.location.pathname.split('/').pop() + simulatorFrame.contentWindow.location.search;
+        simulatorCurrent.textContent = getPageName(page);
+      } catch (error) {
+        simulatorCurrent.textContent = '原型页面';
+      }
+    });
+
     // 监听 iframe 消息，处理页面跳转
     window.addEventListener('message', function(e) {
       if (e.data && e.data.type === 'navigate') {
+        if (e.source === simulatorFrame.contentWindow) {
+          openSimulator(e.data.page, getPageName(e.data.page));
+          return;
+        }
         const targetFrame = document.getElementById('frame-' + e.data.target);
         if (targetFrame) {
           targetFrame.src = e.data.page;

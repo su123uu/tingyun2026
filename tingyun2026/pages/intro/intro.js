@@ -1,7 +1,1 @@
-Page({
-    onLoad() {
-        if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-            this.getTabBar().setData({ selected: 2 });
-        }
-    }
-});
+Page({ onShow() { if (this.getTabBar()) this.getTabBar().setData({ selected: 2 }); } });

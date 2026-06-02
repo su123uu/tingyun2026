@@ -24,7 +24,7 @@
     .hero {
       background:linear-gradient(150deg,#4F6F52 0%,#2d4a30 100%);
       padding:56px 24px 30px; color:#fff; border-radius:0 0 32px 32px;
-      position:relative; overflow:hidden;
+      position:sticky; top:0; z-index:30; overflow:hidden;
     }
     .hero::after {
       content:''; position:absolute; top:-30%; right:-20%;
@@ -81,12 +81,15 @@
     .room-icon {
       width:48px; height:48px; border-radius:12px; flex-shrink:0;
       display:flex; align-items:center; justify-content:center;
-      background:rgba(79,111,82,0.06);
+      border:0; background:rgba(79,111,82,0.06); cursor:pointer;
     }
     .room-icon svg { width:22px; height:22px; }
     .room-info { flex:1; }
     .room-info .rname { font-size:14px; font-weight:500; letter-spacing:3px; }
     .room-info .rtype { font-size:11px; color:var(--mist); letter-spacing:1px; margin-top:2px; }
+    .room-price { display:flex; align-items:center; gap:8px; margin-top:6px; }
+    .member-price { color:var(--green); font-size:12px; font-weight:600; }
+    .regular-price { color:var(--mist); font-size:10px; text-decoration:line-through; }
     .room-check {
       width:20px; height:20px; border-radius:50%; flex-shrink:0;
       border:1.5px solid var(--beige); transition:all 0.25s;
@@ -95,6 +98,9 @@
     .room-card.selected .room-check { border-color:var(--green); background:var(--green); }
     .room-card.selected .room-check svg { display:block; }
     .room-check svg { display:none; width:12px; height:12px; }
+    .form-card { margin:0 16px; padding:14px; border-radius:14px; background:rgba(255,255,255,0.82); box-shadow:0 1px 12px rgba(0,0,0,0.025),0 0 0 1px rgba(0,0,0,0.03); }
+    .form-card input,.form-card textarea { width:100%; padding:10px 0; border:0; border-bottom:1px solid rgba(26,26,26,.07); outline:0; color:var(--ink); background:transparent; font-family:inherit; font-size:12px; }
+    .form-card textarea { min-height:68px; resize:none; }
 
     /* 提交 */
     .submit-area { padding:20px 16px 36px; }
@@ -108,6 +114,17 @@
     .submit-btn:active { transform:scale(0.98); opacity:0.9; }
     .submit-btn:disabled { opacity:0.35; cursor:not-allowed; }
     .submit-btn .hint { display:block; font-size:10px; letter-spacing:2px; color:rgba(255,255,255,0.55); margin-top:3px; }
+    .room-modal { position:fixed; z-index:60; inset:0; display:none; align-items:flex-end; padding:16px; background:rgba(26,26,26,.32); }
+    .room-modal.open { display:flex; }
+    .room-sheet { position:relative; width:min(100%,520px); margin:0 auto; padding:16px; border-radius:20px; background:#fff; box-shadow:0 18px 44px rgba(26,26,26,.18); }
+    .room-cover { width:100%; height:178px; border-radius:14px; object-fit:cover; background:var(--beige); }
+    .room-close { position:absolute; top:24px; right:24px; display:grid; width:30px; height:30px; place-items:center; border:0; border-radius:50%; color:#fff; background:rgba(26,26,26,.48); cursor:pointer; font-size:20px; line-height:1; }
+    .detail-name { margin-top:14px; font-size:20px; letter-spacing:4px; }
+    .detail-copy { margin-top:5px; color:var(--mist); font-size:12px; letter-spacing:1px; }
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:15px; }
+    .detail-item { padding:10px; border-radius:10px; background:rgba(79,111,82,.055); }
+    .detail-item span { display:block; color:var(--mist); font-size:10px; letter-spacing:1px; }
+    .detail-item strong { display:block; margin-top:4px; color:var(--green); font-size:13px; }
   </style>
 </head>
 <body>
@@ -136,6 +153,13 @@
       <div class="sect"><div class="sect-hd"><div class="bar"></div><h3>选择房间</h3></div></div>
       <div class="room-list" id="roomContainer"></div>
 
+      <div class="sect"><div class="sect-hd"><div class="bar"></div><h3>联系信息</h3></div></div>
+      <div class="form-card">
+        <input value="山里人" aria-label="联系人" placeholder="联系人">
+        <input value="13866886688" aria-label="手机号" placeholder="手机号">
+        <textarea aria-label="备注" placeholder="备注：填写入住人数、儿童或其他说明"></textarea>
+      </div>
+
       <!-- 提交 -->
       <div class="submit-area">
         <button class="submit-btn" id="submitBtn" disabled onclick="doSubmit()">
@@ -145,35 +169,49 @@
       </div>
     </div>
   </div>
+  <div class="room-modal" id="roomModal" onclick="closeRoomDetail(event)">
+    <div class="room-sheet">
+      <button class="room-close" type="button" onclick="hideRoomDetail()" aria-label="关闭">×</button>
+      <img class="room-cover" id="detailImage" alt="">
+      <h2 class="detail-name" id="detailName"></h2>
+      <p class="detail-copy" id="detailType"></p>
+      <div class="detail-grid">
+        <div class="detail-item"><span>容纳人数</span><strong id="detailCapacity"></strong></div>
+        <div class="detail-item"><span>床型参数</span><strong id="detailBed"></strong></div>
+        <div class="detail-item"><span>房间原价</span><strong id="detailRegular"></strong></div>
+        <div class="detail-item"><span>会员价格</span><strong id="detailMember"></strong></div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const rooms = [
-      { id:'chunyue', name:'春悦', type:'亲子房',
+      { id:'chunyue', name:'春悦', type:'亲子房', regular:600, member:360, bed:'1.5m + 1.2m', capacity:'2-3人', image:'../部分图片/禅修3.jpg',
         icon:'<circle cx="12" cy="8" r="3"/><circle cx="18" cy="13" r="2"/><circle cx="8" cy="13" r="2"/><path d="M4 20c0-4.4 3.6-8 8-8 2.7 0 5 1.3 6.5 3.3"/>' },
-      { id:'xiashe', name:'夏舍', type:'大床房',
+      { id:'xiashe', name:'夏舍', type:'大床房', regular:500, member:300, bed:'1.5m', capacity:'2人', image:'../部分图片/茶空间.jpg',
         icon:'<path d="M4 14V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7"/><rect x="5" y="14" width="14" height="6" rx="1"/><circle cx="9" cy="17" r="0.8"/><circle cx="15" cy="17" r="0.8"/>' },
-      { id:'qiude', name:'秋得', type:'标准间',
+      { id:'qiude', name:'秋得', type:'标准间', regular:500, member:300, bed:'1.2m + 1.2m', capacity:'2人', image:'../部分图片/禅修.jpg',
         icon:'<path d="M3 14V8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/><circle cx="7" cy="17" r="0.6"/><circle cx="17" cy="17" r="0.6"/>' },
-      { id:'dongyu', name:'冬裕', type:'榻榻米房',
+      { id:'dongyu', name:'冬裕', type:'榻榻米房', regular:600, member:360, bed:'5m', capacity:'3-5人', image:'../部分图片/书法1.jpg',
         icon:'<rect x="3" y="8" width="18" height="14" rx="2"/><line x1="3" y1="11" x2="21" y2="11"/><line x1="3" y1="16" x2="21" y2="16"/><line x1="10" y1="11" x2="10" y2="16"/>' },
-      { id:'gengyan', name:'耕烟', type:'套房',
+      { id:'gengyan', name:'耕烟', type:'套房', regular:600, member:360, bed:'1.5m', capacity:'2-4人', image:'../部分图片/12702066_001655549101_2.jpg',
         icon:'<path d="M5 20V10l7-7 7 7v10"/><rect x="9" y="13" width="6" height="7"/><line x1="17" y1="13" x2="17" y2="20"/><line x1="7" y1="13" x2="7" y2="20"/>' },
-      { id:'cangmiao', name:'苍妙', type:'榻榻米房',
+      { id:'cangmiao', name:'苍妙', type:'榻榻米房', regular:600, member:360, bed:'5m', capacity:'3-5人', image:'../部分图片/书法2.jpg',
         icon:'<rect x="4" y="6" width="16" height="16" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="4" y1="14" x2="20" y2="14"/><line x1="11" y1="10" x2="11" y2="14"/>' },
-      { id:'chancha', name:'禅茶四人房', type:'禅茶房',
+      { id:'chancha', name:'禅茶四人房', type:'禅茶房', regular:500, member:300, bed:'5m', capacity:'4人', image:'../部分图片/茶.jpg',
         icon:'<rect x="4" y="12" width="16" height="10" rx="1"/><path d="M8 12V6l4-2 4 2v6"/><circle cx="12" cy="8" r="1.5"/><circle cx="8" cy="18" r="1"/><circle cx="12" cy="18" r="1"/><circle cx="16" cy="18" r="1"/>' }
     ];
 
-    let selRoom = null, dateSet = false;
+    let selRoom = [], dateSet = false;
 
     function render() {
       const c = document.getElementById('roomContainer');
       c.innerHTML = rooms.map(r => `
         <div class="room-card" onclick="selectRoom('${r.id}')" data-id="${r.id}">
-          <div class="room-icon">
+          <button class="room-icon" type="button" onclick="event.stopPropagation(); openRoomDetail('${r.id}')" aria-label="查看${r.name}详情">
             <svg viewBox="0 0 24 24" fill="none" stroke="#4F6F52" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${r.icon}</svg>
-          </div>
-          <div class="room-info"><div class="rname">${r.name}</div><div class="rtype">${r.type}</div></div>
+          </button>
+          <div class="room-info"><div class="rname">${r.name}</div><div class="rtype">${r.type} · ${r.capacity}</div><div class="room-price"><span class="member-price">会员价 ¥${r.member}</span><span class="regular-price">原价 ¥${r.regular}</span></div></div>
           <div class="room-check">
             <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8 7,12 13,4"/></svg>
           </div>
@@ -182,10 +220,26 @@
     }
 
     function selectRoom(id) {
-      selRoom = id;
-      document.querySelectorAll('.room-card').forEach(el => el.classList.toggle('selected', el.dataset.id===id));
+      selRoom = selRoom.includes(id) ? selRoom.filter(x=>x!==id) : [...selRoom,id];
+      document.querySelectorAll('.room-card').forEach(el => el.classList.toggle('selected', selRoom.includes(el.dataset.id)));
       updateSubmit();
     }
+
+    function openRoomDetail(id) {
+      const room = rooms.find(r=>r.id===id);
+      document.getElementById('detailImage').src = room.image;
+      document.getElementById('detailImage').alt = room.name;
+      document.getElementById('detailName').textContent = room.name;
+      document.getElementById('detailType').textContent = room.type;
+      document.getElementById('detailCapacity').textContent = room.capacity;
+      document.getElementById('detailBed').textContent = room.bed;
+      document.getElementById('detailRegular').textContent = `¥${room.regular}`;
+      document.getElementById('detailMember').textContent = `¥${room.member}`;
+      document.getElementById('roomModal').classList.add('open');
+    }
+
+    function hideRoomDetail() { document.getElementById('roomModal').classList.remove('open'); }
+    function closeRoomDetail(event) { if (event.target.id === 'roomModal') hideRoomDetail(); }
 
     function toggleDate() {
       const i = document.getElementById('inDate'), o = document.getElementById('outDate');
@@ -204,21 +258,22 @@
 
     function updateSubmit() {
       const btn = document.getElementById('submitBtn'), hint = document.getElementById('submitHint');
-      if (dateSet && selRoom) {
+      if (dateSet && selRoom.length) {
         btn.disabled = false;
-        hint.textContent = '到店支付 · 无需在线付款';
+        hint.textContent = `已选 ${selRoom.length} 个房间 · 到店支付`;
       } else {
         btn.disabled = true;
-        if (!dateSet && !selRoom) hint.textContent = '请先选择日期和房间';
+        if (!dateSet && !selRoom.length) hint.textContent = '请先选择日期和房间';
         else if (!dateSet) hint.textContent = '请先选择入住日期';
         else hint.textContent = '请选择房间';
       }
     }
 
     function doSubmit() {
-      if (!selRoom || !dateSet) return;
-      const room = rooms.find(r => r.id===selRoom);
-      alert(`预订成功！\n房间：${room.name}（${room.type}）\n入住：${document.getElementById('inDate').textContent}\n退房：${document.getElementById('outDate').textContent}\n\n到店支付，无需在线付款`);
+      if (!selRoom.length || !dateSet) return;
+      const names = rooms.filter(r => selRoom.includes(r.id)).map(r=>r.name).join('、');
+      alert(`需求已提交，当前状态为待店长确认。\n房间：${names}\n入住：${document.getElementById('inDate').textContent}\n退房：${document.getElementById('outDate').textContent}\n\n客服将电话联系您确认信息。`);
+      window.location.href = 'order-detail.html?type=stay&no=TY20260601012';
     }
 
     render();

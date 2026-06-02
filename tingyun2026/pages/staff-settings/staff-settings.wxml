@@ -1,0 +1,5 @@
+<view wx:if="{{allowed}}" class="page settings">
+  <text class="title">店员设置</text>
+  <text class="subtitle">仅店员账号可进入</text>
+  <view class="card info">店员管理功能将在后续版本中接入。</view>
+</view>

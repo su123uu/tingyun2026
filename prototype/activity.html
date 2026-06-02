@@ -4,278 +4,37 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>停云山居 · 会员活动</title>
+  <link rel="stylesheet" href="common.css">
   <style>
-    :root {
-      --ink: #1A1A1A;
-      --ink-soft: #4A4A4A;
-      --mist: #7C8A8C;
-      --paper: #F8F6F1;
-      --beige: #E8E4DC;
-      --green: #4F6F52;
-      --gold: #C9A962;
-      --white: #FFFFFF;
-      --line: rgba(26, 26, 26, 0.07);
-      --shadow: 0 8px 24px rgba(26, 26, 26, 0.045);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: var(--paper);
-      color: var(--ink);
-      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    }
-
-    button {
-      border: 0;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      cursor: pointer;
-    }
-
-    .page {
-      height: 100vh;
-      overflow-y: auto;
-      padding-bottom: 28px;
-      background:
-        radial-gradient(circle at 15% 0%, rgba(79, 111, 82, 0.10), transparent 32%),
-        linear-gradient(180deg, #F8F6F1 0%, #F3F0E9 100%);
-      scrollbar-width: none;
-    }
-
-    .page::-webkit-scrollbar {
-      display: none;
-    }
-
-    .hero {
-      height: 252px;
-      position: relative;
-      overflow: hidden;
-      background: #263620;
-      color: #fff;
-    }
-
-    .hero img {
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: cover;
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.50));
-    }
-
-    .back {
-      position: absolute;
-      z-index: 2;
-      left: 16px;
-      top: 18px;
-      height: 34px;
-      padding: 0 13px;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(255, 255, 255, 0.78);
-      color: var(--ink);
-      font-size: 13px;
-      backdrop-filter: blur(12px);
-    }
-
-    .back::before {
-      content: "";
-      width: 8px;
-      height: 8px;
-      border-left: 1.8px solid currentColor;
-      border-bottom: 1.8px solid currentColor;
-      transform: rotate(45deg);
-    }
-
-    .hero-copy {
-      position: absolute;
-      z-index: 2;
-      left: 22px;
-      right: 22px;
-      bottom: 28px;
-      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.32);
-    }
-
-    .kicker {
-      color: rgba(255,255,255,0.74);
-      font-size: 12px;
-      letter-spacing: 3px;
-    }
-
-    h1 {
-      margin-top: 10px;
-      font-size: 28px;
-      font-weight: 650;
-      letter-spacing: 4px;
-      line-height: 1.25;
-    }
-
-    .content {
-      margin: -22px 16px 0;
-      position: relative;
-      z-index: 3;
-    }
-
-    .summary {
-      border-radius: 20px;
-      padding: 18px;
-      background: rgba(255, 255, 255, 0.88);
-      box-shadow: var(--shadow);
-    }
-
-    .summary-title {
-      font-size: 17px;
-      font-weight: 650;
-      letter-spacing: 2px;
-    }
-
-    .summary-text {
-      margin-top: 8px;
-      color: var(--ink-soft);
-      font-size: 13px;
-      line-height: 1.7;
-    }
-
-    .section {
-      margin-top: 18px;
-    }
-
-    .section-title {
-      margin-bottom: 10px;
-      font-size: 17px;
-      font-weight: 650;
-      letter-spacing: 2px;
-    }
-
-    .activity-card {
-      margin-top: 10px;
-      border-radius: 18px;
-      overflow: hidden;
-      background: rgba(255, 255, 255, 0.86);
-      box-shadow: var(--shadow);
-    }
-
-    .activity-card img {
-      width: 100%;
-      height: 142px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .activity-body {
-      padding: 15px 17px 17px;
-    }
-
-    .date {
-      color: var(--gold);
-      font-size: 11px;
-      letter-spacing: 1.5px;
-    }
-
-    .name {
-      margin-top: 6px;
-      font-size: 16px;
-      font-weight: 650;
-      letter-spacing: 1px;
-    }
-
-    .desc {
-      margin-top: 7px;
-      color: var(--mist);
-      font-size: 12px;
-      line-height: 1.55;
-    }
-
-    .contact {
-      margin-top: 18px;
-      border-radius: 18px;
-      padding: 18px;
-      background: rgba(79, 111, 82, 0.09);
-      color: var(--green);
-    }
-
-    .contact strong {
-      display: block;
-      font-size: 16px;
-      letter-spacing: 2px;
-    }
-
-    .contact span {
-      display: block;
-      margin-top: 7px;
-      color: var(--ink-soft);
-      font-size: 12px;
-      line-height: 1.55;
-    }
+    .hero { position:sticky; top:0; z-index:35; height:230px; overflow:hidden; color:#fff; }
+    .hero img { width:100%; height:100%; object-fit:cover; }
+    .hero::after { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.58)); content:""; }
+    .hero .back { position:absolute; z-index:2; top:20px; left:13px; color:#fff; background:rgba(26,26,26,.20); border-radius:50%; }
+    .hero-copy { position:absolute; z-index:2; right:20px; bottom:22px; left:20px; }
+    .hero-copy span { color:rgba(255,255,255,.70); font-size:11px; letter-spacing:4px; }
+    .hero-copy h1 { margin-top:7px; font-family:"Noto Serif SC","Songti SC",serif; font-size:25px; letter-spacing:3px; }
+    .activity { overflow:hidden; }
+    .activity img { width:100%; height:148px; object-fit:cover; display:block; }
+    .activity-body { padding:14px; }
+    .date { color:var(--bronze); font-size:11px; }
+    .activity h3 { margin-top:6px; font-size:16px; }
+    .activity p { margin-top:6px; color:var(--mist); font-size:12px; line-height:1.55; }
+    .activity-foot { display:flex; align-items:center; justify-content:space-between; margin-top:11px; }
   </style>
 </head>
 <body>
-  <main class="page">
-    <section class="hero">
-      <img src="../部分图片/会员活动.png" alt="会员活动">
-      <button class="back" type="button" onclick="goHome()">返回</button>
-      <div class="hero-copy">
-        <span class="kicker">会员活动</span>
-        <h1>山中有会<br>茶席相逢</h1>
-      </div>
-    </section>
-
-    <section class="content">
-      <div class="summary">
-        <div class="summary-title">本月活动指南</div>
-        <p class="summary-text">当前为前端假数据展示。活动报名暂不做在线表单，用户通过电话、客服或微信确认名额。</p>
-      </div>
-
-      <section class="section">
-        <div class="section-title">近期可咨询</div>
-        <article class="activity-card">
-          <img src="../部分图片/禅修活动正1.jpg" alt="禅修冥想体验课">
-          <div class="activity-body">
-            <div class="date">6月15日 14:00-17:00</div>
-            <div class="name">禅修冥想体验课</div>
-            <p class="desc">专业导师带领，适合初次体验禅修、想在山间安静半日的来客。</p>
-          </div>
-        </article>
-
-        <article class="activity-card">
-          <img src="../部分图片/茶活动正.jpg" alt="山间茶艺品鉴会">
-          <div class="activity-body">
-            <div class="date">6月20日 16:00-18:00</div>
-            <div class="name">山间茶艺品鉴会</div>
-            <p class="desc">品茶、听山、会友。会员可优先咨询席位，确认后到店参与。</p>
-          </div>
-        </article>
+  <main class="app">
+    <div class="scroll">
+      <header class="hero"><img src="../部分图片/会员活动.png" alt="会员活动"><button class="back" onclick="navigateTo('home')" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15 18l-6-6 6-6"/></svg></button><div class="hero-copy"><span>TINGYUN ACTIVITIES</span><h1>山中有会，茶席相逢</h1></div></header>
+      <section class="content">
+        <section class="section"><div class="section-head"><h2 class="section-title">近期活动</h2><span class="section-note">会员权益有效期内可报名</span></div><div class="stack">
+          <article class="activity card"><img src="../部分图片/禅修活动正1.jpg" alt="禅修冥想体验课"><div class="activity-body"><div class="date">2026-06-15 14:00-17:00</div><h3>禅修冥想体验课</h3><p>专业导师带领，在山间安静半日。适合首次体验禅修的会员。</p><div class="activity-foot"><span class="tag green">剩余 6 席</span><button class="button" onclick="navigateTo('activity-detail','?id=meditation')">查看详情</button></div></div></article>
+          <article class="activity card"><img src="../部分图片/茶活动正.jpg" alt="山间茶艺品鉴会"><div class="activity-body"><div class="date">2026-06-20 16:00-18:00</div><h3>山间茶艺品鉴会</h3><p>品茶、听山、会友。循茶香辨风味，也在席间认识同好。</p><div class="activity-foot"><span class="tag gold">剩余 4 席</span><button class="button" onclick="navigateTo('activity-detail','?id=tea')">查看详情</button></div></div></article>
+          <article class="activity card"><img src="../部分图片/音乐活动正.jpg" alt="夏至山居音乐会"><div class="activity-body"><div class="date">2026-06-28 19:00-21:00</div><h3>夏至山居音乐会</h3><p>夜色与虫鸣之间，听一场山居限定的专题音乐会。</p><div class="activity-foot"><span class="tag disabled">已满员</span><button class="button secondary" onclick="navigateTo('activity-detail','?id=music')">查看详情</button></div></div></article>
+        </div></section>
       </section>
-
-      <div class="contact">
-        <strong>报名方式</strong>
-        <span>请通过电话或客服确认活动名额。后续接入后端后，可扩展为活动报名记录。</span>
-      </div>
-    </section>
+    </div>
   </main>
-
-  <script>
-    function goHome() {
-      window.location.href = "home.html";
-    }
-  </script>
+  <script src="common.js"></script>
 </body>
 </html>

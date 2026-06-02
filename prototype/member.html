@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>停云山居 · 会员介绍</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    .scroll { padding-bottom:90px; }
+    .hero { position:sticky; top:0; z-index:35; overflow:hidden; padding:22px 22px 34px; color:#F4DFA6; background:radial-gradient(circle at 88% 18%,rgba(201,169,98,.17),transparent 30%),linear-gradient(135deg,#171715,#2A2722); }
+    .hero .back { color:#F4DFA6; }
+    .eyebrow { display:block; margin-top:18px; color:rgba(244,223,166,.62); font-size:10px; letter-spacing:3px; }
+    .hero h1 { margin-top:12px; font-family:"Noto Serif SC","Songti SC",serif; font-size:31px; }
+    .hero p { width:82%; margin-top:12px; color:rgba(255,255,255,.64); font-size:13px; line-height:1.8; }
+    .tier { padding:14px; }
+    .tier-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .tier h3 { font-size:15px; }
+    .tier strong { color:#876A37; font-size:15px; }
+    .tier p { margin-top:7px; color:var(--mist); font-size:12px; line-height:1.6; }
+    .benefits { display:grid; grid-template-columns:1fr 1fr; gap:1px; overflow:hidden; }
+    .benefit { min-height:82px; padding:13px 11px; background:#fff; }
+    .benefit-no { color:var(--gold); font-size:11px; }
+    .benefit h3 { margin-top:7px; font-size:13px; line-height:1.45; }
+    .rule { padding:14px; color:var(--ink-soft); font-size:13px; line-height:1.85; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="scroll">
+      <header class="hero"><button class="back" onclick="goBack('profile')" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15 18l-6-6 6-6"/></svg></button><span class="eyebrow">TINGYUN MEMBER</span><h1>停云会员</h1><p>在山居的四时流转里，留一份属于常客的自在与礼遇。</p></header>
+      <section class="content">
+        <section class="section"><div class="section-head"><h2 class="section-title">五级会员卡</h2><span class="section-note">线下储值办理</span></div><div class="stack">
+          <article class="card tier"><div class="tier-head"><h3>01 · 将星</h3><strong>储值 1 万元</strong></div><p>权益有效期 12 个月</p></article>
+          <article class="card tier"><div class="tier-head"><h3>02 · 辰升</h3><strong>储值 2 万元</strong></div><p>权益有效期 16 个月</p></article>
+          <article class="card tier"><div class="tier-head"><h3>03 · 海尊</h3><strong>储值 3 万元</strong></div><p>权益有效期 18 个月</p></article>
+          <article class="card tier"><div class="tier-head"><h3>04 · 山王</h3><strong>储值 5 万元</strong></div><p>权益有效期 24 个月</p></article>
+          <article class="card tier"><div class="tier-head"><h3>05 · 云境</h3><strong>储值 10 万元</strong></div><p>权益有效期 36 个月</p></article>
+        </div></section>
+        <section class="section"><div class="section-head"><h2 class="section-title">十大会员权益</h2></div><div class="card benefits">
+          <div class="benefit"><span class="benefit-no">01</span><h3>山居资源圈与跨界活动</h3></div><div class="benefit"><span class="benefit-no">02</span><h3>免费住宿 10 次</h3></div>
+          <div class="benefit"><span class="benefit-no">03</span><h3>月度会员专题活动</h3></div><div class="benefit"><span class="benefit-no">04</span><h3>禅修营与自然教育课程</h3></div>
+          <div class="benefit"><span class="benefit-no">05</span><h3>专题音乐会 4 次 / 年</h3></div><div class="benefit"><span class="benefit-no">06</span><h3>山居管家服务</h3></div>
+          <div class="benefit"><span class="benefit-no">07</span><h3>纪念日主题布置 3 次</h3></div><div class="benefit"><span class="benefit-no">08</span><h3>茶室、茶酒吧与雅室</h3></div>
+          <div class="benefit"><span class="benefit-no">09</span><h3>定制储藏服务</h3></div><div class="benefit"><span class="benefit-no">10</span><h3>自然采摘 20 人次 / 年</h3></div>
+        </div></section>
+        <section class="section"><div class="section-head"><h2 class="section-title">办理说明</h2></div><div class="card rule">会员卡仅支持线下联系店长办理。小程序不提供在线购卡、续卡、升档、退款、转赠或提现入口。</div></section>
+      </section>
+    </div>
+    <footer class="fixed-action"><button class="button bronze" onclick="showToast('店长联系方式将在正式上线前补充')">联系店长办理</button></footer>
+  </main>
+  <script src="common.js"></script>
+</body>
+</html>

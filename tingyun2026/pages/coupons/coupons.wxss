@@ -1,0 +1,5 @@
+.coupons { padding:42rpx 28rpx; }
+.empty { margin-top:34rpx; padding:70rpx 30rpx; text-align:center; }
+.empty text,.empty small { display:block; }
+.empty text { font-size:29rpx; font-weight:700; }
+.empty small { margin-top:14rpx; color:#8A918B; font-size:23rpx; }
