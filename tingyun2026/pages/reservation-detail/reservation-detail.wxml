@@ -5,7 +5,7 @@
         <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
         <text class="title">预订详情</text>
       </view>
-      <text class="subtitle">{{order.order_id}}</text>
+      <text class="subtitle">{{order.order_no}}</text>
     </view>
   </view>
 
@@ -17,7 +17,7 @@
   <view class="content">
     <text class="section-title">基础信息</text>
     <view class="detail-card card">
-      <view class="info-line"><text class="info-label">订单编号</text><text>{{order.order_id}}</text></view>
+      <view class="info-line"><text class="info-label">订单编号</text><text>{{order.order_no}}</text></view>
       <view class="info-line"><text class="info-label">预订类型</text><text>{{order.reservation_label}}</text></view>
       <view class="info-line"><text class="info-label">创建时间</text><text>{{order.created_text}}</text></view>
     </view>

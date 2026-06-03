@@ -21,7 +21,7 @@ Page({
   async onShow() {
     if (this.getTabBar()) this.getTabBar().setData({ selected: 1 });
     const result = await Promise.all([
-      catalog.listMenuCategories(), catalog.listMenuItems(), cartService.getCart(), tableService.getCurrentTableSession(),
+      catalog.listMealCategories(), catalog.listMealItems(), cartService.getCart(), tableService.getCurrentTableSession(),
     ]);
     const categories = result[0];
     const items = result[1];
@@ -33,7 +33,7 @@ Page({
   },
   cartCount(cart) { return cart.items.reduce((sum, item) => sum + item.quantity, 0); },
   quantity(id) { const item = this.data.cart.items.find((entry) => entry.item_id === id); return item ? item.quantity : 0; },
-  refresh() { this.setData({ items: this.allItems.filter((item) => item.category_id === this.data.active).map((item) => Object.assign({}, item, { quantity: this.quantity(item.item_id) })) }); },
+  refresh() { this.setData({ items: this.allItems.filter((item) => item.category_key === this.data.active).map((item) => Object.assign({}, item, { quantity: this.quantity(item.item_id) })) }); },
   selectCategory(e) { this.setData({ active: e.currentTarget.dataset.id }); this.refresh(); },
   async add(e) { try { this.updateCart(await cartService.addItem({ item_id: e.currentTarget.dataset.id })); } catch (error) { this.toast(error.message); } },
   async minus(e) { const id = e.currentTarget.dataset.id; const quantity = this.quantity(id); if (quantity) this.updateCart(await cartService.updateQuantity({ item_id: id, quantity: quantity - 1 })); },
@@ -65,9 +65,9 @@ Page({
   cartItemQuantity(cart, id) { const item = cart.items.find((entry) => entry.item_id === id); return item ? item.quantity : 0; },
   buildCartGroups(categories, cart) {
     return categories.map((category) => ({
-      category_id: category.category_id,
+      category_key: category.category_key,
       name: category.name,
-      items: cart.items.filter((item) => item.category_id === category.category_id),
+      items: cart.items.filter((item) => item.category_key === category.category_key),
     })).filter((category) => category.items.length);
   },
   stop() {},

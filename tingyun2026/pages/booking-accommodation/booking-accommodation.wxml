@@ -32,14 +32,29 @@
     <button class="people-button" data-step="1" bindtap="adjustPeople">+</button>
   </view>
 
+  <view wx:if="{{availableBenefits.length}}" class="benefit-card card">
+    <view wx:for="{{availableBenefits}}" wx:key="benefit_account_id" class="benefit-row">
+      <view>
+        <strong>{{item.benefit_name}}</strong>
+        <text>{{item.rule.note}}</text>
+      </view>
+      <text class="benefit-count">剩余 {{item.remaining_quota}}{{item.quota_unit}}</text>
+    </view>
+  </view>
+
   <text class="section-title">选择房间</text>
+  <view class="manager-line room-manager-line">
+    <text>房间不足或特殊需求？</text>
+    <text class="manager-link" bindtap="callManager">联系店长</text>
+  </view>
   <view class="list">
-    <view wx:for="{{rooms}}" wx:key="room_id" class="select card {{item.selected?'selected':''}}" data-id="{{item.room_id}}" bindtap="room">
+    <view wx:for="{{rooms}}" wx:key="room_id" class="select card {{item.selected?'selected':''}} {{item.is_selectable?'':'disabled'}}" data-id="{{item.room_id}}" bindtap="room">
       <image class="room-image" src="{{item.image}}" mode="aspectFill" data-id="{{item.room_id}}" catchtap="openRoomDetail"/>
       <view class="room-info">
         <strong>{{item.name}}</strong>
         <text>{{item.category}} · {{item.min_capacity}}-{{item.max_capacity}} 人</text>
         <view class="room-price"><small class="member-price">会员价 ¥{{item.member_price}}</small><small class="regular-price">原价 ¥{{item.regular_price}}</small></view>
+        <small wx:if="{{item.disabled_reason}}" class="room-status">{{item.disabled_reason}}</small>
       </view>
       <view class="room-check"><text wx:if="{{item.selected}}">✓</text></view>
     </view>
@@ -57,7 +72,11 @@
   </view>
 
   <view class="footer">
-    <view class="pay-copy"><text>住宿总价</text><strong>¥{{amount}}</strong></view>
+    <view class="pay-copy">
+      <text>住宿总价</text>
+      <strong>¥{{amount}}</strong>
+      <text class="footer-manager" bindtap="callManager">房间不足或特殊需求？联系店长</text>
+    </view>
     <button class="pay-button" bindtap="submit">提交预订</button>
   </view>
 </view>

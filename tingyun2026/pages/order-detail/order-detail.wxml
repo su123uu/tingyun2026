@@ -5,7 +5,7 @@
         <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
         <text class="title">订单详情</text>
       </view>
-      <text class="subtitle">{{order.order_id}}</text>
+      <text class="subtitle">{{order.order_no}}</text>
     </view>
   </view>
 
@@ -17,7 +17,7 @@
   <view class="content">
     <text class="section-title">基础信息</text>
     <view class="detail-card card">
-      <view class="info-line"><text class="info-label">订单编号</text><text>{{order.order_id}}</text></view>
+      <view class="info-line"><text class="info-label">订单编号</text><text>{{order.order_no}}</text></view>
       <view class="info-line"><text class="info-label">创建时间</text><text>{{order.created_text}}</text></view>
     </view>
 
@@ -29,20 +29,26 @@
 
     <text class="section-title">菜品明细</text>
     <view class="detail-card card">
-      <view wx:for="{{order.items}}" wx:key="item_id" class="dish">
-        <image src="{{item.image}}" mode="aspectFill"/>
-        <view class="dish-copy">
-          <strong>{{item.name}}</strong>
-          <text>¥{{item.price}} × {{item.quantity}}</text>
+      <view wx:for="{{order.batches}}" wx:for-item="batch" wx:key="order_no" class="dish-batch">
+        <view class="batch-head">
+          <text>{{batch.batch_title}}</text>
+          <strong>¥{{batch.amount}}</strong>
         </view>
-        <strong class="dish-price">¥{{item.price * item.quantity}}</strong>
+        <view wx:for="{{batch.items}}" wx:for-item="item" wx:key="item_id" class="dish">
+          <image src="{{item.image}}" mode="aspectFill"/>
+          <view class="dish-copy">
+            <strong>{{item.name}}</strong>
+            <text>¥{{item.price}} × {{item.quantity}}</text>
+          </view>
+          <strong class="dish-price">¥{{item.price * item.quantity}}</strong>
+        </view>
       </view>
     </view>
 
     <text class="section-title">支付信息</text>
     <view class="detail-card card">
-      <view class="info-line"><text class="info-label">商品金额</text><text>¥{{order.amount}}</text></view>
-      <view class="info-line"><text class="info-label">{{order.payment_label}}</text><strong>¥{{order.amount}}</strong></view>
+      <view class="info-line"><text class="info-label">商品金额</text><text>¥{{order.total_amount}}</text></view>
+      <view class="info-line"><text class="info-label">{{order.payment_label}}</text><strong>¥{{order.total_amount}}</strong></view>
       <view class="info-line"><text class="info-label">结算状态</text><text>{{order.settlement_text}}</text></view>
       <view wx:if="{{order.paid_text}}" class="info-line"><text class="info-label">支付时间</text><text>{{order.paid_text}}</text></view>
     </view>

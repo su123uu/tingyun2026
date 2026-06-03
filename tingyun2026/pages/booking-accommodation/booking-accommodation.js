@@ -1,4 +1,3 @@
-const catalog = require('../../services/catalog');
 const reservations = require('../../services/reservation');
 const auth = require('../../services/auth');
 const pricing = require('../../utils/pricing');
@@ -48,6 +47,7 @@ Page({
     maxDate: addDays(today, 366),
     people: 2,
     rooms: [],
+    availableBenefits: [],
     selectedRooms: [],
     showRoomDetail: false,
     selectedRoom: null,
@@ -70,14 +70,9 @@ Page({
   },
   async onLoad() {
     this.setNavigationMetrics();
-    const result = await Promise.all([catalog.listRooms('accommodation'), auth.getCurrentUser()]);
-    const rooms = result[0];
-    const user = result[1];
-    this.allRooms = rooms.map((room) => Object.assign({}, room, {
-      image: ROOM_IMAGE,
-      bed: ROOM_BEDS[room.room_id] || '详询客服',
-    }));
-    this.setData({ rooms: this.allRooms.map((room) => Object.assign({}, room, { selected: false })), customerType: user.customer_type });
+    const user = await auth.getCurrentUser();
+    this.setData({ customerType: user.customer_type });
+    await this.refreshRooms();
   },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -124,7 +119,7 @@ Page({
   },
   openCalendar() { this.setData({ calendarVisible: true }); },
   closeCalendar() { this.setData({ calendarVisible: false }); },
-  confirmCalendar(event) {
+  async confirmCalendar(event) {
     const value = event.detail.value;
     const checkIn = formatDate(value[0]);
     const checkOut = formatDate(value[1]);
@@ -136,13 +131,33 @@ Page({
       checkInDisplay: formatShortDate(value[0]),
       checkOutDisplay: formatShortDate(value[1]),
     });
+    await this.refreshRooms();
     this.total();
   },
   adjustPeople(event) { this.setData({ people: Math.max(1, Number(this.data.people || 1) + Number(event.currentTarget.dataset.step)) }); },
   peopleInput(event) { this.setData({ people: event.detail.value }); },
   normalizePeople() { this.setData({ people: Math.max(1, Number(this.data.people) || 1) }); },
+  async refreshRooms() {
+    const availability = await reservations.listAvailableAccommodationRooms({
+      check_in_date: this.data.checkIn,
+      check_out_date: this.data.checkOut,
+    });
+    const rooms = Array.isArray(availability) ? availability : availability.rooms;
+    const availableBenefits = Array.isArray(availability) ? [] : availability.available_benefits;
+    const selectableIds = rooms.filter((room) => room.is_selectable).map((room) => room.room_id);
+    const selectedRooms = this.data.selectedRooms.filter((id) => selectableIds.includes(id));
+    this.allRooms = rooms.map((room) => Object.assign({}, room, {
+      image: ROOM_IMAGE,
+      bed: ROOM_BEDS[room.room_id] || '详询客服',
+      selected: selectedRooms.includes(room.room_id),
+    }));
+    this.setData({ selectedRooms, rooms: this.allRooms, availableBenefits });
+  },
   room(event) {
-    this.toggleRoom(event.currentTarget.dataset.id);
+    const id = event.currentTarget.dataset.id;
+    const room = this.allRooms.find((item) => item.room_id === id);
+    if (!room || !room.is_selectable) return this.toast(`${room ? room.disabled_reason : '房间不可用'}，可联系店长协调`);
+    this.toggleRoom(id);
   },
   toggleRoom(id) {
     let ids = this.data.selectedRooms;
@@ -158,6 +173,7 @@ Page({
   reserveRoom() {
     const room = this.data.selectedRoom;
     if (!room) return;
+    if (!room.is_selectable) return this.toast(`${room.disabled_reason || '房间不可用'}，可联系店长协调`);
     if (!this.data.selectedRooms.includes(room.room_id)) this.toggleRoom(room.room_id);
     this.hideRoomDetail();
   },
@@ -180,6 +196,9 @@ Page({
     if (!this.data.selectedRooms.length) return this.toast('请选择房间');
     this.create();
   },
+  callManager() {
+    wx.makePhoneCall({ phoneNumber: '15192670475' });
+  },
   async create() {
     try {
       let order = await reservations.createAccommodationReservation({
@@ -194,9 +213,9 @@ Page({
       if (order.customer_type === 'guest') {
         const ok = await new Promise((resolve) => wx.showModal({ title: '模拟微信支付', content: `本次支付 ¥${order.amount}，不会真实扣款。`, confirmText: '模拟支付', success: (result) => resolve(result.confirm) }));
         if (!ok) return;
-        order = await reservations.simulateWechatPay({ order_id: order.order_id });
+        order = await reservations.simulateWechatPay({ order_no: order.order_no || order.order_id });
       }
-      wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_id}` });
+      wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_no || order.order_id}` });
     } catch (error) {
       this.toast(error.message);
     }

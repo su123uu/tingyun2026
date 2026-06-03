@@ -60,8 +60,9 @@ Page({
         remark: this.data.remark,
         quick_remarks: this.data.quickRemarks.filter((item) => item.selected).map((item) => item.text),
       });
-      if (pay) await orders.simulateWechatPay({ order_id: order.order_id });
-      wx.redirectTo({ url:`/pages/order-detail/order-detail?id=${order.order_id}` });
+      const orderNo = order.order_no || order.order_id;
+      if (pay) await orders.simulateWechatPay({ order_no: orderNo });
+      wx.redirectTo({ url:`/pages/order-detail/order-detail?id=${order.detail_order_no || order.detail_order_id || orderNo}` });
     } catch(error) {
       wx.showToast({ title:error.message, icon:'none' });
     }

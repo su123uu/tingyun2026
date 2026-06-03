@@ -6,7 +6,7 @@
   </view>
   <view class="layout">
     <view class="categories">
-      <view wx:for="{{categories}}" wx:key="category_id" class="category {{active === item.category_id ? 'active' : ''}}" data-id="{{item.category_id}}" bindtap="selectCategory">{{item.name}}</view>
+      <view wx:for="{{categories}}" wx:key="category_key" class="category {{active === item.category_key ? 'active' : ''}}" data-id="{{item.category_key}}" bindtap="selectCategory">{{item.name}}</view>
     </view>
     <scroll-view class="goods" scroll-y>
       <view wx:for="{{items}}" wx:key="item_id" class="product card">
@@ -48,7 +48,7 @@
   <view wx:if="{{showCart}}" class="cart-panel" catchtap="stop">
     <view class="cart-panel-head"><strong>已选菜品</strong><text bindtap="hideCart">收起</text></view>
     <scroll-view class="cart-list" scroll-y>
-      <view wx:for="{{cartGroups}}" wx:key="category_id" wx:for-item="cartGroup" class="cart-group">
+      <view wx:for="{{cartGroups}}" wx:key="category_key" wx:for-item="cartGroup" class="cart-group">
         <text class="cart-group-title">{{cartGroup.name}}</text>
         <view wx:for="{{cartGroup.items}}" wx:key="item_id" wx:for-item="cartItem" class="cart-item">
           <image class="cart-item-image" src="{{cartItem.image}}" mode="aspectFill" data-id="{{cartItem.item_id}}" bindtap="showDishDetail" />

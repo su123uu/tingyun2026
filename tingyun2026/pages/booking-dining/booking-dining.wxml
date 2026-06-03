@@ -42,6 +42,10 @@
   <text class="people-hint">用餐预订至少 6 人</text>
 
   <text class="section-title">选择包间</text>
+  <view class="manager-line room-manager-line">
+    <text>包间不足或特殊需求？</text>
+    <text class="manager-link" bindtap="callManager">联系店长</text>
+  </view>
   <view class="list">
     <view wx:for="{{rooms}}" wx:key="room_id" class="select card {{item.selected?'selected':''}} {{item.is_selectable?'':'disabled'}}" data-id="{{item.room_id}}" bindtap="room">
       <view class="room-cover">
@@ -86,7 +90,11 @@
   </view>
 
   <view class="footer">
-    <view class="pay-copy"><text>预订总价</text><strong>¥{{amount}}</strong></view>
+    <view class="pay-copy">
+      <text>预订总价</text>
+      <strong>¥{{amount}}</strong>
+      <text class="footer-manager" bindtap="callManager">包间不足或特殊需求？联系店长</text>
+    </view>
     <button class="pay-button" bindtap="submit">提交预订</button>
   </view>
 </view>

@@ -11,7 +11,7 @@ function withMenuMetadata(cartItems) {
     const item = items.find((menuItem) => menuItem.item_id === entry.item_id);
     return Object.assign({}, entry, {
       image: entry.image || (item && item.image) || '',
-      category_id: entry.category_id || (item && item.category_id) || '',
+      category_key: entry.category_key || (item && item.category_key) || '',
     });
   });
 }
@@ -33,7 +33,7 @@ async function addItem(input) {
   const cart = await getCart();
   const found = cart.items.find((entry) => entry.item_id === item_id);
   if (found) found.quantity += 1;
-  else cart.items.push({ item_id, category_id: item.category_id, name: item.name, price: item.price, image: item.image, quantity: 1 });
+  else cart.items.push({ item_id, category_key: item.category_key, name: item.name, price: item.price, image: item.image, quantity: 1 });
   return storage.set(KEY, build(cart.items));
 }
 

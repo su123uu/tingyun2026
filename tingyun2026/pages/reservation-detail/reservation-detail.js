@@ -42,16 +42,19 @@ Page({
   data: { order: null, navTop: 28, navHeight: 32 },
   async onLoad(options) {
     this.setNavigationMetrics();
-    const [order, rooms, standards] = await Promise.all([
-      reservations.getReservationDetail({ order_id: options.id }),
-      catalog.listRooms(),
-      catalog.listMealStandards(),
+    const [order, diningRooms, accommodationRooms, standards] = await Promise.all([
+      reservations.getReservationDetail({ order_no: options.id }),
+      catalog.listDiningRooms(),
+      catalog.listAccommodationRooms(),
+      catalog.listDiningStandards(),
     ]);
+    const rooms = diningRooms.concat(accommodationRooms);
     const status = statuses[order.reservation_status] || { text: order.reservation_status, desc: '' };
     const standard = standards.find((item) => item.meal_standard_id === order.meal_standard_id);
     const isDining = order.reservation_type === 'dining';
     this.setData({
       order: Object.assign({}, order, {
+        order_no: order.order_no || order.order_id,
         status_text: status.text,
         status_desc: status.desc,
         status_tone: status.tone || '',

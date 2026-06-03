@@ -52,7 +52,10 @@
             <text class="activity-title">{{item.title}}</text>
             <text class="activity-copy">{{item.date}} · {{item.location}} · {{item.people_count}} 人</text>
           </view>
-          <text class="activity-tag">{{item.status_text}}</text>
+          <view class="activity-actions">
+            <text class="activity-tag">{{item.status_text}}</text>
+            <button wx:if="{{item.can_cancel}}" class="cancel-button" data-id="{{item.order_no}}" catchtap="cancelActivity">取消报名</button>
+          </view>
         </view>
       </view>
       <view wx:else class="empty card">暂无会员活动记录</view>

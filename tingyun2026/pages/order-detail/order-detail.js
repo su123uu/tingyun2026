@@ -45,10 +45,11 @@ Page({
   data: { order: null, steps: [], navTop: 28, navHeight: 32 },
   async onLoad(options) {
     this.setNavigationMetrics();
-    const order = await orders.getMealOrderDetail({ order_id: options.id });
+    const order = await orders.getMealOrderDetail({ order_no: options.id });
     const status = kitchen[order.kitchen_status] || { text: order.kitchen_status, desc: '' };
     this.setData({
       order: Object.assign({}, order, {
+        order_no: order.order_no || order.order_id,
         kitchen_text: status.text,
         kitchen_desc: status.desc,
         settlement_text: settlement[order.settlement_status] || order.settlement_status,

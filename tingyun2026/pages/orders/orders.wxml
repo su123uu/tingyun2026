@@ -17,7 +17,7 @@
     </scroll-view>
   </view>
   <view class="orders">
-    <view wx:for="{{shown}}" wx:key="order_id" class="order card">
+    <view wx:for="{{shown}}" wx:key="order_no" class="order card">
       <view class="order-head"><strong>{{item.label}}</strong><text>{{item.status_text}}</text></view>
       <view wx:if="{{item.preview_item}}" class="products">
         <view class="product">

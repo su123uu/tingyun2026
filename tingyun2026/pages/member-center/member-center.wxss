@@ -34,5 +34,7 @@
 .activity-row:last-child { border-bottom: 0; }
 .activity-title { font-size: 27rpx; font-weight: 700; }
 .activity-copy { margin-top: 10rpx; color: #7C8A8C; font-size: 22rpx; }
+.activity-actions { display:flex; flex:none; align-items:flex-end; flex-direction:column; gap:12rpx; }
 .activity-tag { flex: none; padding: 7rpx 16rpx; border-radius: 24rpx; color: #876A37; background: #FAF4E7; font-size: 21rpx; }
+.cancel-button { min-height:52rpx; margin:0; padding:0 16rpx; border:1rpx solid rgba(79, 111, 82, .24); border-radius:26rpx; color:#4F6F52; background:#FFFFFF; font-size:21rpx; line-height:52rpx; }
 .empty { padding: 36rpx; color: #7C8A8C; font-size: 23rpx; text-align: center; }

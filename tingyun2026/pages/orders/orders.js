@@ -14,7 +14,7 @@ function amountText(order) {
 }
 
 function mealItems(order, menuItems) {
-  return (order.items || []).map((item) => {
+  return (order.all_items || order.items || []).map((item) => {
     const menuItem = menuItems.find((entry) => entry.item_id === item.item_id) || {};
     return {
       id: item.item_id,
@@ -26,12 +26,13 @@ function mealItems(order, menuItems) {
 }
 
 function reservationItems(order, rooms, standards) {
+  const orderNo = order.order_no || order.order_id;
   const roomIds = order.room_ids || [];
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.room_id));
   if (order.reservation_type === 'dining') {
     const standard = standards.find((item) => item.meal_standard_id === order.meal_standard_id);
     return [{
-      id: order.order_id,
+      id: orderNo,
       image: DINING_IMAGE,
       name: selectedRooms.map((room) => room.name).join('、') || '用餐预订',
       meta: standard ? `${standard.name}餐标 · ${order.people_count} 位` : `${order.people_count} 位用餐`,
@@ -43,7 +44,7 @@ function reservationItems(order, rooms, standards) {
     name: room.name,
     meta: room.category,
   }));
-  return items.length ? items : [{ id:order.order_id, image:ACCOMMODATION_IMAGE, name:'住宿预订', meta:`${order.people_count} 位入住` }];
+  return items.length ? items : [{ id:orderNo, image:ACCOMMODATION_IMAGE, name:'住宿预订', meta:`${order.people_count} 位入住` }];
 }
 
 function addPreview(card, count, unit) {
@@ -71,18 +72,22 @@ Page({
     this.setData({navTop,navHeight});
   },
   async onShow(){
-    const [mealOrders,bookOrders,signupOrders,rooms,standards,menuItems]=await Promise.all([
+    const [mealOrders,bookOrders,signupOrders,diningRooms,accommodationRooms,standards,menuItems]=await Promise.all([
       meal.listMealOrders(),
       reservations.listReservations(),
       activitySignups.listSignups(),
-      catalog.listRooms(),
-      catalog.listMealStandards(),
-      catalog.listMenuItems(),
+      catalog.listDiningRooms(),
+      catalog.listAccommodationRooms(),
+      catalog.listDiningStandards(),
+      catalog.listMealItems(),
     ]);
+    const rooms=diningRooms.concat(accommodationRooms);
     const meals=mealOrders.map((order)=>{
+      const orderNo=order.order_no||order.order_id;
       const card=Object.assign({},order,{
+        order_no:orderNo,
         type:'meal',
-        detail_id:order.order_id,
+        detail_id:orderNo,
         label:'点餐订单',
         action_text:'查看详情',
         status_text:mealStatus[order.kitchen_status]||order.kitchen_status,
@@ -90,12 +95,14 @@ Page({
         display_items:mealItems(order,menuItems),
       });
       card.amount_text=amountText(card);
-      return addPreview(card,(order.items||[]).reduce((sum,item)=>sum+item.quantity,0),'件商品');
+      return addPreview(card,(order.all_items||order.items||[]).reduce((sum,item)=>sum+item.quantity,0),'件商品');
     });
     const books=bookOrders.map((order)=>{
+      const orderNo=order.order_no||order.order_id;
       const card=Object.assign({},order,{
+        order_no:orderNo,
         type:'reservation',
-        detail_id:order.order_id,
+        detail_id:orderNo,
         label:order.reservation_type==='dining'?'用餐预订':'住宿预订',
         action_text:'查看详情',
         status_text:reservationStatus[order.reservation_status]||order.reservation_status,
@@ -106,9 +113,10 @@ Page({
       return addPreview(card,card.display_items.length,'个房间');
     });
     const activities=signupOrders.map((signup)=>{
+      const orderNo=signup.order_no||signup.signup_id;
       const card=Object.assign({},signup,{
         type:'activity',
-        order_id:signup.signup_id,
+        order_no:orderNo,
         detail_id:signup.activity_id,
         label:'活动报名',
         action_text:'查看活动',

@@ -61,7 +61,7 @@ Page({
   },
   async onLoad() {
     this.setNavigationMetrics();
-    const standards = await catalog.listMealStandards();
+    const standards = await catalog.listDiningStandards();
     this.setData({ standards: standards.map((standard) => Object.assign({}, standard, { image: STANDARD_IMAGE })) });
     await this.refreshRooms();
     this.recalculate();
@@ -157,7 +157,7 @@ Page({
   room(event) {
     const id = event.currentTarget.dataset.id;
     const room = this.allRooms.find((item) => item.room_id === id);
-    if (!room || !room.is_selectable) return this.toast(room ? room.disabled_reason : '包间不可用');
+    if (!room || !room.is_selectable) return this.toast(`${room ? room.disabled_reason : '包间不可用'}，可联系店长协调`);
     let selectedRooms = this.data.selectedRooms;
     if (selectedRooms.includes(id)) {
       selectedRooms = selectedRooms.filter((roomId) => roomId !== id);
@@ -206,9 +206,12 @@ Page({
   submit() {
     if (!this.data.date) return this.toast('请选择用餐日期');
     if (!this.data.selectedRooms.length) return this.toast('请选择包间');
-    if (this.data.selectedCapacity < this.data.people) return this.toast('所选包间总容量不足');
+    if (this.data.selectedCapacity < this.data.people) return this.toast('所选包间总容量不足，可联系店长协调');
     if (!this.data.standardId) return this.toast('请选择餐标');
     this.create();
+  },
+  callManager() {
+    wx.makePhoneCall({ phoneNumber: '15192670475' });
   },
   async create() {
     try {
@@ -225,9 +228,9 @@ Page({
       if (order.customer_type === 'guest') {
         const ok = await this.confirmPay(order.amount);
         if (!ok) return;
-        order = await reservations.simulateWechatPay({ order_id: order.order_id });
+        order = await reservations.simulateWechatPay({ order_no: order.order_no || order.order_id });
       }
-      wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_id}` });
+      wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_no || order.order_id}` });
     } catch (error) {
       this.toast(error.message);
     }

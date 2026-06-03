@@ -23,6 +23,7 @@ function maskMobile(mobile) {
 
 function decorateSignup(signup) {
   return Object.assign({}, signup, {
+    order_no: signup.order_no || signup.signup_id,
     status_text: signupStatus[signup.signup_status] || signup.signup_status,
   });
 }
@@ -105,5 +106,24 @@ Page({
   },
   openActivity(event) {
     wx.navigateTo({ url: `/pages/activity/activity?id=${event.currentTarget.dataset.id}` });
+  },
+  cancelActivity(event) {
+    const order_no = event.currentTarget.dataset.id;
+    wx.showModal({
+      title: '取消报名',
+      content: '免费活动可自行取消，取消后名额将释放。',
+      confirmText: '确认取消',
+      success: async (result) => {
+        if (!result.confirm) return;
+        try {
+          await activitySignups.cancelSignup({ order_no });
+          const signups = await activitySignups.listSignups();
+          this.setData({ activities: signups.length ? signups.map(decorateSignup) : [] });
+          wx.showToast({ title: '已取消报名', icon: 'success' });
+        } catch (error) {
+          wx.showToast({ title: error.message, icon: 'none' });
+        }
+      },
+    });
   },
 });

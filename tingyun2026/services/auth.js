@@ -14,7 +14,10 @@ async function getCurrentUser() {
   return storage.set(KEY, Object.assign({}, user, {
     mobile: member.mobile,
     nickname: member.member_name,
+    level_id: member.level_id,
     member_level: member.member_level,
+    benefit_start_at: member.benefit_start_at,
+    benefit_end_at: member.benefit_end_at,
     points_balance: member.points_balance,
     customer_type: 'member',
   }));
@@ -25,7 +28,7 @@ async function bindMobile(input) {
   assertMobile(mobile);
   const member = members.find((item) => item.mobile === mobile && item.member_status === 'active');
   const user = member
-    ? Object.assign({}, guestUser, { mobile, nickname: member.member_name, member_id: member.member_id, member_level: member.member_level, points_balance: member.points_balance, customer_type: 'member' })
+    ? Object.assign({}, guestUser, { mobile, nickname: member.member_name, member_id: member.member_id, level_id: member.level_id, member_level: member.member_level, benefit_start_at: member.benefit_start_at, benefit_end_at: member.benefit_end_at, points_balance: member.points_balance, customer_type: 'member' })
     : Object.assign({}, guestUser, { mobile });
   return storage.set(KEY, user);
 }
