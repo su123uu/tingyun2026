@@ -11,6 +11,12 @@
     <view wx:for="{{home.quick_entries}}" wx:key="entry_id" class="quick-item {{item.tone === 'booking' ? 'booking' : ''}}" data-action="{{item.action}}" bindtap="goEntry"><view class="quick-icon"><t-icon name="{{item.icon}}" size="44rpx" /></view><text class="quick-title">{{item.title}}</text><text>{{item.description}}</text></view>
   </view>
   <view wx:for="{{home.feature_cards}}" wx:key="card_id" class="home-section">
-    <view class="home-card card" data-action="{{item.action}}" bindtap="goEntry"><image src="{{item.image_url}}" mode="aspectFill" /><text>{{item.title}}</text></view>
+    <view class="home-card card" data-action="{{item.action}}" bindtap="goEntry">
+      <image src="{{item.image_url}}" mode="aspectFill" />
+      <view class="home-card-body">
+        <text class="home-card-title">{{item.title}}</text>
+        <text class="home-card-more">{{item.action === 'intro' ? '查看山居介绍 >' : '查看活动 >'}}</text>
+      </view>
+    </view>
   </view>
 </view>
