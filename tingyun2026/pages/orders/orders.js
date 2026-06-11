@@ -2,20 +2,25 @@ const meal = require('../../services/meal-order');
 const reservations = require('../../services/reservation');
 const activitySignups = require('../../services/activity-signup');
 const catalog = require('../../services/catalog');
+const assets = require('../../config/assets').assets;
 
 const mealStatus = { pending_notice:'正在通知厨房', kitchen_notified:'厨房已接单', preparing:'制作中', completed:'已完成' };
 const reservationStatus = { pending_payment:'待支付', paid_pending_confirmation:'已支付，待确认', pending_confirmation:'待确认', confirmed:'已确认', completed:'已完成' };
 const activityStatus = { pending_confirmation:'待确认', confirmed:'已确认', completed:'已完成', cancelled:'已取消' };
-const ACCOMMODATION_IMAGE = '/images/春悦.jpg';
-const DINING_IMAGE = '/images/兮古.png';
+const ACCOMMODATION_IMAGE = assets.rooms.accommodation;
+const DINING_IMAGE = assets.rooms.dining;
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
 
 function amountText(order) {
   return order.type === 'activity' && !order.amount ? '免费' : `¥${order.amount}`;
 }
 
 function mealItems(order, menuItems) {
-  return (order.all_items || order.items || []).map((item) => {
-    const menuItem = menuItems.find((entry) => entry.item_id === item.item_id) || {};
+  return asArray(order.all_items || order.items).map((item) => {
+    const menuItem = asArray(menuItems).find((entry) => entry.item_id === item.item_id) || {};
     return {
       id: item.item_id,
       image: item.image || menuItem.image,
@@ -27,20 +32,20 @@ function mealItems(order, menuItems) {
 
 function reservationItems(order, rooms, standards) {
   const orderNo = order.order_no || order.order_id;
-  const roomIds = order.room_ids || [];
-  const selectedRooms = rooms.filter((room) => roomIds.includes(room.room_id));
+  const roomIds = asArray(order.room_ids);
+  const selectedRooms = asArray(rooms).filter((room) => roomIds.includes(room.room_id));
   if (order.reservation_type === 'dining') {
-    const standard = standards.find((item) => item.meal_standard_id === order.meal_standard_id);
+    const standard = asArray(standards).find((item) => item.meal_standard_id === order.meal_standard_id);
     return [{
       id: orderNo,
-      image: DINING_IMAGE,
+      image: selectedRooms[0] && (selectedRooms[0].image || selectedRooms[0].image_url) || standard && (standard.image || standard.image_url) || DINING_IMAGE,
       name: selectedRooms.map((room) => room.name).join('、') || '用餐预订',
       meta: standard ? `${standard.name}餐标 · ${order.people_count} 位` : `${order.people_count} 位用餐`,
     }];
   }
   const items = selectedRooms.map((room) => ({
     id: room.room_id,
-    image: ACCOMMODATION_IMAGE,
+    image: room.image || room.image_url || ACCOMMODATION_IMAGE,
     name: room.name,
     meta: room.category,
   }));
@@ -72,7 +77,7 @@ Page({
     this.setData({navTop,navHeight});
   },
   async onShow(){
-    const [mealOrders,bookOrders,signupOrders,diningRooms,accommodationRooms,standards,menuItems]=await Promise.all([
+    const [rawMealOrders,rawBookOrders,rawSignupOrders,rawDiningRooms,rawAccommodationRooms,rawStandards,rawMenuItems]=await Promise.all([
       meal.listMealOrders(),
       reservations.listReservations(),
       activitySignups.listSignups(),
@@ -81,6 +86,13 @@ Page({
       catalog.listDiningStandards(),
       catalog.listMealItems(),
     ]);
+    const mealOrders=asArray(rawMealOrders);
+    const bookOrders=asArray(rawBookOrders);
+    const signupOrders=asArray(rawSignupOrders);
+    const diningRooms=asArray(rawDiningRooms);
+    const accommodationRooms=asArray(rawAccommodationRooms);
+    const standards=asArray(rawStandards);
+    const menuItems=asArray(rawMenuItems);
     const rooms=diningRooms.concat(accommodationRooms);
     const meals=mealOrders.map((order)=>{
       const orderNo=order.order_no||order.order_id;
@@ -95,7 +107,7 @@ Page({
         display_items:mealItems(order,menuItems),
       });
       card.amount_text=amountText(card);
-      return addPreview(card,(order.all_items||order.items||[]).reduce((sum,item)=>sum+item.quantity,0),'件商品');
+      return addPreview(card,asArray(order.all_items || order.items).reduce((sum,item)=>sum+item.quantity,0),'件商品');
     });
     const books=bookOrders.map((order)=>{
       const orderNo=order.order_no||order.order_id;
@@ -127,7 +139,7 @@ Page({
       card.amount_text=amountText(card);
       return addPreview(card,1,'个活动');
     });
-    const orders=meals.concat(books,activities).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+    const orders=meals.concat(books,activities).sort((a,b)=>String(b.created_at || '').localeCompare(String(a.created_at || '')));
     this.setData({orders});
     this.filter();
   },

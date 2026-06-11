@@ -1,0 +1,12 @@
+{
+  "version": "2.0",
+  "envId": "cloud1-d6gzs6wuu4b4e902e",
+  "app": {
+    "serviceName": "tysj8",
+    "framework": "vite",
+    "installCommand": "npm install --registry=https://registry.npmmirror.com",
+    "buildCommand": "npm run build",
+    "outputDir": "dist",
+    "deployPath": "/tysj8"
+  }
+}

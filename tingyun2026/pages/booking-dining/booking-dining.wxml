@@ -127,7 +127,7 @@
   </view>
   <view class="standard-detail-list">
     <strong class="standard-detail-title">餐品说明</strong>
-    <view wx:for="{{selectedStandard.dishes}}" wx:key="name" class="standard-detail-row"><text>{{item.name}}</text><text>{{item.content}}</text></view>
+    <view wx:for="{{selectedStandardDishes}}" wx:key="name" class="standard-detail-row"><text>{{item.name}}</text><text>{{item.content}}</text></view>
   </view>
   <button class="standard-detail-button" bindtap="chooseStandard">{{standardId===selectedStandard.meal_standard_id?'已选择此餐标':'选择此餐标'}}</button>
 </view>

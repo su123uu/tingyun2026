@@ -1,8 +1,10 @@
 const reservations = require('../../services/reservation');
 const auth = require('../../services/auth');
 const pricing = require('../../utils/pricing');
+const notification = require('../../services/notification');
+const assets = require('../../config/assets').assets;
 
-const ROOM_IMAGE = '/images/春悦.jpg';
+const ROOM_IMAGE = assets.rooms.accommodation;
 const ROOM_BEDS = {
   chunyue: '1.5m + 1.2m',
   xiashe: '1.5m',
@@ -32,8 +34,50 @@ function formatShortDate(timestamp) {
   return formatDate(timestamp, '.').slice(5);
 }
 
+function parseDateKey(key) {
+  const parts = key.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+}
+
+function buildDateRangeMap(ranges) {
+  const map = {};
+  ranges.forEach((range) => {
+    let current = parseDateKey(range.start);
+    const end = parseDateKey(range.end);
+    while (current <= end) {
+      map[formatDate(current)] = range.label;
+      current = addDays(current, 1);
+    }
+  });
+  return map;
+}
+
+function normalizeRoomImages(room) {
+  const images = Array.isArray(room.image_urls) ? room.image_urls.filter(Boolean) : [];
+  const fallback = room.image || room.image_url || ROOM_IMAGE;
+  if (!images.length && fallback) images.push(fallback);
+  return images;
+}
+
 const today = startOfDay(new Date());
 const tomorrow = addDays(today, 1);
+const holidayTips = buildDateRangeMap([
+  { start: '2026-01-01', end: '2026-01-03', label: '元旦' },
+  { start: '2026-02-15', end: '2026-02-23', label: '春节' },
+  { start: '2026-04-04', end: '2026-04-06', label: '清明' },
+  { start: '2026-05-01', end: '2026-05-05', label: '劳动节' },
+  { start: '2026-06-19', end: '2026-06-21', label: '端午' },
+  { start: '2026-09-25', end: '2026-09-27', label: '中秋' },
+  { start: '2026-10-01', end: '2026-10-07', label: '国庆' },
+]);
+const workdayTips = {
+  '2026-01-04': '调休',
+  '2026-02-14': '调休',
+  '2026-02-28': '调休',
+  '2026-05-09': '调休',
+  '2026-09-20': '调休',
+  '2026-10-10': '调休',
+};
 
 Page({
   data: {
@@ -43,6 +87,8 @@ Page({
     checkOutDisplay: formatShortDate(tomorrow),
     calendarVisible: false,
     calendarValue: [today, tomorrow],
+    holidayTips,
+    workdayTips,
     minDate: today,
     maxDate: addDays(today, 366),
     people: 2,
@@ -51,6 +97,7 @@ Page({
     selectedRooms: [],
     showRoomDetail: false,
     selectedRoom: null,
+    roomGalleryCurrent: 0,
     contact: '山里人',
     mobile: '13800136688',
     remark: '',
@@ -121,6 +168,10 @@ Page({
   closeCalendar() { this.setData({ calendarVisible: false }); },
   async confirmCalendar(event) {
     const value = event.detail.value;
+    if (!Array.isArray(value) || value.length < 2) {
+      this.setData({ calendarVisible: false });
+      return;
+    }
     const checkIn = formatDate(value[0]);
     const checkOut = formatDate(value[1]);
     this.setData({
@@ -142,16 +193,21 @@ Page({
       check_in_date: this.data.checkIn,
       check_out_date: this.data.checkOut,
     });
-    const rooms = Array.isArray(availability) ? availability : availability.rooms;
-    const availableBenefits = Array.isArray(availability) ? [] : availability.available_benefits;
-    const selectableIds = rooms.filter((room) => room.is_selectable).map((room) => room.room_id);
+    const rooms = Array.isArray(availability) ? availability : (availability && availability.rooms);
+    const availableBenefits = Array.isArray(availability) ? [] : (availability && availability.available_benefits);
+    const normalizedRooms = Array.isArray(rooms) ? rooms : [];
+    const selectableIds = normalizedRooms.filter((room) => room.is_selectable).map((room) => room.room_id);
     const selectedRooms = this.data.selectedRooms.filter((id) => selectableIds.includes(id));
-    this.allRooms = rooms.map((room) => Object.assign({}, room, {
-      image: ROOM_IMAGE,
-      bed: ROOM_BEDS[room.room_id] || '详询客服',
-      selected: selectedRooms.includes(room.room_id),
-    }));
-    this.setData({ selectedRooms, rooms: this.allRooms, availableBenefits });
+    this.allRooms = normalizedRooms.map((room) => {
+      const images = normalizeRoomImages(room);
+      return Object.assign({}, room, {
+        images,
+        image: images[0] || ROOM_IMAGE,
+        bed: ROOM_BEDS[room.room_id] || '详询客服',
+        selected: selectedRooms.includes(room.room_id),
+      });
+    });
+    this.setData({ selectedRooms, rooms: this.allRooms, availableBenefits: Array.isArray(availableBenefits) ? availableBenefits : [] });
   },
   room(event) {
     const id = event.currentTarget.dataset.id;
@@ -167,9 +223,21 @@ Page({
   },
   openRoomDetail(event) {
     const selectedRoom = this.allRooms.find((room) => room.room_id === event.currentTarget.dataset.id);
-    if (selectedRoom) this.setData({ selectedRoom, showRoomDetail: true });
+    if (selectedRoom) this.setData({ selectedRoom, showRoomDetail: true, roomGalleryCurrent: 0 });
   },
   hideRoomDetail() { this.setData({ selectedRoom: null, showRoomDetail: false }); },
+  onRoomGalleryChange(event) {
+    this.setData({ roomGalleryCurrent: event.detail.current || 0 });
+  },
+  previewRoomImages() {
+    const room = this.data.selectedRoom;
+    const urls = room && Array.isArray(room.images) ? room.images.filter(Boolean) : [];
+    if (!urls.length) return;
+    wx.previewImage({
+      urls,
+      current: urls[this.data.roomGalleryCurrent] || urls[0],
+    });
+  },
   reserveRoom() {
     const room = this.data.selectedRoom;
     if (!room) return;
@@ -201,6 +269,7 @@ Page({
   },
   async create() {
     try {
+      const subscription = await notification.requestReservationStatus();
       let order = await reservations.createAccommodationReservation({
         check_in_date: this.data.checkIn,
         check_out_date: this.data.checkOut,
@@ -209,16 +278,30 @@ Page({
         contact_name: this.data.contact,
         mobile: this.data.mobile,
         remark: this.data.remark,
+        notification_subscriptions: subscription,
       });
       if (order.customer_type === 'guest') {
-        const ok = await new Promise((resolve) => wx.showModal({ title: '模拟微信支付', content: `本次支付 ¥${order.amount}，不会真实扣款。`, confirmText: '模拟支付', success: (result) => resolve(result.confirm) }));
-        if (!ok) return;
-        order = await reservations.simulateWechatPay({ order_no: order.order_no || order.order_id });
+        await this.payReservation(order.order_no || order.order_id);
       }
       wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_no || order.order_id}` });
     } catch (error) {
       this.toast(error.message);
     }
+  },
+  async payReservation(orderNo) {
+    const paymentResult = await reservations.createReservationPayment({ order_no: orderNo });
+    const payment = paymentResult.payment || paymentResult.raw_payment || paymentResult;
+    await new Promise((resolve, reject) => {
+      wx.requestPayment(Object.assign({}, payment, {
+        success: resolve,
+        fail: (error) => {
+          const message = error && error.errMsg && error.errMsg.includes('cancel')
+            ? '支付已取消'
+            : ((error && error.errMsg) || '微信支付失败');
+          reject(new Error(message));
+        },
+      }));
+    });
   },
   toast(title) { wx.showToast({ title, icon: 'none' }); },
 });

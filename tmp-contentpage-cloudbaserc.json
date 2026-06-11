@@ -1,0 +1,13 @@
+{
+  "envId": "cloud1-d6gzs6wuu4b4e902e",
+  "functionRoot": "./tingyun2026/cloudfunctions",
+  "functions": [
+    {
+      "name": "contentPageGet",
+      "handler": "index.main",
+      "timeout": 15,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256
+    }
+  ]
+}

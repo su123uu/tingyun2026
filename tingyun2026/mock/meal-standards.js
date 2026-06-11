@@ -1,8 +1,11 @@
+const assets = require('../config/assets').assets;
+
 const standards = [
   {
     meal_standard_id: 'group_meal',
     name: '团餐',
     price_per_person: 40,
+    image_url: assets.diningStandards.sample,
     summary: '家常山居风味，荤素搭配，适合多人聚餐',
     dishes: [
       { name: '凉菜', content: '时蔬凉菜 2 道' },
@@ -15,6 +18,7 @@ const standards = [
     meal_standard_id: 'yangyun',
     name: '养云',
     price_per_person: 168,
+    image_url: assets.diningStandards.sample,
     summary: '时令山珍与特色菜品搭配，适合雅聚宴请',
     dishes: [
       { name: '凉菜', content: '山野冷盘 4 道' },
@@ -28,6 +32,7 @@ const standards = [
     meal_standard_id: 'guiyun',
     name: '归云',
     price_per_person: 218,
+    image_url: assets.diningStandards.sample,
     summary: '山海鲜味入席，菜品丰盛，适合重要聚会',
     dishes: [
       { name: '凉菜', content: '精致冷盘 4 道' },
@@ -41,6 +46,7 @@ const standards = [
     meal_standard_id: 'tingyun',
     name: '停云',
     price_per_person: 318,
+    image_url: assets.diningStandards.sample,
     summary: '山居宴席精选，讲究食材与摆盘，适合贵宾宴请',
     dishes: [
       { name: '凉菜', content: '迎宾冷盘 6 道' },

@@ -19,6 +19,13 @@ const memberLevels = [
   { level_id: 'level_5', level_no: 5, level_name: '云境', stored_amount: 100000, points_granted: 125000, valid_months: 36 },
 ];
 
+const memberLevelBenefits = [
+  { level_benefit_id: 'level_2_member_service', level_id: 'level_2', benefit_key: 'member_service', benefit_name: '会员活动与山居管家服务', benefit_type: 'service', description: '会员有效期内可参加会员专属活动，并享受山居管家咨询服务。', show_on_card: true, is_enabled: true, sort_order: 10 },
+  { level_benefit_id: 'level_2_storage_service', level_id: 'level_2', benefit_key: 'storage_service', benefit_name: '定制储藏服务', benefit_type: 'service', description: '支持线下联系店长确认储藏规则与使用方式。', show_on_card: true, is_enabled: true, sort_order: 20 },
+  { level_benefit_id: 'level_2_free_accommodation', level_id: 'level_2', benefit_key: 'free_accommodation', benefit_name: '免费住宿', benefit_type: 'quota', total_quota: 10, quota_unit: '次', description: '不限房型，仍需按入住日期确认房间可用性。', show_on_card: false, is_enabled: true, sort_order: 30 },
+  { level_benefit_id: 'level_2_nature_picking', level_id: 'level_2', benefit_key: 'nature_picking', benefit_name: '自然采摘', benefit_type: 'quota', total_quota: 20, quota_unit: '人次', description: '按实际参与人数核销。', show_on_card: false, is_enabled: true, sort_order: 40 },
+];
+
 const memberBenefitAccounts = [
   {
     benefit_account_id: 'MBA_FREE_STAY_001',
@@ -26,6 +33,7 @@ const memberBenefitAccounts = [
     level_id: 'level_2',
     benefit_key: 'free_accommodation',
     benefit_name: '免费住宿',
+    benefit_type: 'quota',
     total_quota: 10,
     used_quota: 2,
     locked_quota: 0,
@@ -39,6 +47,23 @@ const memberBenefitAccounts = [
     valid_end_at: '2027-05-01T00:00:00+08:00',
     account_status: 'active',
   },
+  {
+    benefit_account_id: 'MBA_PICKING_001',
+    member_id: 'member_001',
+    level_id: 'level_2',
+    benefit_key: 'nature_picking',
+    benefit_name: '自然采摘',
+    benefit_type: 'quota',
+    total_quota: 20,
+    used_quota: 6,
+    locked_quota: 0,
+    remaining_quota: 14,
+    quota_unit: '人次',
+    rule_snapshot: {},
+    valid_start_at: '2026-01-01T00:00:00+08:00',
+    valid_end_at: '2027-05-01T00:00:00+08:00',
+    account_status: 'active',
+  },
 ];
 
-module.exports = { guestUser, members, memberLevels, memberBenefitAccounts };
+module.exports = { guestUser, members, memberLevels, memberLevelBenefits, memberBenefitAccounts };

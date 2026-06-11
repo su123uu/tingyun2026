@@ -1,0 +1,26 @@
+<!--index.wxml-->
+<view class="page-body">
+  <view class="btn-area" id="buttonContainer2">
+    <view>打印内容测试</view>
+    <button type="primary" bindtap="addPrintersTest">添加打印机</button>
+    <button type="primary" bindtap="printFontAlign">小票打印字体对齐样例</button>
+    <button type="primary" bindtap="printFontAlignVoiceSupport">小票打印字体对齐样例，金额播报</button>
+    <button type="primary" bindtap="printComplexReceipt">小票打印综合排版样例</button>
+    <button type="primary" bindtap="printComplexReceiptVoiceSupport">小票打印综合排版样例，金额播报</button>
+    <button type="primary" bindtap="printLabel">标签打印综合排版样例</button>
+  </view>
+</view>
+
+<view class="page-body">
+  <view>打印机管理</view>
+  <view class="btn-area" id="buttonContainer1">    
+    <button type="primary" bindtap="setVoiceTypeTest">设置语音</button>
+    <button type="warn" bindtap="delPrintersTest">删除</button>
+    <button type="primary" bindtap="updPrinterTest">修改</button>
+    <button type="warn" bindtap="delPrinterQueueTest">清空打印队列</button>
+    <button type="primary" bindtap="queryOrderStateTest">查询订单状态</button>
+    <button type="primary" bindtap="queryOrderStatisTest">统计订单</button>
+    <button type="primary" bindtap="queryPrinterStatusTest">获取指定打印机状态</button>
+    <button type="primary" bindtap="playVoiceTest">金额播报</button>
+  </view>
+</view>

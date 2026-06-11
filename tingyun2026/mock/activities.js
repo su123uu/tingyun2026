@@ -1,3 +1,5 @@
+const assets = require('../config/assets').assets;
+
 const activities = [
   {
     activity_id: 'meditation',
@@ -7,7 +9,7 @@ const activities = [
     detail_summary: '在一呼一吸之间，感受山林与内心的安静。',
     intro: ['由专业导师带领，从基础呼吸练习开始，逐步进入适合初学者的静坐体验。', '课程中会安排舒展与自由交流时间，建议穿着宽松舒适的衣物。'],
     notice: '仅权益有效期内会员可报名，每位会员默认最多报名 2 人。超过人数请联系客服沟通。',
-    image_url: '/images/meditation-activity.jpg',
+    image_url: assets.activities.meditation,
     date: '2026-06-15',
     time: '14:00-17:00',
     location: '停云山居 · 禅修室',
@@ -28,7 +30,7 @@ const activities = [
     detail_summary: '循香识茶，也在一盏茶的时间里慢下来。',
     intro: ['本次茶席以崂山春茶为引，带领会员认识不同茶汤的香气、温度与回甘。', '活动将保留自由交流时间，可携 1 位同行者参与。'],
     notice: '仅权益有效期内会员可报名，每位会员默认最多报名 2 人。超过人数请联系客服沟通。',
-    image_url: '/images/tea-activity.jpg',
+    image_url: assets.activities.tea,
     date: '2026-06-20',
     time: '16:00-18:00',
     location: '停云山居 · 茶空间',
@@ -49,7 +51,7 @@ const activities = [
     detail_summary: '夏夜松风作伴，听一场只属于山居的音乐会。',
     intro: ['以夏至为题，邀请音乐人与山居来客共度一个有风、有茶、有旋律的夜晚。', '现场座位有限，请按报名人数入场。'],
     notice: '本场活动已满员。如需候补或咨询后续活动安排，请联系客服。',
-    image_url: '/images/music-activity.jpg',
+    image_url: assets.activities.music,
     date: '2026-06-28',
     time: '19:00-21:00',
     location: '停云山居 · 山景露台',

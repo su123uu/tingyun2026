@@ -1,1 +1,238 @@
-.cover { width:100%; height:570rpx; }.copy { display:flex; flex-direction:column; padding:34rpx 28rpx 8rpx; }.body { margin-top:22rpx; color:#4A4A4A; font-size:26rpx; line-height:1.9; }.grid { display:grid; gap:18rpx; padding:0 28rpx; }.grid .card { overflow:hidden; }.grid image { width:100%; height:220rpx; }.grid text { display:block; padding:20rpx; font-size:28rpx; font-weight:700; }
+.page {
+  min-height: 100vh;
+  padding-bottom: calc(44rpx + env(safe-area-inset-bottom));
+  background: #F5F0E7;
+}
+
+.cover {
+  width: 100%;
+  height: 760rpx;
+  display: block;
+  background: #D8D0C3;
+}
+
+.empty-cover {
+  background: linear-gradient(180deg, #2F4736, #F5F0E7);
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  padding: 42rpx 32rpx 18rpx;
+}
+
+.eyebrow {
+  color: #8A713D;
+  font-size: 22rpx;
+  letter-spacing: 4rpx;
+}
+
+.title {
+  margin-top: 14rpx;
+  color: #1F2C24;
+  font-size: 48rpx;
+  font-weight: 700;
+  line-height: 1.22;
+}
+
+.summary {
+  margin-top: 22rpx;
+  color: #5A625A;
+  font-size: 28rpx;
+  line-height: 1.8;
+}
+
+.notice {
+  margin: 10rpx 32rpx 0;
+  padding: 18rpx 22rpx;
+  border-radius: 8rpx;
+  color: #8A6A2F;
+  background: rgba(190, 155, 91, .16);
+  font-size: 24rpx;
+}
+
+.content {
+  padding: 8rpx 32rpx 0;
+}
+
+.lead {
+  margin-top: 20rpx;
+  padding: 28rpx;
+  border-radius: 8rpx;
+  color: #FFFFFF;
+  background: #2F4736;
+  font-size: 29rpx;
+  line-height: 1.85;
+}
+
+.section-title {
+  display: block;
+  margin: 50rpx 0 22rpx;
+  color: #1F2C24;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.paragraph {
+  margin-top: 22rpx;
+  color: #454C45;
+  font-size: 28rpx;
+  line-height: 1.9;
+}
+
+.quote {
+  margin-top: 28rpx;
+  padding: 28rpx;
+  border-left: 6rpx solid #B7985C;
+  color: #3F4A40;
+  background: rgba(255, 255, 255, .7);
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 1.8;
+}
+
+.wide-image {
+  width: 100%;
+  display: block;
+  margin-top: 30rpx;
+  border-radius: 8rpx;
+  background: #D8D0C3;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18rpx;
+  margin-top: 26rpx;
+}
+
+.feature-card {
+  min-height: 184rpx;
+  padding: 24rpx;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+}
+
+.feature-title {
+  display: block;
+  color: #26362B;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.feature-text {
+  display: block;
+  margin-top: 12rpx;
+  color: #606760;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.space-list {
+  margin-top: 24rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+  background: #FFFFFF;
+}
+
+.space-item {
+  padding: 26rpx;
+  border-bottom: 1rpx solid rgba(47, 71, 54, .1);
+}
+
+.space-item:last-child {
+  border-bottom: 0;
+}
+
+.space-title {
+  display: block;
+  color: #26362B;
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.space-text {
+  display: block;
+  margin-top: 10rpx;
+  color: #5D655E;
+  font-size: 26rpx;
+  line-height: 1.65;
+}
+
+.list {
+  margin-top: 18rpx;
+  padding: 18rpx 24rpx;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+}
+
+.list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 12rpx 0;
+  color: #454C45;
+  font-size: 27rpx;
+  line-height: 1.7;
+}
+
+.dot {
+  width: 10rpx;
+  height: 10rpx;
+  flex: 0 0 10rpx;
+  margin-top: 18rpx;
+  border-radius: 50%;
+  background: #B7985C;
+}
+
+.rich-text {
+  display: block;
+  margin-top: 22rpx;
+  color: #454C45;
+  font-size: 28rpx;
+  line-height: 1.9;
+}
+
+.contact-card {
+  margin-top: 36rpx;
+  overflow: hidden;
+  border-radius: 8rpx;
+  background: #223027;
+}
+
+.contact-card image {
+  width: 100%;
+  display: block;
+}
+
+.contact-copy {
+  display: flex;
+  flex-direction: column;
+  padding: 28rpx;
+}
+
+.contact-title {
+  color: #FFFFFF;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.contact-text {
+  margin-top: 14rpx;
+  white-space: pre-line;
+  color: rgba(255, 255, 255, .78);
+  font-size: 27rpx;
+  line-height: 1.8;
+}
+
+.contact-button {
+  width: 100%;
+  height: 78rpx;
+  margin-top: 26rpx;
+  border: 0;
+  border-radius: 8rpx;
+  color: #223027;
+  background: #D8BE82;
+  font-size: 27rpx;
+  line-height: 78rpx;
+}

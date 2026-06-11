@@ -37,8 +37,13 @@ function getMonthTitle(year, month, pattern = '') {
   });
 }
 
+function getMonthText(months, index) {
+  return months && months[index] ? months[index] : '';
+}
+
 module.exports = {
   getDateLabel: getDateLabel,
   isDateSelected: isDateSelected,
   getMonthTitle: getMonthTitle,
+  getMonthText: getMonthText,
 };

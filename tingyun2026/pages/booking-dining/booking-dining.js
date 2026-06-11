@@ -1,8 +1,14 @@
 const catalog = require('../../services/catalog');
 const reservations = require('../../services/reservation');
+const notification = require('../../services/notification');
+const assets = require('../../config/assets').assets;
 
-const ROOM_IMAGE = '/images/兮古.png';
-const STANDARD_IMAGE = '/images/餐标示例.png';
+const ROOM_IMAGE = assets.rooms.dining;
+const STANDARD_IMAGE = assets.diningStandards.sample;
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -44,6 +50,7 @@ Page({
     standardId: 'group_meal',
     showStandardDetail: false,
     selectedStandard: null,
+    selectedStandardDishes: [],
     contact: '山里人',
     mobile: '13800136688',
     remark: '',
@@ -62,7 +69,7 @@ Page({
   async onLoad() {
     this.setNavigationMetrics();
     const standards = await catalog.listDiningStandards();
-    this.setData({ standards: standards.map((standard) => Object.assign({}, standard, { image: STANDARD_IMAGE })) });
+    this.setData({ standards: asArray(standards).map((standard) => Object.assign({}, standard, { image: standard.image || standard.image_url || STANDARD_IMAGE })) });
     await this.refreshRooms();
     this.recalculate();
   },
@@ -113,6 +120,10 @@ Page({
   closeCalendar() { this.setData({ calendarVisible: false }); },
   async confirmCalendar(event) {
     const value = event.detail.value;
+    if (!value) {
+      this.setData({ calendarVisible: false });
+      return;
+    }
     this.setData({
       calendarVisible: false,
       calendarValue: value,
@@ -141,17 +152,17 @@ Page({
     const requestId = (this.roomsRequestId || 0) + 1;
     this.roomsRequestId = requestId;
     const people = Number(this.data.people) || 6;
-    const rooms = await reservations.listDiningRooms({
+    const rooms = asArray(await reservations.listDiningRooms({
       date: this.data.date,
       time_slot: this.data.slot,
       people_count: people,
-    });
+    }));
     if (requestId !== this.roomsRequestId) return;
     const selectableIds = rooms.filter((room) => room.is_selectable).map((room) => room.room_id);
     const maxSelectableRooms = reservations.getDiningRoomSelectionLimit(people);
     let selectedRooms = this.data.selectedRooms.filter((id) => selectableIds.includes(id));
     if (selectedRooms.length > maxSelectableRooms) selectedRooms = selectedRooms.slice(0, maxSelectableRooms);
-    this.allRooms = rooms.map((room) => Object.assign({}, room, { image: ROOM_IMAGE }));
+    this.allRooms = rooms.map((room) => Object.assign({}, room, { image: room.image || room.image_url || ROOM_IMAGE }));
     this.updateRooms(selectedRooms, maxSelectableRooms);
   },
   room(event) {
@@ -186,9 +197,15 @@ Page({
   },
   openStandardDetail(event) {
     const selectedStandard = this.data.standards.find((standard) => standard.meal_standard_id === event.currentTarget.dataset.id);
-    if (selectedStandard) this.setData({ selectedStandard, showStandardDetail: true });
+    if (selectedStandard) {
+      this.setData({
+        selectedStandard,
+        selectedStandardDishes: asArray(selectedStandard.dishes),
+        showStandardDetail: true,
+      });
+    }
   },
-  hideStandardDetail() { this.setData({ selectedStandard: null, showStandardDetail: false }); },
+  hideStandardDetail() { this.setData({ selectedStandard: null, selectedStandardDishes: [], showStandardDetail: false }); },
   chooseStandard() {
     if (!this.data.selectedStandard) return;
     this.setData({ standardId: this.data.selectedStandard.meal_standard_id });
@@ -215,6 +232,7 @@ Page({
   },
   async create() {
     try {
+      const subscription = await notification.requestDiningReservationStatus();
       let order = await reservations.createDiningReservation({
         date: this.data.date,
         time_slot: this.data.slot,
@@ -224,24 +242,30 @@ Page({
         contact_name: this.data.contact,
         mobile: this.data.mobile,
         remark: this.data.remark,
+        notification_subscriptions: subscription,
       });
       if (order.customer_type === 'guest') {
-        const ok = await this.confirmPay(order.amount);
-        if (!ok) return;
-        order = await reservations.simulateWechatPay({ order_no: order.order_no || order.order_id });
+        await this.payReservation(order.order_no || order.order_id);
       }
       wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_no || order.order_id}` });
     } catch (error) {
       this.toast(error.message);
     }
   },
-  confirmPay(amount) {
-    return new Promise((resolve) => wx.showModal({
-      title: '模拟微信支付',
-      content: `本次支付 ¥${amount}，不会真实扣款。`,
-      confirmText: '模拟支付',
-      success: (result) => resolve(result.confirm),
-    }));
+  async payReservation(orderNo) {
+    const paymentResult = await reservations.createReservationPayment({ order_no: orderNo });
+    const payment = paymentResult.payment || paymentResult.raw_payment || paymentResult;
+    await new Promise((resolve, reject) => {
+      wx.requestPayment(Object.assign({}, payment, {
+        success: resolve,
+        fail: (error) => {
+          const message = error && error.errMsg && error.errMsg.includes('cancel')
+            ? '支付已取消'
+            : ((error && error.errMsg) || '微信支付失败');
+          reject(new Error(message));
+        },
+      }));
+    });
   },
   toast(title) { wx.showToast({ title, icon: 'none' }); },
 });

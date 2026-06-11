@@ -1,0 +1,44 @@
+{
+  "envId": "cloud1-d6gzs6wuu4b4e902e",
+  "functionRoot": "./tingyun2026/cloudfunctions",
+  "functions": [
+    {
+      "name": "adminManage",
+      "handler": "index.main",
+      "timeout": 20,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256,
+      "envVariables": {
+        "ADMIN_USERNAME": "admin",
+        "ADMIN_API_TOKEN": "tingyun2026bannerAdmin",
+        "bannerAdmin": "tingyun2026bannerAdmin"
+      }
+    },
+    {
+      "name": "reservationManage",
+      "handler": "index.main",
+      "timeout": 20,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256
+    },
+    {
+      "name": "mealOrderManage",
+      "handler": "index.main",
+      "timeout": 20,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256
+    },
+    {
+      "name": "payCallback",
+      "handler": "index.main",
+      "timeout": 20,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256,
+      "envVariables": {
+        "WECHAT_PAY_SUB_MCH_ID": "1113835285",
+        "WX_CLOUD_ENV_ID": "cloud1-d6gzs6wuu4b4e902e",
+        "WECHAT_PAY_CALLBACK_FUNCTION": "payCallback"
+      }
+    }
+  ]
+}

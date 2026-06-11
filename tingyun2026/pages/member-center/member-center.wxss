@@ -4,13 +4,16 @@
 .back { display: flex; width: 48rpx; height: 100%; flex: none; align-items: center; justify-content: center; }
 .back-arrow { width: 18rpx; height: 18rpx; border-bottom: 3rpx solid #4A554F; border-left: 3rpx solid #4A554F; transform: rotate(45deg); }
 .heading { display: flex; min-width: 0; flex-direction: column; justify-content: center; }
-.title,.subtitle,.eyebrow,.level,.member-meta text,.member-meta strong,.guest-title,.guest-copy,.benefit-name,.benefit-copy,.activity-title,.activity-copy { display: block; }
+.title,.subtitle,.eyebrow,.level,.validity,.member-meta text,.member-meta strong,.guest-title,.guest-copy,.benefit-name,.benefit-copy,.benefit-desc,.activity-title,.activity-copy { display: block; }
 .title { font-family: "Songti SC", serif; font-size: 40rpx; font-weight: 700; letter-spacing: 3rpx; line-height: 1.1; }
 .subtitle { margin-top: 8rpx; color: #7C8A8C; font-size: 22rpx; letter-spacing: 1rpx; }
 .member-card { position: relative; overflow: hidden; margin: 28rpx 28rpx 0; padding: 38rpx; border: 1rpx solid rgba(201, 169, 98, .55); border-radius: 28rpx; color: #F4DFA6; background: radial-gradient(circle at 90% 14%, rgba(201, 169, 98, .20), transparent 28%), linear-gradient(135deg, #171715, #2A2722); box-shadow: 0 12rpx 28rpx rgba(26, 26, 26, .17); }
 .member-card::after { position: absolute; right: -96rpx; bottom: -140rpx; width: 340rpx; height: 340rpx; border: 1rpx solid rgba(201, 169, 98, .17); border-radius: 50%; content: ""; box-shadow: 0 0 0 48rpx rgba(201, 169, 98, .035); }
 .eyebrow { color: rgba(244, 223, 166, .65); font-size: 19rpx; letter-spacing: 5rpx; }
 .level { margin-top: 26rpx; font-family: "Songti SC", serif; font-size: 49rpx; font-weight: 700; }
+.validity { position: relative; z-index: 1; margin-top: 12rpx; color: rgba(255, 255, 255, .70); font-size: 22rpx; letter-spacing: 1rpx; }
+.card-services { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 28rpx; }
+.card-service { max-width: 100%; padding: 8rpx 16rpx; border: 1rpx solid rgba(244, 223, 166, .32); border-radius: 999rpx; color: #F4DFA6; background: rgba(244, 223, 166, .08); font-size: 21rpx; box-sizing: border-box; }
 .member-meta { display: flex; justify-content: space-between; gap: 24rpx; margin-top: 42rpx; color: rgba(255, 255, 255, .68); font-size: 21rpx; }
 .member-meta strong { margin-top: 8rpx; color: #FFFFFF; font-size: 25rpx; }
 .guest-card { margin: 28rpx 28rpx 0; padding: 34rpx; border-radius: 24rpx; background: #FFFFFF; box-shadow: 0 8rpx 24rpx rgba(26, 26, 26, .05); }
@@ -28,6 +31,8 @@
 .benefit-no { display: flex; width: 54rpx; height: 54rpx; flex: none; align-items: center; justify-content: center; border-radius: 50%; color: #876A37; background: #FAF4E7; font-size: 20rpx; }
 .benefit-name { font-size: 26rpx; font-weight: 700; }
 .benefit-copy { margin-top: 7rpx; color: #8A918B; font-size: 21rpx; }
+.benefit-desc { margin-top: 8rpx; color: #A0927B; font-size: 20rpx; line-height: 1.5; }
+.quota-benefit { align-items: flex-start; }
 .intro-button { color: #4F6F52; border: 1rpx solid rgba(79, 111, 82, .24); background: #FFFFFF; }
 .activity { overflow: hidden; }
 .activity-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 26rpx; border-bottom: 1rpx solid rgba(26, 26, 26, .06); }

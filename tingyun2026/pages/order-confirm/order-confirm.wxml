@@ -10,7 +10,7 @@
   </view>
   <view class="content">
     <view class="dining card">
-      <view><text>桌号</text><strong>{{session.table_id}}</strong></view>
+      <view><text>桌台</text><strong>{{sessionLabel}}</strong></view>
       <view><text>类型</text><strong>堂食</strong></view>
       <view><text>用餐人数</text><strong>{{session.people_count}} 位</strong></view>
     </view>

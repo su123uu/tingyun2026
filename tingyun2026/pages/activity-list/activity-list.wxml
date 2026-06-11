@@ -1,6 +1,6 @@
 <view class="page activity-page">
   <view class="hero">
-    <image src="/images/member-activity.png" mode="aspectFill" />
+    <image src="{{heroImage}}" mode="aspectFill" />
     <view class="hero-mask"></view>
     <view class="back" style="top: {{navTop}}px; width: {{navHeight}}px; height: {{navHeight}}px;" bindtap="goBack">
       <view class="back-arrow"></view>

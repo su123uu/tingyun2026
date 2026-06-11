@@ -1,4 +1,9 @@
 const service = require('../../services/activity-signup');
+const assets = require('../../config/assets').assets;
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
 
 function decorateActivity(activity) {
   if (activity.remaining_capacity <= 0) {
@@ -11,13 +16,13 @@ function decorateActivity(activity) {
 }
 
 Page({
-  data: { activities: [], navTop: 28, navHeight: 32 },
+  data: { activities: [], heroImage: assets.activities.hero, navTop: 28, navHeight: 32 },
   onLoad() {
     this.setNavigationMetrics();
   },
   async onShow() {
     const activities = await service.listActivities();
-    this.setData({ activities: activities.map(decorateActivity) });
+    this.setData({ activities: asArray(activities).map(decorateActivity) });
   },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();

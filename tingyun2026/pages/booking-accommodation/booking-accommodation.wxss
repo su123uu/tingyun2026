@@ -104,7 +104,10 @@ page {
 .room-mask { position: fixed; z-index: 51; top: 0; right: 0; bottom: 0; left: 0; background: rgba(26, 26, 26, .38); }
 .room-dialog { position: fixed; z-index: 52; right: 0; bottom: 0; left: 0; overflow: hidden; padding: 24rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); border-radius: 34rpx 34rpx 0 0; background: #FFFFFF; box-shadow: 0 -18rpx 48rpx rgba(26, 26, 26, .16); }
 .room-dialog-close { position: absolute; z-index: 1; top: 36rpx; right: 40rpx; display: flex; width: 58rpx; height: 58rpx; align-items: center; justify-content: center; border-radius: 50%; color: #FFFFFF; background: rgba(26, 26, 26, .48); font-size: 42rpx; line-height: 1; }
-.room-cover { display: block; width: 100%; height: 330rpx; border-radius: 22rpx; background: #E8E4DC; }
+.room-gallery { position: relative; overflow: hidden; width: 100%; height: 330rpx; border-radius: 22rpx; background: #E8E4DC; }
+.room-cover-swiper { width: 100%; height: 330rpx; }
+.room-cover { display: block; width: 100%; height: 330rpx; background: #E8E4DC; }
+.room-gallery-count { position: absolute; right: 22rpx; bottom: 18rpx; min-width: 78rpx; padding: 7rpx 14rpx; border-radius: 999rpx; color: #FFFFFF; background: rgba(26, 26, 26, .46); font-size: 22rpx; font-weight: 700; line-height: 1; text-align: center; }
 .room-detail-name,.room-detail-type { display: block; }
 .room-detail-name { margin-top: 22rpx; font-size: 36rpx; font-weight: 700; letter-spacing: 7rpx; }
 .room-detail-type { margin-top: 8rpx; color: #7C8A8C; font-size: 23rpx; letter-spacing: 2rpx; }

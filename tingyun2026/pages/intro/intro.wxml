@@ -1,6 +1,66 @@
 <view class="page">
-  <image class="cover" src="/images/轮播3.png" mode="aspectFill" />
-  <view class="copy"><text class="title">隐于崂山，归于自然</text><text class="subtitle">停云山居</text><text class="body">一处安静的山间生活空间。可在此饮茶、用餐、夜宿，也可参与禅修与主题活动。</text></view>
-  <text class="section-title">山居体验</text>
-  <view class="grid"><view class="card"><image src="/images/tea.jpg" mode="aspectFill"/><text>茶空间</text></view><view class="card"><image src="/images/dinner.jpg" mode="aspectFill"/><text>山居餐食</text></view><view class="card"><image src="/images/meditation.jpg" mode="aspectFill"/><text>禅修静室</text></view></view>
+  <image wx:if="{{page.cover_image_url}}" class="cover" src="{{page.cover_image_url}}" mode="aspectFill" />
+  <view wx:else class="cover empty-cover"></view>
+
+  <view class="hero-copy">
+    <text class="eyebrow">TINGYUN SHANJU</text>
+    <text class="title">{{page.title}}</text>
+    <text wx:if="{{page.summary}}" class="summary">{{page.summary}}</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="notice">内容加载中...</view>
+  <view wx:elif="{{loadError}}" class="notice">{{loadError}}</view>
+
+  <view class="content">
+    <block wx:for="{{page.content_blocks}}" wx:key="index">
+      <view wx:if="{{item.type === 'lead'}}" class="lead">
+        <text>{{item.text}}</text>
+      </view>
+
+      <text wx:elif="{{item.type === 'section_title'}}" class="section-title">{{item.text || item.title}}</text>
+
+      <view wx:elif="{{item.type === 'paragraph'}}" class="paragraph">
+        <text>{{item.text}}</text>
+      </view>
+
+      <view wx:elif="{{item.type === 'quote'}}" class="quote">
+        <text>{{item.text}}</text>
+      </view>
+
+      <image wx:elif="{{item.type === 'image' && item.image_url}}" class="wide-image" src="{{item.image_url}}" mode="widthFix" />
+
+      <view wx:elif="{{item.type === 'feature_grid'}}" class="feature-grid">
+        <view wx:for="{{item.items}}" wx:key="index" wx:for-item="feature" class="feature-card">
+          <text class="feature-title">{{feature.title}}</text>
+          <text class="feature-text">{{feature.text}}</text>
+        </view>
+      </view>
+
+      <view wx:elif="{{item.type === 'space_list'}}" class="space-list">
+        <view wx:for="{{item.items}}" wx:key="index" wx:for-item="space" class="space-item">
+          <text class="space-title">{{space.title}}</text>
+          <text class="space-text">{{space.text}}</text>
+        </view>
+      </view>
+
+      <view wx:elif="{{item.type === 'list'}}" class="list">
+        <view wx:for="{{item.items}}" wx:key="index" wx:for-item="listItem" class="list-item">
+          <text class="dot"></text>
+          <text>{{listItem}}</text>
+        </view>
+      </view>
+
+      <rich-text wx:elif="{{item.type === 'rich_text'}}" class="rich-text" nodes="{{item.rich_nodes}}"></rich-text>
+
+      <view wx:elif="{{item.type === 'contact'}}" class="contact-card">
+        <image wx:if="{{item.image_url}}" src="{{item.image_url}}" mode="widthFix" />
+        <view class="contact-copy">
+          <text class="contact-title">{{item.title}}</text>
+          <text class="contact-text">{{item.text}}</text>
+          <button class="contact-button" plain bindtap="copyContact">复制联系方式</button>
+        </view>
+      </view>
+    </block>
+    <view wx:if="{{!loading && !loadError && page.content_blocks.length === 0}}" class="notice">介绍内容正在整理中。</view>
+  </view>
 </view>

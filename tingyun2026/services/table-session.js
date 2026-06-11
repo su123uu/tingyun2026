@@ -3,25 +3,77 @@ const createId = require('../utils/id').createId;
 const assert = require('../utils/validators').assert;
 
 const KEY = 'table_session';
+const IDLE_SESSION_MINUTES = 20;
+
+function canUseCloud() {
+  return typeof wx !== 'undefined' && wx.cloud && wx.cloud.callFunction;
+}
+
+async function callMealCloud(action, data = {}) {
+  if (!canUseCloud()) {
+    const error = new Error('Cloud unavailable');
+    error.code = 'CLOUD_UNAVAILABLE';
+    throw error;
+  }
+  const result = await wx.cloud.callFunction({
+    name: 'mealOrderManage',
+    data: Object.assign({}, data, { action }),
+  });
+  const body = result && result.result ? result.result : result;
+  if (!body || body.ok !== true) {
+    const error = new Error((body && body.message) || '点餐云函数调用失败');
+    error.code = (body && body.code) || 'CLOUD_FUNCTION_FAILED';
+    error.fromCloudResult = true;
+    throw error;
+  }
+  return body.data;
+}
 
 function parseTableCode(input) {
-  const code = input.code;
-  const match = /^TY_TABLE:([A-Z0-9_-]+)$/i.exec(String(code || '').trim());
-  assert(match, 'INVALID_TABLE_CODE', '桌码无效，请扫描桌上的二维码');
-  return { table_id: match[1].toUpperCase() };
+  const value = String((input && input.code) || '').trim();
+  const params = {};
+  if (value.includes('&') || value.includes('=')) {
+    value.split('&').forEach((pair) => {
+      const parts = pair.split('=');
+      if (parts[0]) params[parts[0]] = decodeURIComponent(parts[1] || '');
+    });
+  } else {
+    const match = /^TY_TABLE:([^:]+):([^:]+)$/i.exec(value);
+    if (match) {
+      params.t = match[1];
+      params.k = match[2];
+    }
+  }
+  assert(params.t && params.k, 'INVALID_TABLE_CODE', '桌码无效，请扫描后台生成的桌台二维码');
+  return { table_id: params.t, qr_token: params.k };
+}
+
+async function localStartTableSession(input) {
+  const parsed = parseTableCode({ code: input.code });
+  const peopleCount = input.people_count;
+  assert(Number.isInteger(peopleCount) && peopleCount > 0, 'INVALID_PEOPLE_COUNT', '请输入正确的用餐人数');
+  return storage.set(KEY, {
+    session_id: createId('TABLE'),
+    table_id: parsed.table_id,
+    qr_token: parsed.qr_token,
+    table_name: parsed.table_id,
+    table_area: '',
+    people_count: peopleCount,
+    created_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + IDLE_SESSION_MINUTES * 60 * 1000).toISOString(),
+    has_order: false,
+  });
 }
 
 async function startTableSession(input) {
-  const code = input.code;
-  const people_count = input.people_count;
-  const table_id = parseTableCode({ code: code }).table_id;
-  assert(Number.isInteger(people_count) && people_count > 0, 'INVALID_PEOPLE_COUNT', '请输入正确的用餐人数');
-  return storage.set(KEY, {
-    session_id: createId('TABLE'),
-    table_id,
-    people_count,
-    created_at: new Date().toISOString(),
-  });
+  try {
+    const session = await callMealCloud('startTableSession', input);
+    return storage.set(KEY, session);
+  } catch (error) {
+    if (error.fromCloudResult) throw error;
+    console.warn('mealOrderManage startTableSession fallback to local', error);
+    return localStartTableSession(input);
+  }
 }
 
 async function getCurrentTableSession() {

@@ -1,11 +1,15 @@
-const home = require('../../mock/home');
+const homeService = require('../../services/home');
 
 Page({
-  data: { home, activeBanner: home.banners[0] },
+  data: { home: { banner_interval: 4200, banners: [], quick_entries: [], feature_cards: [] }, activeBanner: {} },
+  async onLoad() {
+    const home = await homeService.getHomeContent();
+    this.setData({ home, activeBanner: home.banners[0] || {} });
+  },
   onShow() {
     if (this.getTabBar()) this.getTabBar().setData({ selected: 0 });
   },
-  changeBanner(event) { this.setData({ activeBanner: home.banners[event.detail.current] }); },
+  changeBanner(event) { this.setData({ activeBanner: this.data.home.banners[event.detail.current] || {} }); },
   goEntry(event) {
     const action = event.currentTarget.dataset.action;
     if (action === 'menu') return this.goMenu();

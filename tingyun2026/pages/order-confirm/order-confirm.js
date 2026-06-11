@@ -2,11 +2,13 @@ const auth = require('../../services/auth');
 const cart = require('../../services/cart');
 const table = require('../../services/table-session');
 const orders = require('../../services/meal-order');
+const notification = require('../../services/notification');
 Page({
   data: {
     cart: { items: [], total_amount: 0 },
     cartCount: 0,
     session: {},
+    sessionLabel: '',
     user: {},
     remark: '',
     quickRemarks: [
@@ -17,16 +19,23 @@ Page({
     ],
     navTop: 28,
     navHeight: 32,
+    submitting: false,
   },
   async onLoad() {
     this.setNavigationMetrics();
     const result = await Promise.all([table.getCurrentTableSession(), cart.getCart(), auth.getCurrentUser()]);
     this.setData({
       session: result[0],
+      sessionLabel: this.formatSessionLabel(result[0]),
       cart: result[1],
       cartCount: result[1].items.reduce((sum, item) => sum + item.quantity, 0),
       user: result[2],
     });
+  },
+  formatSessionLabel(session) {
+    if (!session) return '';
+    const area = session.table_area ? `${session.table_area} · ` : '';
+    return `${area}${session.table_name || '桌台'}`;
   },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -51,20 +60,41 @@ Page({
     this.setData({ quickRemarks });
   },
   submit() {
-    if (this.data.user.customer_type === 'member') return this.create(false);
-    wx.showModal({ title:'模拟微信支付', content:`本次支付 ¥${this.data.cart.total_amount}，不会真实扣款。`, confirmText:'模拟支付', success:(result) => { if (result.confirm) this.create(true); } });
+    this.create(this.data.user.customer_type !== 'member');
   },
   async create(pay) {
+    if (this.data.submitting) return;
+    this.setData({ submitting: true });
     try {
+      const subscription = await notification.requestMealOrderStatus();
       const order = await orders.createMealOrder({
         remark: this.data.remark,
         quick_remarks: this.data.quickRemarks.filter((item) => item.selected).map((item) => item.text),
+        notification_subscriptions: subscription,
+        keep_cart: pay,
       });
       const orderNo = order.order_no || order.order_id;
-      if (pay) await orders.simulateWechatPay({ order_no: orderNo });
+      if (pay) {
+        const paymentResult = await orders.createMealPayment({ order_no: orderNo });
+        const payment = paymentResult.payment || paymentResult.raw_payment || paymentResult;
+        await new Promise((resolve, reject) => {
+          wx.requestPayment(Object.assign({}, payment, {
+            success: resolve,
+            fail: (error) => {
+              const message = error && error.errMsg && error.errMsg.includes('cancel')
+                ? '支付已取消'
+                : ((error && error.errMsg) || '微信支付失败');
+              reject(new Error(message));
+            },
+          }));
+        });
+        await cart.clearCart();
+      }
       wx.redirectTo({ url:`/pages/order-detail/order-detail?id=${order.detail_order_no || order.detail_order_id || orderNo}` });
     } catch(error) {
       wx.showToast({ title:error.message, icon:'none' });
+    } finally {
+      this.setData({ submitting: false });
     }
   },
 });

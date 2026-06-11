@@ -1,18 +1,57 @@
 const storage = require('../utils/storage');
 const rooms = require('../mock/rooms').rooms;
-const standards = require('../mock/meal-standards').standards;
 const createBusinessId = require('../utils/id').createBusinessId;
 const validators = require('../utils/validators');
 const assert = validators.assert;
 const assertMobile = validators.assertMobile;
 const accommodationTotal = require('../utils/pricing').accommodationTotal;
 const auth = require('./auth');
+const catalog = require('./catalog');
 const memberBenefitAccounts = require('../mock/users').memberBenefitAccounts;
 
 const KEY = 'reservations';
 const getOrders = () => storage.get(KEY, []);
 const save = (orders) => storage.set(KEY, orders);
 const RELEASED_RESERVATION_STATUSES = ['cancelled', 'rejected', 'payment_expired'];
+
+function canUseCloud() {
+  return typeof wx !== 'undefined' && wx.cloud && wx.cloud.callFunction;
+}
+
+async function callReservationCloud(action, data = {}) {
+  if (!canUseCloud()) {
+    const error = new Error('Cloud unavailable');
+    error.code = 'CLOUD_UNAVAILABLE';
+    throw error;
+  }
+  const result = await wx.cloud.callFunction({
+    name: 'reservationManage',
+    data: Object.assign({}, data, { action }),
+  });
+  const body = result && result.result ? result.result : result;
+  if (!body || body.ok !== true) {
+    const error = new Error((body && body.message) || '预约云函数调用失败');
+    error.code = (body && body.code) || 'CLOUD_FUNCTION_FAILED';
+    error.fromCloudResult = true;
+    throw error;
+  }
+  return body.data;
+}
+
+async function withCurrentMobile(input = {}) {
+  const user = await auth.getCurrentUser();
+  return Object.assign({ mobile: user.mobile || '' }, input);
+}
+
+async function cloudOrFallback(action, input, fallback, options = {}) {
+  try {
+    return await callReservationCloud(action, input);
+  } catch (error) {
+    if (error.fromCloudResult && !options.fallbackOnCloudError) throw error;
+    console.warn(`reservationManage ${action} fallback to local`, error);
+    return fallback();
+  }
+}
 
 function statuses(type) {
   return type === 'member'
@@ -65,7 +104,8 @@ async function listDiningRooms(input) {
   assert(['lunch', 'dinner'].includes(input.time_slot), 'DINING_TIME_SLOT_REQUIRED', '请选择用餐时段');
   assert(people_count >= 6, 'DINING_MIN_PEOPLE', '用餐预订至少需要 6 人');
   const selectionLimit = getDiningRoomSelectionLimit(people_count);
-  return rooms.filter((room) => room.room_type === 'dining').map((room) => {
+  const diningRooms = await catalog.listDiningRooms();
+  return diningRooms.map((room) => {
     const is_booked = !room.is_available || isDiningRoomBooked(room.room_id, input);
     const is_people_suitable = selectionLimit > 1 || room.max_capacity >= people_count;
     return Object.assign({}, room, {
@@ -99,7 +139,8 @@ async function listAvailableAccommodationRooms(input = {}) {
       rule: account.rule_snapshot,
     }))
     : [];
-  const roomList = rooms.filter((room) => room.room_type === 'accommodation').map((room) => {
+  const accommodationRooms = await catalog.listAccommodationRooms();
+  const roomList = accommodationRooms.map((room) => {
     const is_booked = !room.is_available || isAccommodationRoomBooked(room.room_id, input);
     return Object.assign({}, room, {
       is_booked,
@@ -116,7 +157,8 @@ async function createDiningReservation(input) {
   const selectedIds = Array.from(new Set(input.room_ids || []));
   const roomStates = await listDiningRooms(input);
   const selected = roomStates.filter((room) => selectedIds.includes(room.room_id));
-  const standard = standards.find((entry) => entry.meal_standard_id === input.meal_standard_id);
+  const diningStandards = await catalog.listDiningStandards();
+  const standard = diningStandards.find((entry) => entry.meal_standard_id === input.meal_standard_id);
   assert(selectedIds.length, 'ROOM_REQUIRED', '请选择包间');
   assert(selected.length === selectedIds.length, 'ROOM_INVALID', '所选包间不存在');
   assert(standard, 'MEAL_STANDARD_REQUIRED', '请选择餐标');
@@ -194,8 +236,7 @@ async function getReservationDetail(input) {
   return order;
 }
 
-module.exports = {
-  getDiningRoomSelectionLimit,
+const localReservation = {
   listDiningRooms,
   listAvailableDiningRooms,
   listAvailableAccommodationRooms,
@@ -204,4 +245,56 @@ module.exports = {
   simulateWechatPay,
   listReservations,
   getReservationDetail,
+};
+
+async function cloudListDiningRooms(input) {
+  return cloudOrFallback('listDiningRooms', input, () => localReservation.listDiningRooms(input), { fallbackOnCloudError: true });
+}
+
+async function cloudListAvailableDiningRooms(input) {
+  return cloudOrFallback('listAvailableDiningRooms', input, () => localReservation.listAvailableDiningRooms(input), { fallbackOnCloudError: true });
+}
+
+async function cloudListAvailableAccommodationRooms(input = {}) {
+  const payload = await withCurrentMobile(input);
+  return cloudOrFallback('listAvailableAccommodationRooms', payload, () => localReservation.listAvailableAccommodationRooms(input), { fallbackOnCloudError: true });
+}
+
+async function cloudCreateDiningReservation(input) {
+  return cloudOrFallback('createDiningReservation', input, () => localReservation.createDiningReservation(input));
+}
+
+async function cloudCreateAccommodationReservation(input) {
+  return cloudOrFallback('createAccommodationReservation', input, () => localReservation.createAccommodationReservation(input));
+}
+
+async function createReservationPayment(input = {}) {
+  return callReservationCloud('createReservationPayment', input);
+}
+
+async function cloudSimulateWechatPay(input) {
+  return cloudOrFallback('simulateWechatPay', input, () => localReservation.simulateWechatPay(input));
+}
+
+async function cloudListReservations() {
+  const payload = await withCurrentMobile();
+  return cloudOrFallback('listReservations', payload, () => localReservation.listReservations(), { fallbackOnCloudError: true });
+}
+
+async function cloudGetReservationDetail(input) {
+  const payload = await withCurrentMobile(input);
+  return cloudOrFallback('getReservationDetail', payload, () => localReservation.getReservationDetail(input), { fallbackOnCloudError: true });
+}
+
+module.exports = {
+  getDiningRoomSelectionLimit,
+  listDiningRooms: cloudListDiningRooms,
+  listAvailableDiningRooms: cloudListAvailableDiningRooms,
+  listAvailableAccommodationRooms: cloudListAvailableAccommodationRooms,
+  createDiningReservation: cloudCreateDiningReservation,
+  createAccommodationReservation: cloudCreateAccommodationReservation,
+  createReservationPayment,
+  simulateWechatPay: cloudSimulateWechatPay,
+  listReservations: cloudListReservations,
+  getReservationDetail: cloudGetReservationDetail,
 };

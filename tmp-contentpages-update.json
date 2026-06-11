@@ -1,0 +1,98 @@
+{
+  "action": "update",
+  "admin_token": "tingyun2026bannerAdmin",
+  "collection": "content_pages",
+  "_id": "f2dd55436a222f2600a07e3b1621245b",
+  "data": {
+    "page_id": "shanju_intro",
+    "page_type": "intro",
+    "title": "停云山居",
+    "summary": "山里请，云上坐。崂山首创云端社交私享空间，融合山海之灵秀，缔造尊养雅境。",
+    "cover_image_url": "cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/intro/hero.webp",
+    "content_blocks": [
+      {
+        "type": "lead",
+        "text": "停云山居坐落于青岛崂山区，隐于崂山山脉之间。这里不止是一处场地，更是一套覆盖活动、宴请、住宿、禅养与私享服务的山居体验。"
+      },
+      {
+        "type": "image",
+        "image_url": "cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/intro/brand.webp"
+      },
+      {
+        "type": "section_title",
+        "text": "我们能提供什么"
+      },
+      {
+        "type": "paragraph",
+        "text": "比起单纯的空间租赁，停云山居更关注一场活动从筹备到落地的完整体验。我们提供多类型场地、全配套设施、自然氛围、会员资源与管家式服务，让主办方少操心，让来宾更投入。"
+      },
+      {
+        "type": "feature_grid",
+        "items": [
+          { "title": "多类型场地", "text": "适配沙龙、培训、路演、团建、宴请等不同场景。" },
+          { "title": "全配套设施", "text": "会议区配备 LED 大屏、多媒体系统、茶饮设备与活动所需基础配置。" },
+          { "title": "自然氛围", "text": "窗外是幽静山景，室内是简约雅致的空间，适合专注交流。" },
+          { "title": "管家服务", "text": "从布置、设备调试到餐饮住宿安排，专属管家全程跟进。" }
+        ]
+      },
+      {
+        "type": "section_title",
+        "text": "两大空间，四位一体"
+      },
+      {
+        "type": "image",
+        "image_url": "cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/intro/spaces.webp"
+      },
+      {
+        "type": "space_list",
+        "items": [
+          { "title": "会客区", "text": "温馨放松，适合小型交流、茶叙与私享会谈。" },
+          { "title": "宴客区", "text": "宽敞明亮，窗外山景入席，适合宴请与主题聚会。" },
+          { "title": "会议区", "text": "配备高清 LED 大屏与多媒体会议系统，适合培训、路演与发布会。" },
+          { "title": "住宿区", "text": "隐于山水之间，全明户型与观景落地窗，适合夜宿休整。" },
+          { "title": "团建区", "text": "自然景观与户外休憩空间结合，承接疗愈互动与团建体验。" },
+          { "title": "存茶/存酒/雪茄区", "text": "为会员提供定制化收藏、品鉴与私享社交空间。" }
+        ]
+      },
+      {
+        "type": "section_title",
+        "text": "适合哪些活动"
+      },
+      {
+        "type": "list",
+        "items": [
+          "行业主题沙龙、政策解读会、经验分享会",
+          "企业内部培训、技能提升课程、员工团建活动",
+          "创业项目路演、产品发布会、资源对接会",
+          "高端客户答谢会、商务宴请、跨界交流派对",
+          "其他追求品质体验、符合合规要求的活动"
+        ]
+      },
+      {
+        "type": "section_title",
+        "text": "为什么选择停云山居"
+      },
+      {
+        "type": "paragraph",
+        "text": "我们深耕自然禅养与高端服务多年，这里不仅有专业场地与设备，也有自然疗愈、自然采摘、非遗体验等特色项目作为活动配套。"
+      },
+      {
+        "type": "quote",
+        "text": "我们不止于场地，更是高品质体验的保障。"
+      },
+      {
+        "type": "image",
+        "image_url": "cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/intro/story.webp"
+      },
+      {
+        "type": "contact",
+        "title": "欢迎咨询",
+        "text": "山里人私人管家：成龙\n电话：18253287888\n地址：青岛市崂山区停云山居",
+        "image_url": "cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/intro/contact.webp"
+      }
+    ],
+    "page_status": "published",
+    "published_at": "2026-06-11T00:00:00.000+08:00",
+    "is_active": true
+  }
+}

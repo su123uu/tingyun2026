@@ -84,9 +84,12 @@
 <t-calendar
   visible="{{calendarVisible}}"
   value="{{calendarValue}}"
+  holidayMap="{{holidayTips}}"
   minDate="{{minDate}}"
   maxDate="{{maxDate}}"
+  showWeekendTip="{{true}}"
   type="range"
+  workdayMap="{{workdayTips}}"
   usingCustomNavbar="{{true}}"
   custom-style="--td-calendar-active-color: #4F6F52; --td-calendar-item-centre-color: rgba(79, 111, 82, .14); --td-brand-color: #4F6F52; --td-brand-color-active: #38523C; --td-brand-color-disabled: #A9B9AA; --td-brand-color-light: #EEF4EE; --td-brand-color-light-active: #E1ECE1; --td-button-primary-bg-color: #4F6F52; --td-button-primary-border-color: #4F6F52; --td-button-primary-active-bg-color: #38523C; --td-button-primary-active-border-color: #38523C;"
   bind:confirm="confirmCalendar"
@@ -96,7 +99,20 @@
 <view wx:if="{{showRoomDetail}}" class="room-mask" bindtap="hideRoomDetail"></view>
 <view wx:if="{{showRoomDetail}}" class="room-dialog" catchtap="stop">
   <view class="room-dialog-close" bindtap="hideRoomDetail">×</view>
-  <image class="room-cover" src="{{selectedRoom.image}}" mode="aspectFill"/>
+  <view class="room-gallery">
+    <swiper
+      class="room-cover-swiper"
+      current="{{roomGalleryCurrent}}"
+      indicator-dots="{{selectedRoom.images.length > 1}}"
+      circular="{{selectedRoom.images.length > 1}}"
+      bindchange="onRoomGalleryChange"
+    >
+      <swiper-item wx:for="{{selectedRoom.images}}" wx:key="*this">
+        <image class="room-cover" src="{{item}}" mode="aspectFill" bindtap="previewRoomImages"/>
+      </swiper-item>
+    </swiper>
+    <view wx:if="{{selectedRoom.images.length > 1}}" class="room-gallery-count">{{roomGalleryCurrent + 1}} / {{selectedRoom.images.length}}</view>
+  </view>
   <text class="room-detail-name">{{selectedRoom.name}}</text>
   <text class="room-detail-type">{{selectedRoom.category}}</text>
   <view class="room-detail-grid">
