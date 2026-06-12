@@ -156,7 +156,9 @@ async function listMealOrders() {
   } catch (error) {
     console.warn('mealOrderManage listMealOrders fallback to local', error);
     const orders = getOrders();
-    return orders.filter((entry) => !entry.parent_order_no && !entry.parent_order_id).map((order) => hydrateOrder(order, orders));
+    return orders
+      .filter((entry) => !entry.user_deleted_at && !entry.parent_order_no && !entry.parent_order_id)
+      .map((order) => hydrateOrder(order, orders));
   }
 }
 
@@ -169,12 +171,37 @@ async function getMealOrderDetail(input) {
   const order_no = input.order_no || input.order_id;
   const orders = getOrders();
   const found = orders.find((entry) => (entry.order_no || entry.order_id) === order_no);
+  assert(found, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
   const parentOrderNo = found && (found.parent_order_no || found.parent_order_id);
   const order = found && parentOrderNo
     ? orders.find((entry) => (entry.order_no || entry.order_id) === parentOrderNo)
     : found;
   assert(order, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
+  assert(!order.user_deleted_at, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
   return hydrateOrder(order, orders);
 }
 
-module.exports = { createMealOrder, createMealPayment, simulateWechatPay, listMealOrders, getMealOrderDetail };
+async function deleteMealOrder(input = {}) {
+  try {
+    return await callMealCloud('deleteMealOrder', input);
+  } catch (error) {
+    if (error.fromCloudResult) throw error;
+    console.warn('mealOrderManage deleteMealOrder fallback to local', error);
+  }
+  const order_no = input.order_no || input.order_id;
+  const orders = getOrders();
+  const found = orders.find((entry) => (entry.order_no || entry.order_id) === order_no);
+  const parentOrderNo = found && (found.parent_order_no || found.parent_order_id);
+  const primaryOrderNo = parentOrderNo || order_no;
+  const deletedAt = new Date().toISOString();
+  orders.forEach((entry) => {
+    const entryOrderNo = entry.order_no || entry.order_id;
+    if (entryOrderNo === primaryOrderNo || (entry.parent_order_no || entry.parent_order_id) === primaryOrderNo) {
+      entry.user_deleted_at = deletedAt;
+    }
+  });
+  save(orders);
+  return { order_no: primaryOrderNo, user_deleted_at: deletedAt };
+}
+
+module.exports = { createMealOrder, createMealPayment, simulateWechatPay, listMealOrders, getMealOrderDetail, deleteMealOrder };

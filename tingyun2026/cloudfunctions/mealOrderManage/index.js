@@ -214,6 +214,7 @@ async function clearCurrentSession(tableId, sessionId) {
 async function startTableSession(input = {}, wxContext = {}) {
   const peopleCount = Math.max(1, Math.floor(toNumber(input.people_count, 1)));
   const table = await getTableByCode(input);
+  await ensureUser(wxContext, { customer_type: 'guest' });
   const existing = await getSessionById(table.current_session_id);
   if (existing && existing.session_status !== 'closed') {
     const hasOrders = await sessionHasOrders(existing);
@@ -268,6 +269,63 @@ async function findMember(mobile) {
     .limit(1)
     .get();
   return result.data && result.data[0] ? result.data[0] : null;
+}
+
+function userUpdateData(existing = {}, profile = {}) {
+  const timestamp = now();
+  const data = {
+    last_login_at: timestamp,
+    updated_at: timestamp,
+    is_deleted: false,
+  };
+  const mobile = cleanText(profile.mobile, 20);
+  const nickname = cleanText(profile.nickname || profile.customer_name, 80);
+  const avatarUrl = cleanText(profile.avatar_url, 300);
+  const memberId = cleanText(profile.member_id, 120);
+  const customerType = cleanText(profile.customer_type, 20);
+
+  if (mobile) data.mobile = mobile;
+  if (nickname) data.nickname = nickname;
+  if (avatarUrl) data.avatar_url = avatarUrl;
+  if (customerType === 'member') {
+    data.customer_type = 'member';
+    data.member_id = memberId;
+  } else if (customerType === 'guest') {
+    data.customer_type = existing.customer_type === 'member' && !mobile ? existing.customer_type : 'guest';
+    if (mobile || profile.clear_member === true) data.member_id = '';
+  }
+
+  return data;
+}
+
+async function ensureUser(wxContext = {}, profile = {}) {
+  const openid = cleanText(wxContext.OPENID || profile.openid, 120);
+  if (!openid) return null;
+
+  const result = await db.collection('users')
+    .where({ openid })
+    .limit(1)
+    .get();
+  const existing = result.data && result.data[0];
+  const data = userUpdateData(existing || {}, profile);
+
+  if (existing && existing._id) {
+    await db.collection('users').doc(existing._id).update({ data });
+    return Object.assign({}, existing, data);
+  }
+
+  const created = Object.assign({
+    user_id: openid,
+    openid,
+    mobile: '',
+    nickname: '',
+    avatar_url: '',
+    member_id: '',
+    customer_type: 'guest',
+    created_at: now(),
+  }, data);
+  await db.collection('users').add({ data: created });
+  return created;
 }
 
 async function getCustomer(input = {}) {
@@ -391,6 +449,13 @@ async function createMealOrder(input = {}, wxContext = {}) {
   const primaryOrderNo = primaryOrder ? (primaryOrder.order_no || primaryOrder.order_id) : '';
   const batchNo = primaryOrder ? appendCount + 2 : 1;
   const quickRemarks = Array.isArray(input.quick_remarks) ? input.quick_remarks.map((item) => cleanText(item, 40)).filter(Boolean) : [];
+  await ensureUser(wxContext, {
+    customer_type: customer.customer_type,
+    member_id: customer.member_id,
+    mobile: customer.customer_mobile,
+    customer_name: customer.customer_name,
+    clear_member: customer.customer_type === 'guest',
+  });
   const data = {
     order_id: orderNo,
     order_no: orderNo,
@@ -472,8 +537,9 @@ async function createMealPayment(input = {}, wxContext = {}) {
   assert(orderNo, 'ORDER_NO_REQUIRED', '缺少订单编号');
   const order = await findOrder(orderNo);
   assert(order, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
+  assert(!order.user_deleted_at, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
   assert(order.created_by_openid === wxContext.OPENID, 'FORBIDDEN', '无权支付该订单');
-  assert(order.customer_type !== 'member', 'MEMBER_OFFLINE_PAYMENT', '会员订单请线下积分扣款');
+  assert(order.customer_type !== 'member', 'MEMBER_OFFLINE_PAYMENT', '会员订单请线下会员账户核对');
   assert(order.payment_status !== 'settled', 'ORDER_ALREADY_PAID', '订单已支付');
 
   const totalFee = moneyToCents(order.wechat_pay_amount || order.pay_amount || order.total_amount || order.amount);
@@ -540,7 +606,7 @@ async function listMealOrders(input = {}, wxContext = {}) {
   query = query.orderBy('created_at', 'desc').limit(100);
   const result = await query.get();
   const orders = result.data || [];
-  return orders.filter(isPrimaryOrder).map((order) => hydrateOrder(order, orders));
+  return orders.filter((order) => !order.user_deleted_at && isPrimaryOrder(order)).map((order) => hydrateOrder(order, orders));
 }
 
 async function getMealOrderDetail(input = {}, wxContext = {}) {
@@ -551,11 +617,38 @@ async function getMealOrderDetail(input = {}, wxContext = {}) {
   const parentOrderNo = found.parent_order_no || found.parent_order_id;
   const primary = parentOrderNo ? await findOrder(parentOrderNo) : found;
   assert(primary, 'MEAL_ORDER_NOT_FOUND', '未找到点餐主订单');
+  assert(!primary.user_deleted_at, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
   const orders = await listOrdersBySession(primary.session_id);
   const openid = wxContext.OPENID || '';
   const canView = !openid || orders.some((order) => order.created_by_openid === openid);
   assert(canView, 'FORBIDDEN', '无权查看该订单');
   return hydrateOrder(primary, orders);
+}
+
+async function deleteMealOrder(input = {}, wxContext = {}) {
+  const orderNo = cleanText(input.order_no || input.order_id, 120);
+  assert(orderNo, 'ORDER_NO_REQUIRED', '缺少订单编号');
+  const found = await findOrder(orderNo);
+  assert(found, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
+  const parentOrderNo = found.parent_order_no || found.parent_order_id;
+  const primary = parentOrderNo ? await findOrder(parentOrderNo) : found;
+  assert(primary, 'MEAL_ORDER_NOT_FOUND', '未找到点餐主订单');
+  const openid = wxContext.OPENID || '';
+  assert(!openid || primary.created_by_openid === openid, 'FORBIDDEN', '无权删除该订单');
+  const deletedAt = now();
+  const data = {
+    user_deleted_at: deletedAt,
+    user_deleted_by_openid: openid,
+    updated_at: now(),
+  };
+  await db.collection('meal_orders').doc(primary._id).update({ data });
+  await db.collection('meal_orders')
+    .where({ parent_order_no: primary.order_no, is_deleted: _.neq(true) })
+    .update({ data });
+  await db.collection('meal_orders')
+    .where({ parent_order_id: primary.order_no, is_deleted: _.neq(true) })
+    .update({ data });
+  return { order_no: primary.order_no, user_deleted_at: deletedAt.toISOString() };
 }
 
 exports.main = async (event = {}) => {
@@ -569,6 +662,7 @@ exports.main = async (event = {}) => {
     if (action === 'simulateWechatPay') return ok(await simulateWechatPay(event));
     if (action === 'listMealOrders') return ok(await listMealOrders(event, wxContext));
     if (action === 'getMealOrderDetail') return ok(await getMealOrderDetail(event, wxContext));
+    if (action === 'deleteMealOrder') return ok(await deleteMealOrder(event, wxContext));
     return fail('不支持的点餐操作', 'UNKNOWN_ACTION');
   } catch (error) {
     console.error('mealOrderManage failed', action, error);

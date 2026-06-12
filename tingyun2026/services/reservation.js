@@ -1,5 +1,4 @@
 const storage = require('../utils/storage');
-const rooms = require('../mock/rooms').rooms;
 const createBusinessId = require('../utils/id').createBusinessId;
 const validators = require('../utils/validators');
 const assert = validators.assert;
@@ -7,12 +6,11 @@ const assertMobile = validators.assertMobile;
 const accommodationTotal = require('../utils/pricing').accommodationTotal;
 const auth = require('./auth');
 const catalog = require('./catalog');
-const memberBenefitAccounts = require('../mock/users').memberBenefitAccounts;
 
 const KEY = 'reservations';
 const getOrders = () => storage.get(KEY, []);
 const save = (orders) => storage.set(KEY, orders);
-const RELEASED_RESERVATION_STATUSES = ['cancelled', 'rejected', 'payment_expired'];
+const ACTIVE_RESERVATION_STATUSES = ['paid_pending_confirmation', 'pending_confirmation', 'confirmed'];
 
 function canUseCloud() {
   return typeof wx !== 'undefined' && wx.cloud && wx.cloud.callFunction;
@@ -59,24 +57,25 @@ function statuses(type) {
     : {
       reservation_status: 'pending_payment',
       settlement_status: 'pending_wechat_pay',
-      lock_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      lock_expires_at: '',
     };
 }
 
-function getDiningRoomSelectionLimit(people_count) {
+async function getDiningRoomSelectionLimit(people_count) {
   if (people_count <= 12) return 1;
   if (people_count <= 22) return 2;
-  return rooms.filter((room) => room.room_type === 'dining').length;
+  const diningRooms = await catalog.listDiningRooms();
+  return diningRooms.length;
 }
 
 function isActiveReservation(order) {
-  return !RELEASED_RESERVATION_STATUSES.includes(order.reservation_status)
-    && !(order.reservation_status === 'pending_payment' && order.lock_expires_at && Date.parse(order.lock_expires_at) <= Date.now());
+  return ACTIVE_RESERVATION_STATUSES.includes(order.reservation_status);
 }
 
-function isDiningRoomBooked(room_id, input) {
+function isDiningRoomBooked(room_id, input, excludeOrderNo = '') {
   return getOrders().some((order) => (
     order.reservation_type === 'dining'
+    && (order.order_no || order.order_id) !== excludeOrderNo
     && order.date === input.date
     && order.time_slot === input.time_slot
     && order.room_ids.includes(room_id)
@@ -88,14 +87,26 @@ function overlaps(startA, endA, startB, endB) {
   return Date.parse(startA) < Date.parse(endB) && Date.parse(startB) < Date.parse(endA);
 }
 
-function isAccommodationRoomBooked(room_id, input) {
+function isAccommodationRoomBooked(room_id, input, excludeOrderNo = '') {
   if (!input.check_in_date || !input.check_out_date) return false;
   return getOrders().some((order) => (
     order.reservation_type === 'accommodation'
+    && (order.order_no || order.order_id) !== excludeOrderNo
     && order.room_ids.includes(room_id)
     && isActiveReservation(order)
     && overlaps(input.check_in_date, input.check_out_date, order.check_in_date, order.check_out_date)
   ));
+}
+
+function assertReservationRoomsAvailable(order) {
+  const orderNo = order.order_no || order.order_id;
+  if (order.reservation_type === 'dining') {
+    const conflict = (order.room_ids || []).some((roomId) => isDiningRoomBooked(roomId, order, orderNo));
+    assert(!conflict, 'ROOM_ALREADY_BOOKED', '所选包间已被预订，请重新选择');
+    return;
+  }
+  const conflict = (order.room_ids || []).some((roomId) => isAccommodationRoomBooked(roomId, order, orderNo));
+  assert(!conflict, 'ROOM_ALREADY_BOOKED', '所选房间已被预订，请重新选择');
 }
 
 async function listDiningRooms(input) {
@@ -103,7 +114,7 @@ async function listDiningRooms(input) {
   assert(input.date, 'DINING_DATE_REQUIRED', '请选择用餐日期');
   assert(['lunch', 'dinner'].includes(input.time_slot), 'DINING_TIME_SLOT_REQUIRED', '请选择用餐时段');
   assert(people_count >= 6, 'DINING_MIN_PEOPLE', '用餐预订至少需要 6 人');
-  const selectionLimit = getDiningRoomSelectionLimit(people_count);
+  const selectionLimit = await getDiningRoomSelectionLimit(people_count);
   const diningRooms = await catalog.listDiningRooms();
   return diningRooms.map((room) => {
     const is_booked = !room.is_available || isDiningRoomBooked(room.room_id, input);
@@ -124,21 +135,27 @@ async function listAvailableDiningRooms(input) {
 
 async function listAvailableAccommodationRooms(input = {}) {
   const user = await auth.getCurrentUser();
-  const available_benefits = user.customer_type === 'member'
-    ? memberBenefitAccounts.filter((account) => (
-      account.member_id === user.member_id
-      && account.benefit_key === 'free_accommodation'
-      && account.account_status === 'active'
-      && account.remaining_quota > 0
-    )).map((account) => ({
-      benefit_account_id: account.benefit_account_id,
-      benefit_key: account.benefit_key,
-      benefit_name: account.benefit_name,
-      remaining_quota: account.remaining_quota,
-      quota_unit: account.quota_unit,
-      rule: account.rule_snapshot,
-    }))
-    : [];
+  let available_benefits = [];
+  if (user.customer_type === 'member') {
+    try {
+      const memberService = require('./member');
+      const profile = await memberService.getMemberProfile({ member_id: user.member_id, mobile: user.mobile });
+      available_benefits = (profile.benefit_accounts || []).filter((account) => (
+        account.benefit_key === 'free_accommodation'
+        && account.account_status === 'active'
+        && account.remaining_quota > 0
+      )).map((account) => ({
+        benefit_account_id: account.benefit_account_id,
+        benefit_key: account.benefit_key,
+        benefit_name: account.benefit_name,
+        remaining_quota: account.remaining_quota,
+        quota_unit: account.quota_unit,
+        rule: account.rule_snapshot,
+      }));
+    } catch (error) {
+      console.warn('failed to load member benefits for accommodation', error);
+    }
+  }
   const accommodationRooms = await catalog.listAccommodationRooms();
   const roomList = accommodationRooms.map((room) => {
     const is_booked = !room.is_available || isAccommodationRoomBooked(room.room_id, input);
@@ -162,7 +179,7 @@ async function createDiningReservation(input) {
   assert(selectedIds.length, 'ROOM_REQUIRED', '请选择包间');
   assert(selected.length === selectedIds.length, 'ROOM_INVALID', '所选包间不存在');
   assert(standard, 'MEAL_STANDARD_REQUIRED', '请选择餐标');
-  assert(selected.length <= getDiningRoomSelectionLimit(input.people_count), 'ROOM_SELECTION_LIMIT', '所选包间数量超过当前人数限制');
+  assert(selected.length <= await getDiningRoomSelectionLimit(input.people_count), 'ROOM_SELECTION_LIMIT', '所选包间数量超过当前人数限制');
   assert(selected.every((room) => !room.is_booked), 'ROOM_ALREADY_BOOKED', '所选包间已被预定，请重新选择');
   assert(selected.every((room) => room.is_people_suitable), 'ROOM_PEOPLE_NOT_SUITABLE', '所选包间人数不合适');
   assert(selected.reduce((sum, room) => sum + room.max_capacity, 0) >= input.people_count, 'ROOM_CAPACITY_NOT_ENOUGH', '所选包间总容量不足');
@@ -221,6 +238,7 @@ async function simulateWechatPay(input) {
   const orders = getOrders();
   const order = orders.find((entry) => (entry.order_no || entry.order_id) === order_no);
   assert(order, 'RESERVATION_NOT_FOUND', '未找到预订订单');
+  assertReservationRoomsAvailable(order);
   order.reservation_status = 'paid_pending_confirmation';
   order.settlement_status = 'wechat_paid';
   delete order.lock_expires_at;
@@ -228,12 +246,23 @@ async function simulateWechatPay(input) {
   return order;
 }
 
-async function listReservations() { return getOrders(); }
+async function listReservations() { return getOrders().filter((order) => !order.user_deleted_at); }
 async function getReservationDetail(input) {
   const order_no = input.order_no || input.order_id;
   const order = getOrders().find((entry) => (entry.order_no || entry.order_id) === order_no);
   assert(order, 'RESERVATION_NOT_FOUND', '未找到预订订单');
+  assert(!order.user_deleted_at, 'RESERVATION_NOT_FOUND', '未找到预订订单');
   return order;
+}
+
+async function deleteReservation(input) {
+  const order_no = input.order_no || input.order_id;
+  const orders = getOrders();
+  const order = orders.find((entry) => (entry.order_no || entry.order_id) === order_no);
+  assert(order, 'RESERVATION_NOT_FOUND', '未找到预订订单');
+  order.user_deleted_at = new Date().toISOString();
+  save(orders);
+  return { order_no, user_deleted_at: order.user_deleted_at };
 }
 
 const localReservation = {
@@ -245,6 +274,7 @@ const localReservation = {
   simulateWechatPay,
   listReservations,
   getReservationDetail,
+  deleteReservation,
 };
 
 async function cloudListDiningRooms(input) {
@@ -286,6 +316,11 @@ async function cloudGetReservationDetail(input) {
   return cloudOrFallback('getReservationDetail', payload, () => localReservation.getReservationDetail(input), { fallbackOnCloudError: true });
 }
 
+async function cloudDeleteReservation(input) {
+  const payload = await withCurrentMobile(input);
+  return cloudOrFallback('deleteReservation', payload, () => localReservation.deleteReservation(input));
+}
+
 module.exports = {
   getDiningRoomSelectionLimit,
   listDiningRooms: cloudListDiningRooms,
@@ -297,4 +332,5 @@ module.exports = {
   simulateWechatPay: cloudSimulateWechatPay,
   listReservations: cloudListReservations,
   getReservationDetail: cloudGetReservationDetail,
+  deleteReservation: cloudDeleteReservation,
 };

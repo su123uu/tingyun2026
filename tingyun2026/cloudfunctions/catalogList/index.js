@@ -54,6 +54,18 @@ async function list(collectionName, where, orderFields = []) {
   return Array.isArray(result.data) ? result.data : [];
 }
 
+async function optionalList(collectionName, where, orderFields = []) {
+  try {
+    return await list(collectionName, where, orderFields);
+  } catch (error) {
+    const message = String(error.errMsg || error.message || '');
+    if (message.includes('collection') && (message.includes('not exist') || message.includes('不存在'))) {
+      return [];
+    }
+    throw error;
+  }
+}
+
 function buildMealCategories(items) {
   const map = {};
   (Array.isArray(items) ? items : []).forEach((item) => {
@@ -74,6 +86,7 @@ exports.main = async () => {
     rawDiningRooms,
     rawAccommodationRooms,
     rawDiningStandards,
+    rawActivityBanners,
     rawActivityItems,
     memberLevels,
     memberLevelBenefits,
@@ -82,6 +95,7 @@ exports.main = async () => {
     list('dining_rooms', { is_available: true }, [['sort_order', 'asc']]),
     list('accommodation_rooms', { is_available: true }, [['sort_order', 'asc']]),
     list('dining_standards', { is_enabled: true }, [['sort_order', 'asc']]),
+    optionalList('activity_banners', { is_enabled: true }, [['sort_order', 'asc']]),
     list('activity_items', { status: _.neq('closed') }, [['start_at', 'asc']]),
     list('member_levels', { is_enabled: true }, [['sort_order', 'asc']]),
     list('member_level_benefits', { is_enabled: true }, [['sort_order', 'asc']]),
@@ -92,14 +106,16 @@ exports.main = async () => {
     diningRooms,
     accommodationRooms,
     diningStandards,
+    activityBanners,
     activityItems,
   ] = await resolveCloudImages([
     rawMealItems,
     rawDiningRooms,
     rawAccommodationRooms,
     rawDiningStandards,
+    rawActivityBanners,
     rawActivityItems,
-  ], ['image_url', 'image_urls']);
+  ], ['image_url', 'image_urls', 'video_url']);
 
   return {
     ok: true,
@@ -109,6 +125,7 @@ exports.main = async () => {
       dining_rooms: diningRooms,
       accommodation_rooms: accommodationRooms,
       dining_standards: diningStandards,
+      activity_banners: activityBanners,
       activity_items: activityItems,
       member_levels: memberLevels,
       member_level_benefits: memberLevelBenefits,

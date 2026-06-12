@@ -20,7 +20,7 @@
             <text class="tier-name">{{item.no}} · {{item.name}}</text>
             <text class="tier-value">储值 {{item.stored}} 万元</text>
           </view>
-          <text class="tier-copy">到账 {{item.points}} 万积分 · 权益有效期 {{item.duration}} 个月</text>
+          <text class="tier-copy">线下账户 {{item.points}} 万额度 · 权益有效期 {{item.duration}} 个月</text>
         </view>
       </view>
     </view>

@@ -5,6 +5,8 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 
+const ACTIVE_RESERVATION_STATUSES = ['paid_pending_confirmation', 'pending_confirmation', 'confirmed'];
+
 function now() {
   return new Date();
 }
@@ -50,6 +52,51 @@ async function findReservation(orderNo) {
     }
   }
   return null;
+}
+
+function overlaps(startA, endA, startB, endB) {
+  return Date.parse(`${startA}T00:00:00+08:00`) < Date.parse(`${endB}T00:00:00+08:00`)
+    && Date.parse(`${startB}T00:00:00+08:00`) < Date.parse(`${endA}T00:00:00+08:00`);
+}
+
+function roomIds(order) {
+  return order.room_ids || (order.room_id ? [order.room_id] : []);
+}
+
+function isActiveReservation(order) {
+  return Boolean(order && ACTIVE_RESERVATION_STATUSES.includes(order.reservation_status));
+}
+
+async function hasReservationRoomConflict(reservation) {
+  const order = reservation.order || {};
+  const selectedRoomIds = roomIds(order);
+  if (!selectedRoomIds.length) return false;
+
+  if (reservation.businessType === 'dining_reservation') {
+    const result = await db.collection('dining_reservations')
+      .where({
+        date: order.date || order.reservation_date,
+        time_slot: order.time_slot || order.reservation_time,
+        is_deleted: _.neq(true),
+      })
+      .limit(100)
+      .get();
+    return (result.data || []).filter(isActiveReservation).some((entry) => (
+      entry._id !== order._id && roomIds(entry).some((roomId) => selectedRoomIds.includes(roomId))
+    ));
+  }
+
+  const checkInDate = order.check_in_date || order.checkin_date;
+  const checkOutDate = order.check_out_date || order.checkout_date;
+  const result = await db.collection('accommodation_reservations')
+    .where({ is_deleted: _.neq(true) })
+    .limit(100)
+    .get();
+  return (result.data || []).filter(isActiveReservation).some((entry) => (
+    entry._id !== order._id
+    && roomIds(entry).some((roomId) => selectedRoomIds.includes(roomId))
+    && overlaps(checkInDate, checkOutDate, entry.check_in_date || entry.checkin_date, entry.check_out_date || entry.checkout_date)
+  ));
 }
 
 async function safeCallNotification(data) {
@@ -119,6 +166,40 @@ exports.main = async (event = {}) => {
     return { errcode: 0, errmsg: 'already settled' };
   }
   const totalFee = eventTotalFee || reservation.order.payment_total_fee || 0;
+  const hasConflict = await hasReservationRoomConflict(reservation);
+
+  if (hasConflict) {
+    await db.collection(reservation.collectionName).doc(reservation.order._id).update({
+      data: {
+        reservation_status: 'refunding',
+        settlement_status: 'wechat_paid',
+        payment_status: 'settled',
+        lock_expires_at: null,
+        payment_conflict_reason: 'ROOM_ALREADY_BOOKED',
+        wechat_transaction_id: transactionId,
+        payment_callback_total_fee: totalFee,
+        payment_callback_at: now(),
+        paid_at: now(),
+        updated_at: now(),
+      },
+    });
+
+    await safeCallNotification({
+      action: 'sendStaffNotification',
+      business_type: reservation.businessType,
+      business_no: orderNo,
+      title: 'Paid reservation needs refund',
+      payload: Object.assign({}, reservation.order, {
+        reservation_status: 'refunding',
+        settlement_status: 'wechat_paid',
+        payment_status: 'settled',
+        payment_conflict_reason: 'ROOM_ALREADY_BOOKED',
+        wechat_transaction_id: transactionId,
+      }),
+    });
+
+    return { errcode: 0, errmsg: 'paid but room unavailable, refund required' };
+  }
 
   await db.collection(reservation.collectionName).doc(reservation.order._id).update({
     data: {

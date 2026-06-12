@@ -16,13 +16,29 @@ function decorateActivity(activity) {
 }
 
 Page({
-  data: { activities: [], heroImage: assets.activities.hero, navTop: 28, navHeight: 32 },
+  data: {
+    activities: [],
+    heroImage: assets.activities.hero,
+    heroKicker: 'TINGYUN ACTIVITIES',
+    heroTitle: '山中有会，茶席相逢',
+    navTop: 28,
+    navHeight: 32,
+  },
   onLoad() {
     this.setNavigationMetrics();
   },
   async onShow() {
-    const activities = await service.listActivities();
-    this.setData({ activities: asArray(activities).map(decorateActivity) });
+    const [activities, banners] = await Promise.all([
+      service.listActivities(),
+      service.listActivityBanners(),
+    ]);
+    const banner = asArray(banners).find((item) => item && item.image_url) || {};
+    this.setData({
+      activities: asArray(activities).map(decorateActivity),
+      heroImage: banner.image_url || assets.activities.hero,
+      heroKicker: banner.kicker || 'TINGYUN ACTIVITIES',
+      heroTitle: banner.title || '山中有会，茶席相逢',
+    });
   },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();

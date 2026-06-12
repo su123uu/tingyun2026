@@ -2,20 +2,23 @@ const reservations = require('../../services/reservation');
 const catalog = require('../../services/catalog');
 
 const statuses = {
-  pending_payment: { text: '待支付', desc: '请尽快完成支付，以便为您保留本次预订。' },
+  pending_payment: { text: '待支付', desc: '待支付订单不占用房间，支付成功后将提交客服确认。' },
   paid_pending_confirmation: { text: '已支付，待确认', desc: '需求已提交，客服将与您联系确认具体信息。' },
   pending_confirmation: { text: '待确认', desc: '需求已提交，客服将与您联系确认具体信息。' },
   confirmed: { text: '已确认', desc: '预订已确认，期待您的到来。' },
   completed: { text: '已完成', desc: '本次预订已完成，感谢您的光临。' },
   cancelled: { text: '已取消', desc: '本次预订已取消。如有疑问，请联系客服。', tone: 'weak' },
   rejected: { text: '未通过', desc: '本次预订未能确认。如有疑问，请联系客服。', tone: 'weak' },
-  payment_expired: { text: '支付超时', desc: '本次预订未在规定时间内完成支付。', tone: 'weak' },
+  payment_expired: { text: '未完成支付', desc: '本次预订未完成支付，房间未被占用。', tone: 'weak' },
 };
+
+statuses.refunding = { text: '退款处理中', desc: '房间未能确认占用，客服将联系您处理退款。', tone: 'weak' };
+statuses.refunded = { text: '已退款', desc: '本次预约已完成退款。', tone: 'weak' };
 
 const settlement = {
   pending_wechat_pay: '待微信支付',
   wechat_paid: '已微信支付',
-  pending_offline_points: '待线下积分扣款',
+  pending_offline_points: '待线下会员账户核对',
   settled: '已结清',
 };
 
@@ -55,11 +58,13 @@ Page({
     this.setData({
       order: Object.assign({}, order, {
         order_no: order.order_no || order.order_id,
+        can_pay: order.customer_type !== 'member' && order.reservation_status === 'pending_payment' && order.settlement_status === 'pending_wechat_pay',
+        can_delete: true,
         status_text: status.text,
         status_desc: status.desc,
         status_tone: status.tone || '',
         settlement_text: settlement[order.settlement_status] || order.settlement_status,
-        payment_method: order.customer_type === 'member' ? '线下积分扣款' : '微信支付',
+        payment_method: order.customer_type === 'member' ? '线下会员账户核对' : '微信支付',
         reservation_label: isDining ? '用餐预订' : '住宿预订',
         detail_title: isDining ? '餐厅信息' : '住宿信息',
         room_label: isDining ? '包间' : '房间',
@@ -91,4 +96,46 @@ Page({
     });
   },
   contact() { wx.makePhoneCall({ phoneNumber: '15192670475' }); },
+  async pay() {
+    const orderNo = this.data.order && this.data.order.order_no;
+    if (!orderNo) return;
+    try {
+      const paymentResult = await reservations.createReservationPayment({ order_no: orderNo });
+      const payment = paymentResult.payment || paymentResult.raw_payment || paymentResult;
+      await new Promise((resolve, reject) => {
+        wx.requestPayment(Object.assign({}, payment, {
+          success: resolve,
+          fail: (error) => {
+            const message = error && error.errMsg && error.errMsg.includes('cancel')
+              ? '支付已取消'
+              : ((error && error.errMsg) || '微信支付失败');
+            reject(new Error(message));
+          },
+        }));
+      });
+      wx.showToast({ title: '支付完成' });
+      this.onLoad({ id: orderNo });
+    } catch (error) {
+      wx.showToast({ title: error.message || '支付未完成', icon: 'none' });
+    }
+  },
+  async remove() {
+    const orderNo = this.data.order && this.data.order.order_no;
+    if (!orderNo) return;
+    const ok = await new Promise((resolve) => wx.showModal({
+      title: '删除订单',
+      content: '删除后该订单仅在用户侧隐藏，后台仍会保留记录。',
+      confirmText: '删除',
+      confirmColor: '#8B3A2F',
+      success: (result) => resolve(result.confirm),
+    }));
+    if (!ok) return;
+    try {
+      await reservations.deleteReservation({ order_no: orderNo });
+      wx.showToast({ title: '已删除' });
+      wx.redirectTo({ url: '/pages/orders/orders' });
+    } catch (error) {
+      wx.showToast({ title: error.message || '删除失败', icon: 'none' });
+    }
+  },
 });

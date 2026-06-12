@@ -24,6 +24,7 @@ const collections = [
   'dining_reservations',
   'accommodation_rooms',
   'accommodation_reservations',
+  'activity_banners',
   'activity_items',
   'activity_signups',
   'financial_transactions',
@@ -33,6 +34,39 @@ const collections = [
 ];
 
 const now = () => new Date();
+
+const memberLevelRows = [
+  { level_id: 'level_1', level_no: 1, level_name: '将星会员', stored_amount: 10000, points_granted: 12000, valid_months: 12, is_enabled: true, sort_order: 10 },
+  { level_id: 'level_2', level_no: 2, level_name: '辰升会员', stored_amount: 20000, points_granted: 25000, valid_months: 16, is_enabled: true, sort_order: 20 },
+  { level_id: 'level_3', level_no: 3, level_name: '海尊会员', stored_amount: 30000, points_granted: 37000, valid_months: 18, is_enabled: true, sort_order: 30 },
+  { level_id: 'level_4', level_no: 4, level_name: '山王会员', stored_amount: 50000, points_granted: 62000, valid_months: 24, is_enabled: true, sort_order: 40 },
+  { level_id: 'level_5', level_no: 5, level_name: '云境会员', stored_amount: 100000, points_granted: 125000, valid_months: 36, is_enabled: true, sort_order: 50 },
+];
+
+const memberBenefitTemplates = [
+  { benefit_key: 'member_service', benefit_name: '山居资源圈与跨界活动', benefit_type: 'service', total_quota: null, quota_unit: '', description: '会员有效期内可参与山居资源圈与跨界活动。', show_on_card: true, applies_to: ['activity', 'service'], rule: {} },
+  { benefit_key: 'free_accommodation', benefit_name: '免费住宿', benefit_type: 'quota', total_quota: 10, quota_unit: '次', description: '不限房型，仍需按入住日期确认房间可用性。', show_on_card: true, applies_to: ['accommodation'], rule: { room_scope: 'all' } },
+  { benefit_key: 'monthly_member_event', benefit_name: '月度会员专题活动', benefit_type: 'service', total_quota: null, quota_unit: '', description: '会员有效期内可参与月度会员专题活动。', show_on_card: true, applies_to: ['activity'], rule: {} },
+  { benefit_key: 'meditation_camp', benefit_name: '禅修营', benefit_type: 'quota', total_quota: 5, quota_unit: '人次', description: '每年 5 人次，按实际参与人数核销。', show_on_card: true, applies_to: ['activity'], rule: {} },
+  { benefit_key: 'children_nature_course', benefit_name: '子女自然教育课程', benefit_type: 'quota', total_quota: 5, quota_unit: '人次', description: '每年 5 人次，按实际参与人数核销。', show_on_card: true, applies_to: ['activity'], rule: {} },
+  { benefit_key: 'music_concert', benefit_name: '禅修营专题音乐会', benefit_type: 'quota', total_quota: 4, quota_unit: '次', description: '每年 4 次禅修营专题音乐会权益。', show_on_card: true, applies_to: ['activity'], rule: {} },
+  { benefit_key: 'butler_service', benefit_name: '山居管家服务', benefit_type: 'service', total_quota: null, quota_unit: '', description: '会员有效期内享受山居管家咨询与接待协助。', show_on_card: true, applies_to: ['service'], rule: {} },
+  { benefit_key: 'anniversary_decoration', benefit_name: '私人纪念日主题布置', benefit_type: 'quota', total_quota: 3, quota_unit: '次', description: '私人纪念日主题布置 3 次。', show_on_card: true, applies_to: ['service'], rule: {} },
+  { benefit_key: 'tea_room', benefit_name: '茶室', benefit_type: 'quota', total_quota: 10, quota_unit: '次', description: '茶室使用 10 次，需提前预约确认。', show_on_card: true, applies_to: ['space'], rule: {} },
+  { benefit_key: 'tea_bar', benefit_name: '茶酒吧', benefit_type: 'quota', total_quota: 10, quota_unit: '次', description: '茶酒吧使用 10 次，需提前预约确认。', show_on_card: true, applies_to: ['space'], rule: {} },
+  { benefit_key: 'meeting_or_meditation_room', benefit_name: '多功能会议室或禅修室', benefit_type: 'quota', total_quota: 1, quota_unit: '次', description: '多功能会议室或禅修室使用 1 次，需提前预约确认。', show_on_card: true, applies_to: ['space'], rule: {} },
+  { benefit_key: 'storage_service', benefit_name: '定制储藏服务', benefit_type: 'service', total_quota: null, quota_unit: '', description: '支持存茶、存雪茄、存酒等定制储藏服务，具体规则线下确认。', show_on_card: true, applies_to: ['service'], rule: {} },
+  { benefit_key: 'nature_picking', benefit_name: '果园农场自然采摘', benefit_type: 'quota', total_quota: 20, quota_unit: '人次', description: '每年 20 人次，按实际参与人数核销。', show_on_card: true, applies_to: ['activity'], rule: {} },
+];
+
+function buildMemberLevelBenefits() {
+  return memberLevelRows.flatMap((level, levelIndex) => memberBenefitTemplates.map((template, benefitIndex) => Object.assign({}, template, {
+    level_benefit_id: `${level.level_id}_${template.benefit_key}`,
+    level_id: level.level_id,
+    is_enabled: true,
+    sort_order: (levelIndex + 1) * 100 + (benefitIndex + 1) * 10,
+  })));
+}
 
 const seedData = {
   home_banners: {
@@ -238,6 +272,19 @@ const seedData = {
       { meal_standard_id: 'tingyun', name: '停云', price_per_person: 318, summary: '山居宴席精选，讲究食材与摆盘，适合贵宾宴请', dishes: [{ name: '凉菜', content: '迎宾冷盘 6 道' }, { name: '热菜', content: '主厨精选菜 10 道，含山珍、河鲜与特色肉菜' }, { name: '主食', content: '手作点心、米饭' }, { name: '汤品', content: '主厨炖汤 1 份' }, { name: '果盘', content: '时令水果拼盘 1 份' }, { name: '茶饮', content: '山居茶饮 1 份' }], image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/dining-standards/餐标示例.png', is_enabled: true, sort_order: 40 },
     ],
   },
+  activity_banners: {
+    key: 'banner_id',
+    rows: [
+      {
+        banner_id: 'activity_main',
+        image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/home/cards/member-activity.png',
+        kicker: 'TINGYUN ACTIVITIES',
+        title: '山中有会，茶席相逢',
+        sort_order: 10,
+        is_enabled: true,
+      },
+    ],
+  },
   activity_items: {
     key: 'activity_id',
     rows: [
@@ -248,35 +295,15 @@ const seedData = {
   },
   member_levels: {
     key: 'level_id',
-    rows: [
-      { level_id: 'level_1', level_no: 1, level_name: '将星会员', stored_amount: 1000, points_granted: 1000, valid_months: 12, is_enabled: true, sort_order: 10 },
-      { level_id: 'level_2', level_no: 2, level_name: '辰升会员', stored_amount: 3000, points_granted: 3300, valid_months: 12, is_enabled: true, sort_order: 20 },
-      { level_id: 'level_3', level_no: 3, level_name: '海尊会员', stored_amount: 5000, points_granted: 5600, valid_months: 18, is_enabled: true, sort_order: 30 },
-      { level_id: 'level_4', level_no: 4, level_name: '山王会员', stored_amount: 10000, points_granted: 11500, valid_months: 24, is_enabled: true, sort_order: 40 },
-      { level_id: 'level_5', level_no: 5, level_name: '云境会员', stored_amount: 20000, points_granted: 24000, valid_months: 36, is_enabled: true, sort_order: 50 },
-    ],
+    rows: memberLevelRows,
   },
   member_level_benefits: {
     key: 'level_benefit_id',
-    rows: [
-      { level_benefit_id: 'level_1_member_service', level_id: 'level_1', benefit_key: 'member_service', benefit_name: '会员活动与山居管家服务', benefit_type: 'service', total_quota: null, quota_unit: '', description: '会员有效期内可参加会员专属活动，并享受山居管家咨询服务。', show_on_card: true, applies_to: ['activity', 'service'], rule: {}, is_enabled: true, sort_order: 10 },
-      { level_benefit_id: 'level_1_storage_service', level_id: 'level_1', benefit_key: 'storage_service', benefit_name: '定制储藏服务', benefit_type: 'service', total_quota: null, quota_unit: '', description: '支持线下联系店长确认储藏规则与使用方式。', show_on_card: true, applies_to: ['service'], rule: {}, is_enabled: true, sort_order: 20 },
-      { level_benefit_id: 'level_1_free_accommodation', level_id: 'level_1', benefit_key: 'free_accommodation', benefit_name: '免费住宿', benefit_type: 'quota', total_quota: 1, quota_unit: '晚', description: '不限房型，仍需按入住日期确认房间可用性。', show_on_card: false, applies_to: ['accommodation'], rule: { room_scope: 'all' }, is_enabled: true, sort_order: 30 },
-      { level_benefit_id: 'level_2_member_service', level_id: 'level_2', benefit_key: 'member_service', benefit_name: '会员活动与山居管家服务', benefit_type: 'service', total_quota: null, quota_unit: '', description: '会员有效期内可参加会员专属活动，并享受山居管家咨询服务。', show_on_card: true, applies_to: ['activity', 'service'], rule: {}, is_enabled: true, sort_order: 40 },
-      { level_benefit_id: 'level_2_storage_service', level_id: 'level_2', benefit_key: 'storage_service', benefit_name: '定制储藏服务', benefit_type: 'service', total_quota: null, quota_unit: '', description: '支持线下联系店长确认储藏规则与使用方式。', show_on_card: true, applies_to: ['service'], rule: {}, is_enabled: true, sort_order: 50 },
-      { level_benefit_id: 'level_2_free_accommodation', level_id: 'level_2', benefit_key: 'free_accommodation', benefit_name: '免费住宿', benefit_type: 'quota', total_quota: 3, quota_unit: '晚', description: '不限房型，仍需按入住日期确认房间可用性。', show_on_card: false, applies_to: ['accommodation'], rule: { room_scope: 'all' }, is_enabled: true, sort_order: 60 },
-      { level_benefit_id: 'level_2_nature_picking', level_id: 'level_2', benefit_key: 'nature_picking', benefit_name: '自然采摘', benefit_type: 'quota', total_quota: 20, quota_unit: '人次', description: '按实际参与人数核销。', show_on_card: false, applies_to: ['activity'], rule: {}, is_enabled: true, sort_order: 70 },
-      { level_benefit_id: 'level_3_free_accommodation', level_id: 'level_3', benefit_key: 'free_accommodation', benefit_name: '免费住宿', benefit_type: 'quota', total_quota: 5, quota_unit: '晚', description: '不限房型，仍需按入住日期确认房间可用性。', show_on_card: false, applies_to: ['accommodation'], rule: { room_scope: 'all' }, is_enabled: true, sort_order: 80 },
-      { level_benefit_id: 'level_4_free_accommodation', level_id: 'level_4', benefit_key: 'free_accommodation', benefit_name: '免费住宿', benefit_type: 'quota', total_quota: 10, quota_unit: '晚', description: '不限房型，仍需按入住日期确认房间可用性。', show_on_card: false, applies_to: ['accommodation'], rule: { room_scope: 'all' }, is_enabled: true, sort_order: 90 },
-      { level_benefit_id: 'level_5_free_accommodation', level_id: 'level_5', benefit_key: 'free_accommodation', benefit_name: '免费住宿', benefit_type: 'quota', total_quota: 20, quota_unit: '晚', description: '不限房型，仍需按入住日期确认房间可用性。', show_on_card: false, applies_to: ['accommodation'], rule: { room_scope: 'all' }, is_enabled: true, sort_order: 100 },
-    ],
+    rows: buildMemberLevelBenefits(),
   },
   member_benefit_accounts: {
     key: 'benefit_account_id',
-    rows: [
-      { benefit_account_id: 'MBA_FREE_STAY_001', member_id: 'member_001', level_id: 'level_2', benefit_key: 'free_accommodation', benefit_name: '免费住宿', benefit_type: 'quota', total_quota: 10, used_quota: 2, locked_quota: 0, remaining_quota: 8, quota_unit: '次', valid_start_at: '2026-01-01T00:00:00+08:00', valid_end_at: '2027-05-01T00:00:00+08:00', account_status: 'active' },
-      { benefit_account_id: 'MBA_PICKING_001', member_id: 'member_001', level_id: 'level_2', benefit_key: 'nature_picking', benefit_name: '自然采摘', benefit_type: 'quota', total_quota: 20, used_quota: 6, locked_quota: 0, remaining_quota: 14, quota_unit: '人次', valid_start_at: '2026-01-01T00:00:00+08:00', valid_end_at: '2027-05-01T00:00:00+08:00', account_status: 'active' },
-    ],
+    rows: [],
   },
 };
 

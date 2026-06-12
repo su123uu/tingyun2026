@@ -39,7 +39,9 @@ const STATUS_LABELS = {
   confirmed: '已确认',
   rejected: '未通过',
   cancelled: '已取消',
-  payment_expired: '支付超时',
+  payment_expired: '未完成支付',
+  refunding: '退款处理中',
+  refunded: '已退款',
 };
 
 function now() {

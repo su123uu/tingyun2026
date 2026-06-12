@@ -65,6 +65,8 @@
   </view>
 
   <view class="actions">
+    <button wx:if="{{order.can_pay}}" class="service-button" bindtap="pay">继续支付</button>
     <button class="service-button" bindtap="contact">联系客服</button>
+    <button wx:if="{{order.can_delete}}" class="service-button" bindtap="remove">删除订单</button>
   </view>
 </view>

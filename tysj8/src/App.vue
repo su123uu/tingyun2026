@@ -59,7 +59,8 @@ const reservationStatuses = [
   { value: 'completed', label: '已完成', tone: 'done' },
   { value: 'rejected', label: '已拒绝', tone: 'closed' },
   { value: 'cancelled', label: '已取消', tone: 'closed' },
-  { value: 'payment_expired', label: '支付超时', tone: 'closed' },
+  { value: 'refunding', label: '退款处理中', tone: 'closed' },
+  { value: 'refunded', label: '已退款', tone: 'closed' },
 ];
 const contentBlockTypes = [
   { value: 'lead', label: '引导段' },
@@ -115,6 +116,7 @@ const state = reactive({
   draggingMealId: '',
   draggingDiningRoomId: '',
   mealCategoryKey: 'all',
+  collapsedNavGroups: {},
   drawerOpen: false,
   editingId: '',
   editingCollection: '',
@@ -154,6 +156,8 @@ const navGroups = computed(() => {
     return { ...group, items };
   });
 });
+const isNavGroupCollapsed = (name) => state.collapsedNavGroups[name] === true;
+const navGroupItems = (group) => (isNavGroupCollapsed(group.name) ? [] : group.items);
 const titleField = computed(() => activeModule.value.titleField || activeModule.value.fields[0]?.key || '_id');
 const tableColumns = computed(() => activeModule.value.columns || activeModule.value.fields.slice(0, 5).map((field) => field.key));
 const isBannerModule = computed(() => activeModule.value.key === 'home_banners');
@@ -166,6 +170,10 @@ const isMembersModule = computed(() => activeModule.value.key === 'members');
 const isMemberLevelsModule = computed(() => activeModule.value.key === 'member_levels');
 const isRoomCatalogModule = computed(() => isDiningRoomsModule.value || isAccommodationRoomsModule.value);
 const isSortableTableModule = computed(() => isBannerModule.value || isMealItemsModule.value || isRoomCatalogModule.value);
+const memberLevelOptions = computed(() => state.memberManage.levels
+  .slice()
+  .sort(compareSortOrder)
+  .map((level) => ({ value: level.level_id, label: level.level_name || level.level_id })));
 const visibleFields = computed(() => {
   return activeModule.value.fields.filter((field) => {
     if (field.hidden) return false;
@@ -595,6 +603,160 @@ function normalizeImageRows(value, previewValue, fallbackValue = '', fallbackPre
   return rows;
 }
 
+function memberBenefitAccountId(memberId, benefitKey) {
+  return `MBA_${memberId}_${benefitKey}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function normalizeBenefitNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function normalizeMemberBenefitRow(row = {}, memberId = form.member_id) {
+  const benefitKey = row.benefit_key || '';
+  return {
+    _id: row._id || '',
+    benefit_account_id: row.benefit_account_id || (memberId && benefitKey ? memberBenefitAccountId(memberId, benefitKey) : ''),
+    member_id: row.member_id || memberId || '',
+    level_id: row.level_id || form.level_id || '',
+    benefit_key: benefitKey,
+    benefit_name: row.benefit_name || '',
+    benefit_type: row.benefit_type || 'service',
+    total_quota: normalizeBenefitNumber(row.total_quota),
+    used_quota: normalizeBenefitNumber(row.used_quota),
+    locked_quota: normalizeBenefitNumber(row.locked_quota),
+    remaining_quota: normalizeBenefitNumber(row.remaining_quota),
+    quota_unit: row.quota_unit || '',
+    valid_start_at: normalizeDateInput(row.valid_start_at || form.benefit_start_at),
+    valid_end_at: normalizeDateInput(row.valid_end_at || form.benefit_end_at),
+    account_status: row.account_status || 'active',
+  };
+}
+
+function slugBenefitName(value, fallback = 'benefit') {
+  const ascii = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return ascii || `${fallback}_${Date.now().toString(36)}`;
+}
+
+function normalizeLevelBenefitRow(row = {}, levelId = form.level_id) {
+  const benefitType = row.benefit_type === 'quota' ? 'quota' : 'service';
+  const benefitKey = row.benefit_key || slugBenefitName(row.benefit_name, benefitType);
+  const totalQuota = benefitType === 'quota' ? normalizeBenefitNumber(row.total_quota) : 0;
+  return {
+    _id: row._id || '',
+    level_benefit_id: row.level_benefit_id || (levelId && benefitKey ? `${levelId}_${benefitKey}` : ''),
+    level_id: row.level_id || levelId || '',
+    benefit_key: benefitKey,
+    benefit_name: row.benefit_name || '',
+    benefit_type: benefitType,
+    total_quota: totalQuota,
+    quota_unit: row.quota_unit || (benefitType === 'quota' ? '次' : ''),
+    description: row.description || '',
+    show_on_card: row.show_on_card !== false,
+    applies_to: Array.isArray(row.applies_to) ? row.applies_to : [],
+    rule: row.rule && typeof row.rule === 'object' ? row.rule : {},
+    is_enabled: row.is_enabled !== false,
+    sort_order: normalizeBenefitNumber(row.sort_order),
+  };
+}
+
+function normalizeLevelBenefitRows(row = {}) {
+  const levelId = row.level_id || form.level_id || '';
+  return state.memberManage.levelBenefits
+    .filter((benefit) => benefit.level_id === levelId)
+    .sort(compareSortOrder)
+    .map((benefit) => normalizeLevelBenefitRow(benefit, levelId));
+}
+
+function activeLevelBenefits(type) {
+  return (form.__levelBenefitRows || []).filter((row) => row.benefit_type === type && row.is_enabled !== false);
+}
+
+function addLevelBenefitRow(type) {
+  const benefitType = type === 'quota' ? 'quota' : 'service';
+  form.__levelBenefitRows = form.__levelBenefitRows || [];
+  form.__levelBenefitRows.push(normalizeLevelBenefitRow({
+    benefit_type: benefitType,
+    benefit_name: '',
+    total_quota: benefitType === 'quota' ? 1 : 0,
+    quota_unit: benefitType === 'quota' ? '次' : '',
+    show_on_card: true,
+    is_enabled: true,
+  }, form.level_id));
+}
+
+function removeLevelBenefitRow(row) {
+  if (!row) return;
+  if (row._id || row.level_benefit_id) {
+    row.is_enabled = false;
+    return;
+  }
+  const index = (form.__levelBenefitRows || []).indexOf(row);
+  if (index >= 0) form.__levelBenefitRows.splice(index, 1);
+}
+
+function levelBenefitToAccountRow(benefit, memberId = form.member_id) {
+  const totalQuota = normalizeBenefitNumber(benefit.total_quota);
+  return normalizeMemberBenefitRow({
+    benefit_account_id: memberId && benefit.benefit_key ? memberBenefitAccountId(memberId, benefit.benefit_key) : '',
+    member_id: memberId || '',
+    level_id: benefit.level_id || form.level_id || '',
+    benefit_key: benefit.benefit_key || '',
+    benefit_name: benefit.benefit_name || '',
+    benefit_type: benefit.benefit_type || 'service',
+    total_quota: totalQuota,
+    used_quota: 0,
+    locked_quota: 0,
+    remaining_quota: totalQuota,
+    quota_unit: benefit.quota_unit || '',
+    valid_start_at: form.benefit_start_at || '',
+    valid_end_at: form.benefit_end_at || '',
+    account_status: 'active',
+  }, memberId);
+}
+
+function normalizeMemberBenefitRows(row = {}) {
+  const memberId = row.member_id || form.member_id || '';
+  const existing = state.memberManage.benefitAccounts
+    .filter((account) => account.member_id === memberId)
+    .map((account) => normalizeMemberBenefitRow(account, memberId));
+  if (existing.length) return existing;
+  return state.memberManage.levelBenefits
+    .filter((benefit) => benefit.level_id === (row.level_id || form.level_id) && benefit.is_enabled !== false)
+    .map((benefit) => levelBenefitToAccountRow(benefit, memberId));
+}
+
+function applyMemberLevelName() {
+  const level = state.memberManage.levels.find((item) => item.level_id === form.level_id);
+  form.member_level = level ? level.level_name : form.member_level || '';
+}
+
+function addLevelBenefitsToMember() {
+  const existingKeys = new Set((form.__memberBenefitRows || []).map((row) => row.benefit_key).filter(Boolean));
+  const nextRows = state.memberManage.levelBenefits
+    .filter((benefit) => benefit.level_id === form.level_id && benefit.is_enabled !== false && !existingKeys.has(benefit.benefit_key))
+    .map((benefit) => levelBenefitToAccountRow(benefit, form.member_id));
+  form.__memberBenefitRows = (form.__memberBenefitRows || []).concat(nextRows);
+}
+
+function removeMemberBenefitRow(index) {
+  const row = form.__memberBenefitRows[index];
+  if (row && row.benefit_account_id) {
+    row.account_status = 'disabled';
+    return;
+  }
+  form.__memberBenefitRows.splice(index, 1);
+}
+
+function recalculateMemberBenefitRemaining(row) {
+  if (!row || row.benefit_type !== 'quota') return;
+  row.remaining_quota = Math.max(0, normalizeBenefitNumber(row.total_quota) - normalizeBenefitNumber(row.used_quota) - normalizeBenefitNumber(row.locked_quota));
+}
+
 function newContentBlock(type = 'paragraph') {
   if (type === 'feature_grid') {
     return {
@@ -819,7 +981,7 @@ function openCreate() {
   }
   resetForm();
   const idField = getPrimaryIdField();
-  if (idField) form[idField.key] = nextRecordId();
+  if (idField && activeModule.value.key !== 'members') form[idField.key] = nextRecordId();
   ['is_available', 'is_enabled'].forEach((key) => {
     if (Object.prototype.hasOwnProperty.call(form, key)) form[key] = true;
   });
@@ -851,6 +1013,12 @@ function openCreate() {
   }
   if (activeModule.value.key === 'members') {
     form.member_status = 'active';
+    form.__memberBenefitRows = [];
+  }
+  if (activeModule.value.key === 'member_levels') {
+    form.is_enabled = true;
+    form.sort_order = nextSortOrder();
+    form.__levelBenefitRows = [];
   }
   if (activeModule.value.key === 'member_level_benefits') {
     form.benefit_type = 'service';
@@ -880,6 +1048,8 @@ function openEdit(row) {
     else if (field.type === 'itemDetails') form.__detailsRows = normalizeMealDetails(value);
     else if (field.type === 'standardDishes') form.__detailsRows = normalizeStandardDishes(value);
     else if (field.type === 'contentBlocks') form.__contentBlocks = normalizeContentBlocks(value, row._content_preview_urls || {});
+    else if (field.type === 'memberBenefits') form.__memberBenefitRows = normalizeMemberBenefitRows(row);
+    else if (field.type === 'levelBenefits') form.__levelBenefitRows = normalizeLevelBenefitRows(row);
     else if (field.type === 'images') {
       form[`__${field.key}Rows`] = normalizeImageRows(
         value,
@@ -924,6 +1094,9 @@ async function loadRows() {
   state.loading = true;
   setStatus('连接中', 'muted');
   try {
+    if (isMembersModule.value || isMemberLevelsModule.value) {
+      await loadMemberManageData();
+    }
     const data = await callAdmin('list', {
       collection: activeModule.value.key,
       page_size: 100,
@@ -938,6 +1111,17 @@ async function loadRows() {
   } finally {
     state.loading = false;
   }
+}
+
+async function loadMemberManageData() {
+  const [levels, levelBenefits, benefitAccounts] = await Promise.all([
+    callAdmin('list', { collection: 'member_levels', page_size: 100 }),
+    callAdmin('list', { collection: 'member_level_benefits', page_size: 100 }),
+    callAdmin('list', { collection: 'member_benefit_accounts', page_size: 100 }),
+  ]);
+  state.memberManage.levels = levels.rows || [];
+  state.memberManage.levelBenefits = levelBenefits.rows || [];
+  state.memberManage.benefitAccounts = benefitAccounts.rows || [];
 }
 
 async function loadOverview() {
@@ -1028,6 +1212,10 @@ async function switchModule(key) {
   state.draggingDiningRoomId = '';
   if (key !== 'meal_items') state.mealCategoryKey = 'all';
   await loadRows();
+}
+
+function toggleNavGroup(name) {
+  state.collapsedNavGroups[name] = !state.collapsedNavGroups[name];
 }
 
 async function openDashboardEvent(event) {
@@ -1491,6 +1679,8 @@ async function toggleStatusField(row, column) {
 function buildPayload() {
   const payload = {};
   activeModule.value.fields.forEach((field) => {
+    if (field.type === 'memberBenefits') return;
+    if (field.type === 'levelBenefits') return;
     let value = form[field.key];
     if (field.type === 'number') {
       value = value === '' || value === null ? null : Number(value);
@@ -1520,7 +1710,10 @@ function buildPayload() {
     payload[field.key] = value;
   });
   const idField = getPrimaryIdField();
-  if (idField && !state.editingId) payload[idField.key] = payload[idField.key] || nextRecordId();
+  if (isMembersModule.value && !payload.member_id) {
+    throw new Error('请填写线下会员ID/卡号。');
+  }
+  if (idField && !state.editingId && !isMembersModule.value) payload[idField.key] = payload[idField.key] || nextRecordId();
   if (isMealItemsModule.value) {
     const category = getMealCategory(payload.category_key || state.mealCategoryKey);
     payload.category_key = category.key;
@@ -1552,7 +1745,86 @@ function buildPayload() {
       payload.published_at = new Date().toISOString();
     }
   }
+  if (isMembersModule.value) {
+    applyMemberLevelName();
+    payload.member_level = form.member_level || payload.member_level || '';
+  }
   return payload;
+}
+
+function serializeLevelBenefitRows(levelPayload) {
+  const levelId = levelPayload.level_id || form.level_id;
+  return (form.__levelBenefitRows || []).map((row, index) => {
+    const normalized = normalizeLevelBenefitRow(row, levelId);
+    const sortOrder = normalized.sort_order || (index + 1) * 10;
+    const benefitKey = normalized.benefit_key || slugBenefitName(normalized.benefit_name, normalized.benefit_type);
+    return {
+      _id: normalized._id,
+      level_benefit_id: normalized.level_benefit_id || `${levelId}_${benefitKey}`,
+      level_id: levelId,
+      benefit_key: benefitKey,
+      benefit_name: String(normalized.benefit_name || '').trim(),
+      benefit_type: normalized.benefit_type,
+      total_quota: normalized.benefit_type === 'quota' ? normalizeBenefitNumber(normalized.total_quota) : 0,
+      quota_unit: normalized.benefit_type === 'quota' ? String(normalized.quota_unit || '次').trim() : '',
+      description: String(normalized.description || '').trim(),
+      show_on_card: normalized.show_on_card === true,
+      applies_to: normalized.applies_to,
+      rule: normalized.rule,
+      is_enabled: normalized.is_enabled !== false,
+      sort_order: sortOrder,
+    };
+  }).filter((row) => row.benefit_name || row.is_enabled === false);
+}
+
+async function syncLevelBenefitRows(levelPayload) {
+  const levelId = levelPayload.level_id || form.level_id;
+  if (!levelId) throw new Error('请先填写等级 ID。');
+
+  const rows = serializeLevelBenefitRows(levelPayload);
+  const activeMissing = rows.find((row) => row.is_enabled !== false && !row.benefit_name);
+  if (activeMissing) throw new Error('请填写每条等级权益的名称。');
+
+  for (const row of rows) {
+    const data = { ...row };
+    const id = data._id;
+    delete data._id;
+    if (id) {
+      await callAdmin('update', { collection: 'member_level_benefits', _id: id, data });
+    } else {
+      await callAdmin('create', { collection: 'member_level_benefits', data });
+    }
+  }
+}
+
+async function syncMemberBenefitRows(memberPayload) {
+  const rows = (form.__memberBenefitRows || []).map((row) => {
+    const normalized = normalizeMemberBenefitRow(row, memberPayload.member_id || form.member_id);
+    return {
+      benefit_account_id: normalized.benefit_account_id,
+      member_id: memberPayload.member_id || form.member_id,
+      level_id: normalized.level_id || memberPayload.level_id || form.level_id,
+      benefit_key: normalized.benefit_key,
+      benefit_name: normalized.benefit_name,
+      benefit_type: normalized.benefit_type,
+      total_quota: normalized.total_quota,
+      used_quota: normalized.used_quota,
+      locked_quota: normalized.locked_quota,
+      remaining_quota: normalized.remaining_quota,
+      quota_unit: normalized.quota_unit,
+      valid_start_at: normalized.valid_start_at ? new Date(normalized.valid_start_at).toISOString() : '',
+      valid_end_at: normalized.valid_end_at ? new Date(normalized.valid_end_at).toISOString() : '',
+      account_status: normalized.account_status,
+    };
+  });
+
+  await callAdmin('updateMemberBenefits', {
+    member_id: memberPayload.member_id || form.member_id,
+    level_id: memberPayload.level_id || form.level_id,
+    benefit_start_at: memberPayload.benefit_start_at || form.benefit_start_at,
+    benefit_end_at: memberPayload.benefit_end_at || form.benefit_end_at,
+    benefits: rows,
+  });
 }
 
 async function saveRecord() {
@@ -1577,6 +1849,12 @@ async function saveRecord() {
       await callAdmin('update', { collection, _id: state.editingId, data: payload });
     } else {
       await callAdmin('create', { collection, data: payload });
+    }
+    if (isMembersModule.value) {
+      await syncMemberBenefitRows(payload);
+    }
+    if (isMemberLevelsModule.value) {
+      await syncLevelBenefitRows(payload);
     }
     closeDrawer();
     await loadRows();
@@ -2024,36 +2302,46 @@ onMounted(() => {
 
       <nav class="nav">
         <section class="nav-group">
-          <p>总览</p>
-          <button
-            class="nav-item"
-            :class="{ active: isOverview }"
-            type="button"
-            @click="switchModule(OVERVIEW_KEY)"
-          >
-            点餐信息
+          <button class="nav-group-title" type="button" @click="toggleNavGroup('总览')">
+            <span>总览</span>
+            <em>{{ isNavGroupCollapsed('总览') ? '+' : '−' }}</em>
           </button>
-          <button
-            class="nav-item"
-            :class="{ active: isReservationCalendar }"
-            type="button"
-            @click="switchModule(RESERVATION_CALENDAR_KEY)"
-          >
-            预定日历
-          </button>
+          <div v-if="!isNavGroupCollapsed('总览')" class="nav-group-items">
+            <button
+              class="nav-item"
+              :class="{ active: isOverview }"
+              type="button"
+              @click="switchModule(OVERVIEW_KEY)"
+            >
+              点餐信息
+            </button>
+            <button
+              class="nav-item"
+              :class="{ active: isReservationCalendar }"
+              type="button"
+              @click="switchModule(RESERVATION_CALENDAR_KEY)"
+            >
+              预定日历
+            </button>
+          </div>
         </section>
         <section v-for="group in navGroups" :key="group.name" class="nav-group">
-          <p>{{ group.name }}</p>
-          <button
-            v-for="item in group.items"
-            :key="item.key"
-            class="nav-item"
-            :class="{ active: item.key === state.activeKey }"
-            type="button"
-            @click="switchModule(item.key)"
-          >
-            {{ item.name }}
+          <button class="nav-group-title" type="button" @click="toggleNavGroup(group.name)">
+            <span>{{ group.name }}</span>
+            <em>{{ isNavGroupCollapsed(group.name) ? '+' : '−' }}</em>
           </button>
+          <div v-if="!isNavGroupCollapsed(group.name)" class="nav-group-items">
+            <button
+              v-for="item in navGroupItems(group)"
+              :key="item.key"
+              class="nav-item"
+              :class="{ active: item.key === state.activeKey }"
+              type="button"
+              @click="switchModule(item.key)"
+            >
+              {{ item.name }}
+            </button>
+          </div>
         </section>
       </nav>
     </aside>
@@ -2474,9 +2762,9 @@ onMounted(() => {
       </section>
     </div>
 
-    <div v-if="state.drawerOpen" class="drawer" aria-modal="true">
-      <button class="drawer-mask" type="button" aria-label="关闭" @click="closeDrawer"></button>
-      <form class="drawer-panel" @submit.prevent="saveRecord">
+    <div v-if="state.drawerOpen" class="editor-modal" aria-modal="true">
+      <button class="modal-mask" type="button" aria-label="关闭" @click="closeDrawer"></button>
+      <form class="editor-dialog" @submit.prevent="saveRecord">
         <div class="drawer-head">
           <div>
             <h2>{{ state.editingId ? '编辑记录' : '新建记录' }}</h2>
@@ -2502,7 +2790,7 @@ onMounted(() => {
         </div>
 
         <div class="form-grid">
-          <label v-for="field in visibleFields" :key="field.key" class="field" :class="{ wide: field.type === 'textarea' || field.type === 'json' || field.type === 'image' || field.type === 'images' || field.type === 'itemDetails' || field.type === 'standardDishes' || field.type === 'contentBlocks' }">
+          <label v-for="field in visibleFields" :key="field.key" class="field" :class="{ wide: field.type === 'textarea' || field.type === 'json' || field.type === 'image' || field.type === 'images' || field.type === 'itemDetails' || field.type === 'standardDishes' || field.type === 'contentBlocks' || field.type === 'memberBenefits' || field.type === 'levelBenefits' }">
             <span>{{ field.label }}{{ field.required ? ' *' : '' }}</span>
 
             <template v-if="field.type === 'image'">
@@ -2566,6 +2854,10 @@ onMounted(() => {
             </template>
 
             <textarea v-else-if="field.type === 'textarea'" v-model="form[field.key]" rows="3"></textarea>
+            <select v-else-if="field.type === 'memberLevelSelect'" v-model="form[field.key]" @change="applyMemberLevelName">
+              <option value="">请选择会员等级</option>
+              <option v-for="item in memberLevelOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+            </select>
             <div v-else-if="field.type === 'itemDetails'" class="details-editor">
               <div
                 v-for="(detail, index) in form.__detailsRows"
@@ -2707,6 +2999,130 @@ onMounted(() => {
                 </div>
               </article>
             </div>
+            <div v-else-if="field.type === 'memberBenefits'" class="member-benefit-editor">
+              <div class="member-benefit-toolbar">
+                <small>只维护会员身份、服务权益和次数权益；线下账户余额以办卡软件为准。</small>
+                <button class="btn secondary compact-btn" type="button" @click="addLevelBenefitsToMember">同步当前等级权益</button>
+              </div>
+              <div v-if="!form.__memberBenefitRows.length" class="multi-image-empty">暂无个人权益。选择会员等级后，可点击“同步当前等级权益”。</div>
+              <article
+                v-for="(benefit, index) in form.__memberBenefitRows"
+                :key="benefit.benefit_account_id || `${benefit.benefit_key}-${index}`"
+                class="member-benefit-card"
+              >
+                <div class="member-benefit-head">
+                  <div>
+                    <strong>{{ benefit.benefit_name || '未命名权益' }}</strong>
+                    <span>{{ benefit.benefit_type === 'quota' ? '次数权益' : '服务权益' }}</span>
+                  </div>
+                  <button class="btn danger compact-btn" type="button" @click="removeMemberBenefitRow(index)">停用/移除</button>
+                </div>
+                <div class="member-benefit-grid">
+                  <div class="member-benefit-field">
+                    <span>权益名称</span>
+                    <input v-model="benefit.benefit_name" type="text" />
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>类型</span>
+                    <select v-model="benefit.benefit_type">
+                      <option value="service">服务权益</option>
+                      <option value="quota">次数权益</option>
+                    </select>
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>总次数</span>
+                    <input v-model.number="benefit.total_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>已用</span>
+                    <input v-model.number="benefit.used_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>锁定</span>
+                    <input v-model.number="benefit.locked_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>剩余</span>
+                    <input v-model.number="benefit.remaining_quota" type="number" min="0" step="1" />
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>单位</span>
+                    <input v-model="benefit.quota_unit" type="text" placeholder="次 / 人次" />
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>状态</span>
+                    <select v-model="benefit.account_status">
+                      <option value="active">生效中</option>
+                      <option value="expired">已到期</option>
+                      <option value="disabled">已停用</option>
+                    </select>
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>有效开始</span>
+                    <input v-model="benefit.valid_start_at" type="datetime-local" />
+                  </div>
+                  <div class="member-benefit-field">
+                    <span>有效结束</span>
+                    <input v-model="benefit.valid_end_at" type="datetime-local" />
+                  </div>
+                </div>
+              </article>
+            </div>
+            <div v-else-if="field.type === 'levelBenefits'" class="level-benefit-editor">
+              <div class="member-benefit-toolbar">
+                <small>这里配置当前等级会拥有的权益。服务权益只展示服务内容；次数权益会进入会员中心的次数列表，并可同步到具体会员账户。</small>
+              </div>
+
+              <section class="level-benefit-section">
+                <div class="level-benefit-section-head">
+                  <div>
+                    <strong>服务权益</strong>
+                    <span>例如会员专享活动、定制储藏服务、山居管家服务。</span>
+                  </div>
+                  <button class="btn secondary compact-btn" type="button" @click="addLevelBenefitRow('service')">添加服务</button>
+                </div>
+                <div v-if="!activeLevelBenefits('service').length" class="multi-image-empty">暂无服务权益。</div>
+                <article
+                  v-for="benefit in activeLevelBenefits('service')"
+                  :key="benefit.level_benefit_id || benefit.benefit_key"
+                  class="level-benefit-row service"
+                >
+                  <input v-model="benefit.benefit_name" type="text" placeholder="服务名称，如会员专享活动" />
+                  <textarea v-model="benefit.description" rows="2" placeholder="说明，可选；会显示在会员中心的会员服务里"></textarea>
+                  <label class="inline-check">
+                    <input v-model="benefit.show_on_card" type="checkbox" />
+                    <span>显示在会员卡</span>
+                  </label>
+                  <button class="btn danger compact-btn" type="button" @click="removeLevelBenefitRow(benefit)">删除</button>
+                </article>
+              </section>
+
+              <section class="level-benefit-section">
+                <div class="level-benefit-section-head">
+                  <div>
+                    <strong>次数权益</strong>
+                    <span>例如免费住房 10 次、自然采摘 20 人次、音乐会 4 次。</span>
+                  </div>
+                  <button class="btn secondary compact-btn" type="button" @click="addLevelBenefitRow('quota')">添加次数</button>
+                </div>
+                <div v-if="!activeLevelBenefits('quota').length" class="multi-image-empty">暂无次数权益。</div>
+                <article
+                  v-for="benefit in activeLevelBenefits('quota')"
+                  :key="benefit.level_benefit_id || benefit.benefit_key"
+                  class="level-benefit-row quota"
+                >
+                  <input v-model="benefit.benefit_name" type="text" placeholder="权益名称，如免费住房" />
+                  <input v-model.number="benefit.total_quota" type="number" min="0" step="1" placeholder="次数" />
+                  <input v-model="benefit.quota_unit" type="text" placeholder="单位，如 次 / 人次" />
+                  <textarea v-model="benefit.description" rows="2" placeholder="说明，可选；会显示在会员中心次数权益下方"></textarea>
+                  <label class="inline-check">
+                    <input v-model="benefit.show_on_card" type="checkbox" />
+                    <span>显示在会员卡</span>
+                  </label>
+                  <button class="btn danger compact-btn" type="button" @click="removeLevelBenefitRow(benefit)">删除</button>
+                </article>
+              </section>
+            </div>
             <textarea v-else-if="field.type === 'json'" v-model="form[field.key]" rows="7" spellcheck="false"></textarea>
             <select v-else-if="field.type === 'select'" v-model="form[field.key]">
               <option v-for="item in field.options" :key="item.value" :value="item.value">{{ item.label }}</option>
@@ -2717,7 +3133,7 @@ onMounted(() => {
             </label>
             <input v-else-if="field.type === 'number'" v-model.number="form[field.key]" type="number" step="0.01" />
             <input v-else-if="field.type === 'datetime'" v-model="form[field.key]" type="datetime-local" />
-            <input v-else v-model="form[field.key]" type="text" />
+            <input v-else v-model="form[field.key]" type="text" :readonly="isMembersModule && state.editingId && field.key === 'member_id'" />
           </label>
         </div>
 

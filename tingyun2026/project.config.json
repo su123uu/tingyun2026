@@ -2,23 +2,74 @@
   "description": "项目配置文件",
   "packOptions": {
     "ignore": [
-      { "type": "file", "value": "images/轮播1.png" },
-      { "type": "file", "value": "images/轮播2.png" },
-      { "type": "file", "value": "images/轮播3.png" },
-      { "type": "file", "value": "images/下午茶轮播.png" },
-      { "type": "file", "value": "images/山居介绍.png" },
-      { "type": "file", "value": "images/member-activity.png" },
-      { "type": "file", "value": "images/下午茶套餐.png" },
-      { "type": "file", "value": "images/炒鸡.png" },
-      { "type": "file", "value": "images/兮古.png" },
-      { "type": "file", "value": "images/春悦.jpg" },
-      { "type": "file", "value": "images/餐标示例.png" },
-      { "type": "file", "value": "images/meditation-activity.jpg" },
-      { "type": "file", "value": "images/tea-activity.jpg" },
-      { "type": "file", "value": "images/music-activity.jpg" },
-      { "type": "file", "value": "images/tea.jpg" },
-      { "type": "file", "value": "images/dinner.jpg" },
-      { "type": "file", "value": "images/meditation.jpg" }
+      {
+        "type": "file",
+        "value": "images/轮播1.png"
+      },
+      {
+        "type": "file",
+        "value": "images/轮播2.png"
+      },
+      {
+        "type": "file",
+        "value": "images/轮播3.png"
+      },
+      {
+        "type": "file",
+        "value": "images/下午茶轮播.png"
+      },
+      {
+        "type": "file",
+        "value": "images/山居介绍.png"
+      },
+      {
+        "type": "file",
+        "value": "images/member-activity.png"
+      },
+      {
+        "type": "file",
+        "value": "images/下午茶套餐.png"
+      },
+      {
+        "type": "file",
+        "value": "images/炒鸡.png"
+      },
+      {
+        "type": "file",
+        "value": "images/兮古.png"
+      },
+      {
+        "type": "file",
+        "value": "images/春悦.jpg"
+      },
+      {
+        "type": "file",
+        "value": "images/餐标示例.png"
+      },
+      {
+        "type": "file",
+        "value": "images/meditation-activity.jpg"
+      },
+      {
+        "type": "file",
+        "value": "images/tea-activity.jpg"
+      },
+      {
+        "type": "file",
+        "value": "images/music-activity.jpg"
+      },
+      {
+        "type": "file",
+        "value": "images/tea.jpg"
+      },
+      {
+        "type": "file",
+        "value": "images/dinner.jpg"
+      },
+      {
+        "type": "file",
+        "value": "images/meditation.jpg"
+      }
     ],
     "include": []
   },
@@ -72,5 +123,6 @@
   "editorSetting": {
     "tabIndent": "auto",
     "tabSize": 2
-  }
+  },
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
 }

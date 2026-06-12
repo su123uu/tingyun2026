@@ -9,7 +9,7 @@ const kitchen = {
 
 const settlement = {
   pending_wechat_pay: '待微信支付',
-  pending_offline_points: '待线下积分扣款',
+  pending_offline_points: '待线下会员账户核对',
   settled: '已结清',
 };
 
@@ -34,7 +34,7 @@ function remarkText(order) {
 function buildSteps(order) {
   const progress = kitchenProgress[order.kitchen_status] || 0;
   return [
-    { text: order.customer_type === 'member' ? '订单已提交，待线下积分扣款' : '支付成功，正在通知厨房', done: progress >= 1 },
+    { text: order.customer_type === 'member' ? '订单已提交，待线下会员账户核对' : '支付成功，正在通知厨房', done: progress >= 1 },
     { text: '已通知厨房', done: progress >= 2 },
     { text: '制作中', done: progress >= 3 },
     { text: '已完成', done: progress >= 4 },
@@ -50,10 +50,12 @@ Page({
     this.setData({
       order: Object.assign({}, order, {
         order_no: order.order_no || order.order_id,
+        can_pay: order.customer_type !== 'member' && order.settlement_status === 'pending_wechat_pay' && order.payment_status !== 'settled',
+        can_delete: true,
         kitchen_text: status.text,
         kitchen_desc: status.desc,
         settlement_text: settlement[order.settlement_status] || order.settlement_status,
-        payment_label: order.customer_type === 'member' ? '线下积分扣款' : '微信支付',
+        payment_label: order.customer_type === 'member' ? '线下会员账户核对' : '微信支付',
         created_text: formatTime(order.created_at),
         paid_text: formatTime(order.paid_at),
         remark_text: remarkText(order),
@@ -76,4 +78,46 @@ Page({
   },
   goBack() { wx.navigateBack({ delta: 1, fail: () => wx.navigateTo({ url: '/pages/orders/orders' }) }); },
   contact() { wx.showToast({ title: '客服联系方式将在正式上线前补充', icon: 'none' }); },
+  async pay() {
+    const orderNo = this.data.order && this.data.order.order_no;
+    if (!orderNo) return;
+    try {
+      const paymentResult = await orders.createMealPayment({ order_no: orderNo });
+      const payment = paymentResult.payment || paymentResult.raw_payment || paymentResult;
+      await new Promise((resolve, reject) => {
+        wx.requestPayment(Object.assign({}, payment, {
+          success: resolve,
+          fail: (error) => {
+            const message = error && error.errMsg && error.errMsg.includes('cancel')
+              ? '支付已取消'
+              : ((error && error.errMsg) || '微信支付失败');
+            reject(new Error(message));
+          },
+        }));
+      });
+      wx.showToast({ title: '支付完成' });
+      this.onLoad({ id: orderNo });
+    } catch (error) {
+      wx.showToast({ title: error.message || '支付未完成', icon: 'none' });
+    }
+  },
+  async remove() {
+    const orderNo = this.data.order && this.data.order.order_no;
+    if (!orderNo) return;
+    const ok = await new Promise((resolve) => wx.showModal({
+      title: '删除订单',
+      content: '删除后该订单仅在用户侧隐藏，后台仍会保留记录。',
+      confirmText: '删除',
+      confirmColor: '#8B3A2F',
+      success: (result) => resolve(result.confirm),
+    }));
+    if (!ok) return;
+    try {
+      await orders.deleteMealOrder({ order_no: orderNo });
+      wx.showToast({ title: '已删除' });
+      wx.redirectTo({ url: '/pages/orders/orders' });
+    } catch (error) {
+      wx.showToast({ title: error.message || '删除失败', icon: 'none' });
+    }
+  },
 });

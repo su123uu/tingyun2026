@@ -38,7 +38,7 @@
     <text class="section-title">金额汇总</text>
     <view class="amount-summary card">
       <view><text>商品金额</text><strong>¥{{cart.total_amount}}</strong></view>
-      <view class="amount-total"><text>{{user.customer_type === 'member' ? '线下积分扣款' : '微信支付'}}</text><strong>¥{{cart.total_amount}}</strong></view>
+      <view class="amount-total"><text>{{user.customer_type === 'member' ? '线下会员账户核对' : '微信支付'}}</text><strong>¥{{cart.total_amount}}</strong></view>
     </view>
   </view>
   <view class="footer"><view class="pay-copy"><text>应付金额</text><strong>¥{{cart.total_amount}}</strong></view><button class="pay-button" bindtap="submit">{{user.customer_type === 'member' ? '提交订单' : '微信支付'}}</button></view>

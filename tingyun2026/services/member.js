@@ -1,4 +1,11 @@
-const users = require('../mock/users');
+const guestUser = {
+  user_id: 'user_guest',
+  mobile: '',
+  nickname: '微信用户',
+  member_id: '',
+  customer_type: 'guest',
+  is_staff: false,
+};
 
 function canUseCloud() {
   return typeof wx !== 'undefined' && wx.cloud && wx.cloud.callFunction;
@@ -25,7 +32,13 @@ function sortByOrder(left, right) {
 function normalizeProfile(profile) {
   const member = profile && profile.member ? profile.member : null;
   if (!member) {
-    return { member: null, level: null, level_benefits: [], benefit_accounts: [] };
+    return {
+      mobile: profile && profile.mobile ? profile.mobile : '',
+      member: null,
+      level: null,
+      level_benefits: [],
+      benefit_accounts: [],
+    };
   }
   const levelBenefits = asArray(profile.level_benefits)
     .filter((item) => item && item.is_enabled !== false)
@@ -34,6 +47,7 @@ function normalizeProfile(profile) {
     .filter((item) => item && item.account_status !== 'disabled')
     .sort(sortByOrder);
   return {
+    mobile: profile.mobile || member.mobile || '',
     member,
     level: profile.level || null,
     level_benefits: levelBenefits,
@@ -41,36 +55,15 @@ function normalizeProfile(profile) {
   };
 }
 
-function getMockProfile(input = {}) {
-  const mobile = String(input.mobile || '').trim();
-  const memberId = String(input.member_id || '').trim();
-  const member = users.members.find((item) => {
-    if (item.member_status !== 'active') return false;
-    return (memberId && item.member_id === memberId) || (mobile && item.mobile === mobile);
-  });
-  if (!member) return normalizeProfile(null);
-  return normalizeProfile({
-    member,
-    level: users.memberLevels.find((item) => item.level_id === member.level_id) || null,
-    level_benefits: users.memberLevelBenefits.filter((item) => item.level_id === member.level_id),
-    benefit_accounts: users.memberBenefitAccounts.filter((item) => item.member_id === member.member_id),
-  });
-}
-
 async function getMemberProfile(input = {}) {
-  if (canUseCloud()) {
-    try {
-      const profile = await callCloud('memberProfileGet', input);
-      const normalized = normalizeProfile(profile);
-      if (normalized.member) return normalized;
-    } catch (error) {
-      console.warn('memberProfileGet fallback to mock', error);
-    }
+  if (!canUseCloud()) {
+    throw new Error('云服务不可用，无法获取会员信息');
   }
-  return getMockProfile(input);
+  const profile = await callCloud('memberProfileGet', input);
+  return normalizeProfile(profile);
 }
 
-function buildMemberUser(profile, baseUser = users.guestUser) {
+function buildMemberUser(profile, baseUser = guestUser) {
   const member = profile && profile.member;
   if (!member) return null;
   return Object.assign({}, baseUser, {

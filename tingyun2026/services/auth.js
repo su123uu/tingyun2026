@@ -1,9 +1,16 @@
 const storage = require('../utils/storage');
 const validators = require('../utils/validators');
-const users = require('../mock/users');
 const memberService = require('./member');
 const assertMobile = validators.assertMobile;
-const guestUser = users.guestUser;
+
+const guestUser = {
+  user_id: 'user_guest',
+  mobile: '',
+  nickname: '微信用户',
+  member_id: '',
+  customer_type: 'guest',
+  is_staff: false,
+};
 
 const KEY = 'current_user';
 
@@ -21,10 +28,13 @@ async function getCurrentUser() {
 
 async function bindMobile(input) {
   const mobile = input.mobile;
-  assertMobile(mobile);
-  const profile = await memberService.getMemberProfile({ mobile });
+  const phoneCode = input.phoneCode || input.phone_code;
+  if (!phoneCode) assertMobile(mobile);
+  const profile = await memberService.getMemberProfile(phoneCode ? { phoneCode } : { mobile });
+  const resolvedMobile = profile.mobile || mobile || '';
+  if (resolvedMobile) assertMobile(resolvedMobile);
   const user = memberService.buildMemberUser(profile, guestUser)
-    || Object.assign({}, guestUser, { mobile });
+    || Object.assign({}, guestUser, { mobile: resolvedMobile });
   return storage.set(KEY, user);
 }
 

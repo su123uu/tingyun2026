@@ -1,5 +1,4 @@
 const storage = require('../utils/storage');
-const mockItems = require('../mock/menu').items;
 const catalog = require('./catalog');
 const assert = require('../utils/validators').assert;
 const cartTotal = require('../utils/pricing').cartTotal;
@@ -13,7 +12,7 @@ const build = (cartItems) => {
 
 async function getMenuItems() {
   const items = await catalog.listMealItems();
-  return asArray(items).length ? asArray(items) : mockItems;
+  return asArray(items);
 }
 
 async function withMenuMetadata(cartItems) {

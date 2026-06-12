@@ -34,7 +34,7 @@
     </view>
   </view>
 
-  <button wx:if="{{!isMember}}" class="bind-button" bindtap="bindMember">授权手机号并匹配会员</button>
+  <button wx:if="{{!isMember}}" class="bind-button" open-type="getPhoneNumber" bindgetphonenumber="bindMember" loading="{{binding}}" disabled="{{binding}}">授权手机号并匹配会员</button>
 
   <view class="list card secondary-list">
     <view class="list-item" bindtap="contact">

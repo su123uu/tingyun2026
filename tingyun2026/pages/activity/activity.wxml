@@ -17,6 +17,11 @@
   </view>
 
   <view class="content">
+    <view wx:if="{{activity.video_url}}" class="section">
+      <text class="section-title">活动视频</text>
+      <video class="activity-video" src="{{activity.video_url}}" poster="{{activity.image_url}}" controls></video>
+    </view>
+
     <view class="section">
       <text class="section-title">活动信息</text>
       <view class="detail-card card">

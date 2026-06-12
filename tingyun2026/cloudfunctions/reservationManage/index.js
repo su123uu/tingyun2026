@@ -6,7 +6,6 @@ const db = cloud.database();
 const _ = db.command;
 
 const ACTIVE_STATUSES = ['paid_pending_confirmation', 'pending_confirmation', 'confirmed'];
-const RELEASED_STATUSES = ['cancelled', 'rejected', 'payment_expired'];
 const DINING_SLOT_TIME = {
   lunch: ['11:30', '14:00'],
   dinner: ['17:00', '21:00'],
@@ -121,11 +120,7 @@ function diningRoomSelectionLimit(peopleCount, roomCount) {
 }
 
 function isActiveReservation(order) {
-  if (!order || RELEASED_STATUSES.includes(order.reservation_status)) return false;
-  if (ACTIVE_STATUSES.includes(order.reservation_status)) return true;
-  if (order.reservation_status !== 'pending_payment') return false;
-  const expiresAt = order.lock_expires_at && new Date(order.lock_expires_at).getTime();
-  return Boolean(expiresAt && expiresAt > Date.now());
+  return Boolean(order && ACTIVE_STATUSES.includes(order.reservation_status));
 }
 
 function overlaps(startA, endA, startB, endB) {
@@ -210,6 +205,63 @@ async function findActiveMember(mobile) {
   return result.data && result.data[0] ? result.data[0] : null;
 }
 
+function userUpdateData(existing = {}, profile = {}) {
+  const timestamp = now();
+  const data = {
+    last_login_at: timestamp,
+    updated_at: timestamp,
+    is_deleted: false,
+  };
+  const mobile = cleanText(profile.mobile, 20);
+  const nickname = cleanText(profile.nickname || profile.member_name || profile.contact_name, 80);
+  const avatarUrl = cleanText(profile.avatar_url, 300);
+  const memberId = cleanText(profile.member_id, 120);
+  const customerType = cleanText(profile.customer_type, 20);
+
+  if (mobile) data.mobile = mobile;
+  if (nickname) data.nickname = nickname;
+  if (avatarUrl) data.avatar_url = avatarUrl;
+  if (customerType === 'member') {
+    data.customer_type = 'member';
+    data.member_id = memberId;
+  } else if (customerType === 'guest') {
+    data.customer_type = existing.customer_type === 'member' && !mobile ? existing.customer_type : 'guest';
+    if (mobile || profile.clear_member === true) data.member_id = '';
+  }
+
+  return data;
+}
+
+async function ensureUser(wxContext = {}, profile = {}) {
+  const openid = cleanText(wxContext.OPENID || profile.openid, 120);
+  if (!openid) return null;
+
+  const result = await db.collection('users')
+    .where({ openid })
+    .limit(1)
+    .get();
+  const existing = result.data && result.data[0];
+  const data = userUpdateData(existing || {}, profile);
+
+  if (existing && existing._id) {
+    await db.collection('users').doc(existing._id).update({ data });
+    return Object.assign({}, existing, data);
+  }
+
+  const created = Object.assign({
+    user_id: openid,
+    openid,
+    mobile: '',
+    nickname: '',
+    avatar_url: '',
+    member_id: '',
+    customer_type: 'guest',
+    created_at: now(),
+  }, data);
+  await db.collection('users').add({ data: created });
+  return created;
+}
+
 async function getCustomer(input) {
   const member = await findActiveMember(input.mobile || input.customer_mobile || input.contact_mobile);
   return member
@@ -240,7 +292,7 @@ function statusFields(customerType) {
     reservation_status: 'pending_payment',
     settlement_status: 'pending_wechat_pay',
     payment_status: 'pending_wechat_pay',
-    lock_expires_at: new Date(Date.now() + 15 * 60 * 1000),
+    lock_expires_at: null,
   };
 }
 
@@ -299,6 +351,32 @@ async function activeDiningReservations(input) {
 async function activeAccommodationReservations() {
   const rows = await listCollection('accommodation_reservations');
   return rows.filter(isActiveReservation);
+}
+
+async function assertReservationRoomsAvailable(found) {
+  const order = found.order || {};
+  const roomIds = order.room_ids || (order.room_id ? [order.room_id] : []);
+  if (found.type === 'dining') {
+    const activeReservations = await activeDiningReservations({
+      date: order.date || order.reservation_date,
+      time_slot: order.time_slot || order.reservation_time,
+    });
+    const conflict = activeReservations.some((entry) => (
+      entry._id !== order._id
+      && (entry.room_ids || (entry.room_id ? [entry.room_id] : [])).some((roomId) => roomIds.includes(roomId))
+    ));
+    assert(!conflict, 'ROOM_ALREADY_BOOKED', '所选包间已被预订，请重新选择');
+    return;
+  }
+  const checkInDate = order.check_in_date || order.checkin_date;
+  const checkOutDate = order.check_out_date || order.checkout_date;
+  const activeReservations = await activeAccommodationReservations();
+  const conflict = activeReservations.some((entry) => (
+    entry._id !== order._id
+    && (entry.room_ids || (entry.room_id ? [entry.room_id] : [])).some((roomId) => roomIds.includes(roomId))
+    && overlaps(checkInDate, checkOutDate, entry.check_in_date || entry.checkin_date, entry.check_out_date || entry.checkout_date)
+  ));
+  assert(!conflict, 'ROOM_ALREADY_BOOKED', '所选房间已被预订，请重新选择');
 }
 
 async function listDiningRooms(input = {}) {
@@ -415,6 +493,15 @@ async function createDiningReservation(input = {}, wxContext = {}) {
   assert(selectedRooms.length <= limit, 'ROOM_SELECTION_LIMIT', '所选包间数量超过当前人数限制');
   assert(selectedRooms.every((room) => room.is_people_suitable), 'ROOM_PEOPLE_NOT_SUITABLE', '所选包间人数不合适');
   assert(selectedRooms.reduce((sum, room) => sum + toNumber(room.max_capacity, 0), 0) >= peopleCount, 'ROOM_CAPACITY_NOT_ENOUGH', '所选包间总容量不足');
+
+  await ensureUser(wxContext, {
+    customer_type: customer.customer_type,
+    member_id: customer.member_id,
+    member_name: customer.member_name,
+    contact_name: contactName,
+    mobile,
+    clear_member: customer.customer_type === 'guest',
+  });
 
   const orderNo = createBusinessId('TYDINING');
   const slotTime = DINING_SLOT_TIME[timeSlot];
@@ -534,6 +621,15 @@ async function createAccommodationReservation(input = {}, wxContext = {}) {
   const selectedRooms = availability.rooms.filter((room) => selectedIds.includes(room.room_id));
   requireRoomSelection(selectedIds, selectedRooms, '房间');
 
+  await ensureUser(wxContext, {
+    customer_type: customer.customer_type,
+    member_id: customer.member_id,
+    member_name: customer.member_name,
+    contact_name: contactName,
+    mobile,
+    clear_member: customer.customer_type === 'guest',
+  });
+
   const price = accommodationPrice(selectedRooms, customer.customer_type, checkInDate, checkOutDate);
   const orderNo = createBusinessId('TYROOM');
   const benefit = customer.customer_type === 'member'
@@ -612,11 +708,12 @@ async function createReservationPayment(input = {}, wxContext = {}) {
   assert(orderNo, 'ORDER_NO_REQUIRED', 'Missing reservation order number.');
   const found = await findReservation(orderNo);
   assert(found, 'RESERVATION_NOT_FOUND', 'Reservation order not found.');
+  assert(!found.order.user_deleted_at, 'RESERVATION_NOT_FOUND', 'Reservation order not found.');
   assert(found.order.created_by_openid === wxContext.OPENID, 'FORBIDDEN', 'No permission to pay this reservation.');
   assert(found.order.customer_type !== 'member', 'PAYMENT_NOT_REQUIRED', 'Member reservations are settled offline.');
   assert(found.order.reservation_status === 'pending_payment', 'INVALID_STATUS', 'This reservation does not need payment.');
-  assert(isActiveReservation(found.order), 'PAYMENT_EXPIRED', 'Payment lock expired, please submit the reservation again.');
   assert(found.order.payment_status !== 'settled', 'ORDER_ALREADY_PAID', 'Reservation already paid.');
+  await assertReservationRoomsAvailable(found);
 
   const totalFee = moneyToCents(found.order.amount);
   assert(totalFee > 0, 'INVALID_PAY_AMOUNT', 'Payment amount must be greater than 0.');
@@ -662,7 +759,7 @@ async function simulateWechatPay(input = {}) {
   assert(found, 'RESERVATION_NOT_FOUND', '未找到预约订单');
   assert(found.order.customer_type !== 'member', 'PAYMENT_NOT_REQUIRED', '会员订单由店员线下核对');
   assert(found.order.reservation_status === 'pending_payment', 'INVALID_STATUS', '当前订单不需要支付');
-  assert(isActiveReservation(found.order), 'PAYMENT_EXPIRED', '支付锁定已超时，请重新提交预约');
+  await assertReservationRoomsAvailable(found);
 
   await db.collection(found.collectionName).doc(found.order._id).update({
     data: {
@@ -691,8 +788,10 @@ async function listReservations(input = {}, wxContext = {}) {
     listCollection('dining_reservations', where, [['created_at', 'desc']]),
     listCollection('accommodation_reservations', where, [['created_at', 'desc']]),
   ]);
-  return diningRows.map((row) => reservationPublicShape(row, 'dining'))
-    .concat(accommodationRows.map((row) => reservationPublicShape(row, 'accommodation')))
+  const visibleDiningRows = diningRows.filter((row) => !row.user_deleted_at);
+  const visibleAccommodationRows = accommodationRows.filter((row) => !row.user_deleted_at);
+  return visibleDiningRows.map((row) => reservationPublicShape(row, 'dining'))
+    .concat(visibleAccommodationRows.map((row) => reservationPublicShape(row, 'accommodation')))
     .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
 }
 
@@ -705,7 +804,28 @@ async function getReservationDetail(input = {}, wxContext = {}) {
   const mobile = cleanText(input.mobile, 20);
   const ownerMatched = !openid || found.order.created_by_openid === openid || (mobile && found.order.mobile === mobile);
   assert(ownerMatched, 'FORBIDDEN', '无权查看该预约');
+  assert(!found.order.user_deleted_at, 'RESERVATION_NOT_FOUND', '未找到预约订单');
   return reservationPublicShape(found.order, found.type);
+}
+
+async function deleteReservation(input = {}, wxContext = {}) {
+  const orderNo = cleanText(input.order_no || input.order_id, 100);
+  assert(orderNo, 'ORDER_NO_REQUIRED', '缺少订单编号');
+  const found = await findReservation(orderNo);
+  assert(found, 'RESERVATION_NOT_FOUND', '未找到预约订单');
+  const openid = wxContext.OPENID || '';
+  const mobile = cleanText(input.mobile, 20);
+  const ownerMatched = !openid || found.order.created_by_openid === openid || (mobile && found.order.mobile === mobile);
+  assert(ownerMatched, 'FORBIDDEN', '无权删除该预约');
+  const deletedAt = now();
+  await db.collection(found.collectionName).doc(found.order._id).update({
+    data: {
+      user_deleted_at: deletedAt,
+      user_deleted_by_openid: openid,
+      updated_at: now(),
+    },
+  });
+  return { order_no: orderNo, reservation_id: orderNo, user_deleted_at: deletedAt.toISOString() };
 }
 
 exports.main = async (event = {}) => {
@@ -726,6 +846,7 @@ exports.main = async (event = {}) => {
     if (action === 'simulateWechatPay') return ok(await simulateWechatPay(event));
     if (action === 'listReservations') return ok(await listReservations(event, wxContext));
     if (action === 'getReservationDetail') return ok(await getReservationDetail(event, wxContext));
+    if (action === 'deleteReservation') return ok(await deleteReservation(event, wxContext));
     return fail('不支持的预约操作', 'UNKNOWN_ACTION');
   } catch (error) {
     console.error('reservationManage failed', action, error);

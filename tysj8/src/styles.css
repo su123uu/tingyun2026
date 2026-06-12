@@ -39,7 +39,8 @@ textarea {
 .app-shell {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .login-page {
@@ -78,6 +79,12 @@ textarea {
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
   border-right: 1px solid var(--line);
   background: #fbf8f1;
   padding: 24px 18px;
@@ -85,6 +92,7 @@ textarea {
 
 .brand {
   display: flex;
+  flex: 0 0 auto;
   gap: 12px;
   align-items: center;
   padding: 6px 8px 28px;
@@ -114,7 +122,11 @@ textarea {
 
 .nav {
   display: grid;
-  gap: 18px;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .nav-group {
@@ -122,7 +134,11 @@ textarea {
   gap: 7px;
 }
 
-.nav-group p {
+.nav-group-title {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
   border: 1px solid #eadfce;
   border-radius: 8px;
   padding: 7px 9px;
@@ -130,6 +146,20 @@ textarea {
   background: #f0ebe2;
   font-size: 12px;
   font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-group-title em {
+  color: var(--green);
+  font-style: normal;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.nav-group-items {
+  display: grid;
+  gap: 7px;
 }
 
 .nav-item {
@@ -152,6 +182,8 @@ textarea {
 }
 
 .main {
+  min-height: 0;
+  overflow: auto;
   padding: 28px 32px 40px;
 }
 
@@ -1285,18 +1317,26 @@ p {
   justify-items: start;
 }
 
-.drawer {
+.drawer,
+.editor-modal {
   position: fixed;
   inset: 0;
   z-index: 20;
 }
 
-.drawer-mask {
+.drawer-mask,
+.modal-mask {
   position: absolute;
   inset: 0;
   border: 0;
   background: rgba(31, 27, 22, 0.35);
   cursor: default;
+}
+
+.editor-modal {
+  display: grid;
+  place-items: center;
+  padding: 32px;
 }
 
 .drawer-panel {
@@ -1312,6 +1352,22 @@ p {
   padding: 24px;
   background: var(--panel);
   box-shadow: -18px 0 45px rgba(31, 27, 22, 0.16);
+}
+
+.editor-dialog {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(980px, calc(100vw - 64px));
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid rgba(231, 223, 210, .9);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 24px 70px rgba(31, 27, 22, 0.22);
 }
 
 .drawer-head {
@@ -1503,6 +1559,147 @@ textarea:focus {
   max-width: 180px;
 }
 
+.member-benefit-editor {
+  display: grid;
+  gap: 14px;
+}
+
+.member-benefit-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(95, 110, 83, .16);
+  border-radius: 10px;
+  background: #F7F5EF;
+}
+
+.member-benefit-toolbar small {
+  color: #6F7569;
+  line-height: 1.6;
+}
+
+.member-benefit-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(95, 110, 83, .18);
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+
+.member-benefit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.member-benefit-head strong,
+.member-benefit-head span,
+.member-benefit-field span {
+  display: block;
+}
+
+.member-benefit-head strong {
+  color: #23281F;
+  font-size: 15px;
+}
+
+.member-benefit-head span {
+  margin-top: 4px;
+  color: #7D8376;
+  font-size: 12px;
+}
+
+.member-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.member-benefit-field {
+  display: grid;
+  gap: 6px;
+}
+
+.member-benefit-field span {
+  color: #6F7569;
+  font-size: 12px;
+}
+
+.level-benefit-editor {
+  display: grid;
+  gap: 16px;
+}
+
+.level-benefit-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(95, 110, 83, .18);
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+
+.level-benefit-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.level-benefit-section-head strong,
+.level-benefit-section-head span {
+  display: block;
+}
+
+.level-benefit-section-head strong {
+  color: #23281F;
+  font-size: 15px;
+}
+
+.level-benefit-section-head span {
+  margin-top: 4px;
+  color: #7D8376;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.level-benefit-row {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(95, 110, 83, .12);
+  border-radius: 10px;
+  background: #FBFAF6;
+}
+
+.level-benefit-row.service {
+  grid-template-columns: minmax(160px, 1fr) minmax(220px, 1.4fr) auto auto;
+}
+
+.level-benefit-row.quota {
+  grid-template-columns: minmax(150px, 1fr) 92px 120px minmax(220px, 1.4fr) auto auto;
+}
+
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  color: #4f473d;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.inline-check input {
+  width: 18px;
+  height: 18px;
+}
+
 .content-items-editor {
   display: grid;
   gap: 10px;
@@ -1560,14 +1757,26 @@ textarea:focus {
 
   .app-shell {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
   .sidebar {
+    position: static;
+    height: auto;
+    max-height: 48vh;
+    overflow: hidden;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
 
+  .nav {
+    overflow-y: auto;
+  }
+
   .main {
+    overflow: visible;
     padding: 20px 14px 30px;
   }
 
@@ -1648,6 +1857,17 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .editor-modal {
+    align-items: stretch;
+    padding: 14px;
+  }
+
+  .editor-dialog {
+    width: 100%;
+    max-height: calc(100vh - 28px);
+    padding: 18px;
+  }
+
   .detail-row-editor {
     grid-template-columns: 1fr;
   }
@@ -1658,6 +1878,25 @@ textarea:focus {
   .content-item-row.list-row {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .member-benefit-toolbar,
+  .member-benefit-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .member-benefit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .level-benefit-section-head {
+    flex-direction: column;
+  }
+
+  .level-benefit-row.service,
+  .level-benefit-row.quota {
+    grid-template-columns: 1fr;
   }
 
   .content-block-head,

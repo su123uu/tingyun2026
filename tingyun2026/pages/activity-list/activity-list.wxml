@@ -6,8 +6,8 @@
       <view class="back-arrow"></view>
     </view>
     <view class="hero-copy">
-      <text>TINGYUN ACTIVITIES</text>
-      <text class="hero-title">山中有会，茶席相逢</text>
+      <text>{{heroKicker}}</text>
+      <text class="hero-title">{{heroTitle}}</text>
     </view>
   </view>
 

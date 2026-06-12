@@ -79,11 +79,17 @@ const MODULES = {
     imageFields: { image_url: 'rooms', image_urls: 'rooms' },
     fields: ['room_id', 'name', 'category', 'min_capacity', 'max_capacity', 'regular_price', 'member_price', 'image_url', 'image_urls', 'is_available', 'sort_order'],
   },
+  activity_banners: {
+    key: 'banner_id',
+    sort: 'sort_order',
+    imageFields: { image_url: 'activities/banners' },
+    fields: ['banner_id', 'image_url', 'kicker', 'title', 'sort_order', 'is_enabled'],
+  },
   activity_items: {
     key: 'activity_id',
     sort: 'sort_order',
     imageFields: { image_url: 'activities' },
-    fields: ['activity_id', 'title', 'description', 'list_description', 'detail_summary', 'intro', 'notice', 'image_url', 'date', 'time', 'location', 'start_at', 'end_at', 'signup_deadline', 'signup_scope', 'fee_type', 'guest_price', 'member_price', 'capacity', 'reserved_count', 'status', 'status_tone', 'sort_order'],
+    fields: ['activity_id', 'title', 'description', 'list_description', 'detail_summary', 'intro', 'notice', 'image_url', 'video_url', 'date', 'time', 'location', 'start_at', 'end_at', 'signup_deadline', 'signup_scope', 'fee_type', 'guest_price', 'member_price', 'capacity', 'reserved_count', 'status', 'status_tone', 'sort_order'],
   },
   members: {
     key: 'member_id',
@@ -160,6 +166,15 @@ function login(event) {
 
 function getModule(collectionName) {
   return MODULES[collectionName];
+}
+
+async function ensureCollection(name) {
+  try {
+    await db.createCollection(name);
+  } catch (error) {
+    const message = String(error.errMsg || error.message || '');
+    if (!message.includes('exist')) throw error;
+  }
 }
 
 function cleanText(value, maxLength = 500) {
@@ -276,6 +291,11 @@ function buildData(moduleConfig, input, existing = {}) {
   data.updated_at = now();
   data.is_deleted = false;
   return data;
+}
+
+function toNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
 function isCloudFile(value) {
@@ -498,11 +518,20 @@ async function list(event) {
   if (!moduleConfig) return fail('不支持的管理集合。', 'UNKNOWN_COLLECTION');
 
   const pageSize = Math.min(Math.max(Number(event.page_size) || 100, 1), 100);
-  const result = await db.collection(event.collection)
-    .where({ is_deleted: _.neq(true) })
-    .orderBy(moduleConfig.sort || 'updated_at', moduleConfig.sort === 'created_at' || moduleConfig.sort === 'updated_at' ? 'desc' : 'asc')
-    .limit(pageSize)
-    .get();
+  let result;
+  try {
+    result = await db.collection(event.collection)
+      .where({ is_deleted: _.neq(true) })
+      .orderBy(moduleConfig.sort || 'updated_at', moduleConfig.sort === 'created_at' || moduleConfig.sort === 'updated_at' ? 'desc' : 'asc')
+      .limit(pageSize)
+      .get();
+  } catch (error) {
+    const message = String(error.errMsg || error.message || '');
+    if (message.includes('collection') && (message.includes('not exist') || message.includes('不存在'))) {
+      return ok({ rows: [], module: event.collection });
+    }
+    throw error;
+  }
   const rows = await attachPreviewUrls(result.data, moduleConfig);
   return ok({ rows, module: event.collection });
 }
@@ -511,6 +540,7 @@ async function create(event) {
   const moduleConfig = getModule(event.collection);
   if (!moduleConfig) return fail('不支持的管理集合。', 'UNKNOWN_COLLECTION');
 
+  await ensureCollection(event.collection);
   const input = event.data || {};
   const data = Object.assign(buildData(moduleConfig, input), { created_at: now() });
   const result = await db.collection(event.collection).add({ data });
@@ -637,6 +667,59 @@ async function remove(event) {
     data: { is_deleted: true, updated_at: now() },
   });
   return ok({ _id: id });
+}
+
+async function updateMemberBenefits(event) {
+  const memberId = cleanText(event.member_id, 120);
+  if (!memberId) return fail('缺少会员 ID。', 'MEMBER_ID_REQUIRED');
+
+  const rows = Array.isArray(event.benefits) ? event.benefits : [];
+  const nowValue = now();
+  const results = [];
+
+  for (const row of rows) {
+    const benefitKey = cleanText(row.benefit_key, 120);
+    const benefitName = cleanText(row.benefit_name, 120);
+    if (!benefitKey || !benefitName) continue;
+
+    const accountId = cleanText(row.benefit_account_id, 120)
+      || `MBA_${memberId}_${benefitKey}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const data = {
+      benefit_account_id: accountId,
+      member_id: memberId,
+      level_id: cleanText(row.level_id || event.level_id, 120),
+      benefit_key: benefitKey,
+      benefit_name: benefitName,
+      benefit_type: cleanText(row.benefit_type, 40) || 'service',
+      total_quota: toNumber(row.total_quota, 0),
+      used_quota: toNumber(row.used_quota, 0),
+      locked_quota: toNumber(row.locked_quota, 0),
+      remaining_quota: toNumber(row.remaining_quota, 0),
+      quota_unit: cleanText(row.quota_unit, 40),
+      valid_start_at: cleanText(row.valid_start_at || event.benefit_start_at, 80),
+      valid_end_at: cleanText(row.valid_end_at || event.benefit_end_at, 80),
+      account_status: cleanText(row.account_status, 40) || 'active',
+      updated_at: nowValue,
+      is_deleted: false,
+    };
+
+    const found = await db.collection('member_benefit_accounts')
+      .where({ benefit_account_id: accountId, is_deleted: _.neq(true) })
+      .limit(1)
+      .get();
+
+    if (found.data && found.data.length) {
+      await db.collection('member_benefit_accounts').doc(found.data[0]._id).update({ data });
+      results.push({ _id: found.data[0]._id, benefit_account_id: accountId, action: 'updated' });
+    } else {
+      const addResult = await db.collection('member_benefit_accounts').add({
+        data: Object.assign({}, data, { created_at: nowValue }),
+      });
+      results.push({ _id: addResult._id, benefit_account_id: accountId, action: 'created' });
+    }
+  }
+
+  return ok({ member_id: memberId, rows: results });
 }
 
 async function findReservationRecord(event) {
@@ -904,6 +987,7 @@ exports.main = async (event = {}) => {
     if (event.action === 'generateTableQrCode') return await generateTableQrCode(event);
     if (event.action === 'reservationStatusUpdate') return await reservationStatusUpdate(event);
     if (event.action === 'mealOrderStatusUpdate') return await mealOrderStatusUpdate(event);
+    if (event.action === 'updateMemberBenefits') return await updateMemberBenefits(event);
     if (event.action === 'modules') return ok({ modules: Object.keys(MODULES) });
     return fail('不支持的操作。', 'UNKNOWN_ACTION');
   } catch (error) {
