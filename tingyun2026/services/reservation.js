@@ -321,11 +321,21 @@ async function cloudDeleteReservation(input) {
   return cloudOrFallback('deleteReservation', payload, () => localReservation.deleteReservation(input));
 }
 
+async function getContactProfile() {
+  try {
+    return await callReservationCloud('getContactProfile');
+  } catch (error) {
+    console.warn('reservationManage getContactProfile fallback to empty', error);
+    return { contact_name: '', mobile: '', has_contact: false };
+  }
+}
+
 module.exports = {
   getDiningRoomSelectionLimit,
   listDiningRooms: cloudListDiningRooms,
   listAvailableDiningRooms: cloudListAvailableDiningRooms,
   listAvailableAccommodationRooms: cloudListAvailableAccommodationRooms,
+  getContactProfile,
   createDiningReservation: cloudCreateDiningReservation,
   createAccommodationReservation: cloudCreateAccommodationReservation,
   createReservationPayment,

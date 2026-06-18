@@ -4,7 +4,7 @@ const activitySignups = require('../../services/activity-signup');
 const catalog = require('../../services/catalog');
 const assets = require('../../config/assets').assets;
 
-const mealStatus = { pending_notice:'正在通知厨房', kitchen_notified:'厨房已接单', preparing:'制作中', completed:'已完成' };
+const mealStatus = { pending_payment:'未支付', pending_notice:'订单已提交', kitchen_notified:'订单已提交', preparing:'制作中', completed:'已完成' };
 const reservationStatus = { pending_payment:'待支付', paid_pending_confirmation:'已支付，待确认', pending_confirmation:'待确认', confirmed:'已确认', completed:'已完成' };
 const activityStatus = { pending_confirmation:'待确认', confirmed:'已确认', completed:'已完成', cancelled:'已取消' };
 reservationStatus.refunding = '退款处理中';
@@ -79,6 +79,17 @@ function isActivityPayable(signup) {
   return signup.customer_type !== 'member' && signup.settlement_status === 'pending_wechat_pay';
 }
 
+function mealOrderStatus(order) {
+  const status = order.order_status || order.kitchen_status || '';
+  if (
+    ['pending_notice', 'kitchen_notified'].includes(status)
+    && ['settled', 'pending_offline'].includes(order.payment_status)
+  ) {
+    return 'preparing';
+  }
+  return status;
+}
+
 Page({
   data:{tab:'all',orders:[],shown:[],navTop:28,navHeight:32},
   onLoad(){this.setNavigationMetrics();},
@@ -122,7 +133,7 @@ Page({
         label:'点餐订单',
         action_text:'查看详情',
         can_pay:isMealPayable(order),
-        status_text:mealStatus[order.kitchen_status]||order.kitchen_status,
+        status_text:mealStatus[mealOrderStatus(order)]||mealOrderStatus(order),
         summary:`桌号 ${order.table_id} · ${order.people_count} 位用餐`,
         display_items:mealItems(order,menuItems),
       });
@@ -189,7 +200,17 @@ Page({
   async payMeal(orderNo){
     const paymentResult=await meal.createMealPayment({order_no:orderNo});
     const payment=paymentResult.payment||paymentResult.raw_payment||paymentResult;
-    await this.requestPayment(payment);
+    const paymentNo=paymentResult.payment_no||'';
+    const batchNo=paymentResult.batch_no||0;
+    try{
+      await this.requestPayment(payment);
+    }catch(error){
+      const isCancel=error&&error.message&&error.message.includes('取消');
+      if(isCancel){
+        try{await meal.cancelMealOrder({order_no:orderNo,payment_no:paymentNo,batch_no:batchNo,reason:'payment_cancelled'});}catch(e){console.warn('cancelMealOrder failed',e);}
+      }
+      throw error;
+    }
   },
   async payReservation(orderNo){
     const paymentResult=await reservations.createReservationPayment({order_no:orderNo});
@@ -197,9 +218,9 @@ Page({
     await this.requestPayment(payment);
   },
   async payActivity(orderNo){
-    const ok=await new Promise(resolve=>wx.showModal({title:'模拟微信支付',content:'本次为活动报名模拟支付，不会真实扣款。',confirmText:'模拟支付',success:(result)=>resolve(result.confirm)}));
-    if(!ok)throw new Error('支付已取消');
-    await activitySignups.simulateWechatPay({order_no:orderNo});
+    const paymentResult=await activitySignups.createActivityPayment({order_no:orderNo});
+    const payment=paymentResult.payment||paymentResult.raw_payment||paymentResult;
+    await this.requestPayment(payment);
   },
   requestPayment(payment){
     return new Promise((resolve,reject)=>{
@@ -215,7 +236,7 @@ Page({
   async remove(e){
     const id=e.currentTarget.dataset.id;
     const type=e.currentTarget.dataset.type;
-    const ok=await new Promise(resolve=>wx.showModal({title:'删除订单',content:'删除后该订单仅在用户侧隐藏，后台仍会保留记录。',confirmText:'删除',confirmColor:'#8B3A2F',success:(result)=>resolve(result.confirm)}));
+    const ok=await new Promise(resolve=>wx.showModal({title:'删除订单',content:'是否删除，删除后无法恢复',confirmText:'删除',confirmColor:'#8B3A2F',success:(result)=>resolve(result.confirm)}));
     if(!ok)return;
     try{
       if(type==='meal')await meal.deleteMealOrder({order_no:id});

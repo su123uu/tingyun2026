@@ -5,12 +5,32 @@
   </view>
 
   <view class="table card">
-    <view>
+    <view class="table-left">
       <text class="table-title">{{session ? sessionLabel : '浏览菜单'}}</text>
-      <text class="table-desc">{{session ? session.people_count + ' 位用餐 · 可继续加购并结算' : '桌上扫码后选择人数并结算'}}</text>
+      <text class="table-desc">{{session ? '可继续加购并结算' : '桌上扫码后选择人数并结算'}}</text>
     </view>
-    <button size="mini" class="scan" bindtap="simulateScan">模拟扫码</button>
+    <view wx:if="{{session}}" class="table-right">
+      <block wx:if="{{customerType === 'member'}}">
+        <view class="identity-badge member-badge">
+          <view class="badge-icon member-icon">{{identityInitial}}</view>
+          <view class="badge-info">
+            <text class="badge-tag member-tag">会员</text>
+            <text class="badge-level">{{memberLevel || '会员'}}</text>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="identity-badge guest-badge">
+          <view class="badge-icon guest-icon">{{identityInitial}}</view>
+          <view class="badge-info">
+            <text class="badge-tag guest-tag">访客</text>
+            <text class="badge-level">散客</text>
+          </view>
+        </view>
+      </block>
+    </view>
   </view>
+  <button wx:if="{{!session}}" class="scan-table-btn" bindtap="scanTableCode">进入 A01 桌</button>
 
   <view class="layout">
     <view class="categories">
@@ -39,6 +59,20 @@
     </scroll-view>
   </view>
 
+  <view wx:if="{{showPhoneAuth}}" class="people-mask" bindtap="cancelPhoneAuth"></view>
+  <view wx:if="{{showPhoneAuth}}" class="phone-auth-dialog" catchtap="stop">
+    <view class="auth-head">
+      <strong>会员身份识别</strong>
+      <text bindtap="cancelPhoneAuth">×</text>
+    </view>
+    <view class="auth-body">
+      <text class="auth-desc">授权手机号，为您匹配停云山居会员身份</text>
+      <text class="auth-note">会员可享专属权益</text>
+    </view>
+    <button class="auth-phone-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">授权手机号</button>
+    <view class="auth-skip" bindtap="cancelPhoneAuth">跳过，以访客身份继续</view>
+  </view>
+
   <view wx:if="{{showPeoplePicker}}" class="people-mask" bindtap="cancelPeoplePicker"></view>
   <view wx:if="{{showPeoplePicker}}" class="people-dialog" catchtap="stop">
     <view class="people-head">
@@ -50,7 +84,7 @@
       <input type="number" value="{{peopleCount}}" bindinput="peopleInput" />
       <button bindtap="increasePeople">+</button>
     </view>
-    <button class="people-confirm" bindtap="confirmPeopleCount">确认开台</button>
+    <button class="people-confirm" bindtap="confirmPeopleCount">开始点餐</button>
   </view>
 
   <view wx:if="{{showDishDetail}}" class="detail-mask" bindtap="hideDishDetail"></view>

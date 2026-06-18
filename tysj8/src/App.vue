@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { groupedModules, mealCategories, modules } from './config/modules';
-import { callAdmin, clearToken, fileToBase64, loginAdmin, readSavedToken } from './services/bannerAdmin';
+import { callAdmin, clearToken, fileToBase64, getApp, loginAdmin, readSavedToken } from './services/bannerAdmin';
 
 const OVERVIEW_KEY = 'overview';
 const RESERVATION_CALENDAR_KEY = 'reservation_calendar';
+const RECENT_ACTIVITIES_KEY = 'recent_activities';
 const RESERVATIONS_KEY = 'reservations';
 const overviewModule = {
   key: OVERVIEW_KEY,
@@ -19,6 +20,14 @@ const reservationCalendarModule = {
   name: '预定日历',
   group: '总览',
   titleField: 'name',
+  fields: [],
+  columns: [],
+};
+const recentActivitiesModule = {
+  key: RECENT_ACTIVITIES_KEY,
+  name: '近期活动',
+  group: '总览',
+  titleField: 'title',
   fields: [],
   columns: [],
 };
@@ -93,7 +102,16 @@ const state = reactive({
     accommodationReservations: [],
     month: formatMonth(new Date()),
     filter: 'all',
+    statusFilter: 'pending',
     selectedEvent: null,
+  },
+  activityOverview: {
+    activities: [],
+    signups: [],
+    scopeFilter: 'all',
+    statusFilter: 'pending',
+    selectedActivityId: '',
+    focusPanel: false,
   },
   reservations: {
     rows: [],
@@ -122,8 +140,17 @@ const state = reactive({
   editingCollection: '',
   statusText: '未连接',
   statusTone: 'muted',
+  nowTick: Date.now(),
   toastText: '',
   toastType: '',
+  cloudPicker: {
+    visible: false,
+    fieldKey: '',
+    folder: '',
+    files: [],
+    loading: false,
+    selectedFileID: '',
+  },
 });
 
 const form = reactive({});
@@ -131,16 +158,24 @@ const fileInputs = ref({});
 const multiFileInputs = ref({});
 const bannerFileInputs = ref({});
 const contentBlockFileInputs = ref({});
+const videoFileInputs = ref({});
 
 const isOverview = computed(() => state.activeKey === OVERVIEW_KEY);
 const isReservationCalendar = computed(() => state.activeKey === RESERVATION_CALENDAR_KEY);
+const isRecentActivities = computed(() => state.activeKey === RECENT_ACTIVITIES_KEY);
 const isReservationsModule = computed(() => state.activeKey === RESERVATIONS_KEY);
-const isVirtualModule = computed(() => isOverview.value || isReservationCalendar.value || isReservationsModule.value);
+const isVirtualModule = computed(() => isOverview.value || isReservationCalendar.value || isRecentActivities.value || isReservationsModule.value);
 const activeModule = computed(() => {
   if (isOverview.value) return overviewModule;
   if (isReservationCalendar.value) return reservationCalendarModule;
+  if (isRecentActivities.value) return recentActivitiesModule;
   if (isReservationsModule.value) return reservationsModule;
   return modules.find((item) => item.key === state.activeKey) || modules[0];
+});
+const activityItemsModule = computed(() => modules.find((item) => item.key === 'activity_items'));
+const editorModule = computed(() => {
+  if (state.editingCollection === 'activity_items' && activityItemsModule.value) return activityItemsModule.value;
+  return activeModule.value;
 });
 const activeGroup = computed(() => {
   if (isReservationsModule.value) return { name: '订单预约' };
@@ -168,6 +203,7 @@ const isAccommodationRoomsModule = computed(() => activeModule.value.key === 'ac
 const isContentPagesModule = computed(() => activeModule.value.key === 'content_pages');
 const isMembersModule = computed(() => activeModule.value.key === 'members');
 const isMemberLevelsModule = computed(() => activeModule.value.key === 'member_levels');
+const isActivitySignupsModule = computed(() => activeModule.value.key === 'activity_signups');
 const isRoomCatalogModule = computed(() => isDiningRoomsModule.value || isAccommodationRoomsModule.value);
 const isSortableTableModule = computed(() => isBannerModule.value || isMealItemsModule.value || isRoomCatalogModule.value);
 const memberLevelOptions = computed(() => state.memberManage.levels
@@ -175,7 +211,7 @@ const memberLevelOptions = computed(() => state.memberManage.levels
   .sort(compareSortOrder)
   .map((level) => ({ value: level.level_id, label: level.level_name || level.level_id })));
 const visibleFields = computed(() => {
-  return activeModule.value.fields.filter((field) => {
+  return editorModule.value.fields.filter((field) => {
     if (field.hidden) return false;
     if (isContentPagesModule.value && field.key === 'is_active') return false;
     if (isMealItemsModule.value && field.key === 'details' && form.category_key !== 'package') return false;
@@ -247,12 +283,16 @@ const dashboardEvents = computed(() => {
 const calendarDays = computed(() => buildCalendarDays(state.calendar.month, dashboardEvents.value));
 const calendarStatusStats = computed(() => {
   const pending = dashboardEvents.value.filter((event) => isPendingReservation(event.row)).length;
-  const confirmed = dashboardEvents.value.filter((event) => event.status === 'confirmed').length;
-  return { pending, confirmed, total: dashboardEvents.value.length };
+  const memberPendingSettle = dashboardEvents.value.filter((event) => canSettleMemberReservation(event.row)).length;
+  return { pending, memberPendingSettle, total: dashboardEvents.value.length };
 });
-const pendingReservationEvents = computed(() => {
+const statusPanelReservationEvents = computed(() => {
   return dashboardEvents.value
-    .filter((event) => isPendingReservation(event.row))
+    .filter((event) => {
+      if (state.calendar.statusFilter === 'pending') return isPendingReservation(event.row);
+      if (state.calendar.statusFilter === 'memberPendingSettle') return canSettleMemberReservation(event.row);
+      return true;
+    })
     .slice()
     .sort((left, right) => {
       const leftDate = Date.parse(left.date) || 0;
@@ -275,6 +315,7 @@ const selectedTableItems = computed(() => {
   return selectedTableOrders.value.flatMap((order) => normalizeOrderItems(order).map((item) => ({
     ...item,
     order_no: order.order_no || order.order_id || '',
+    customer_type: order.customer_type || 'guest',
   })));
 });
 const availableMoveTables = computed(() => {
@@ -288,6 +329,37 @@ const filteredReservationRows = computed(() => {
   if (state.reservations.filter === 'all') return reservationRows.value;
   return reservationRows.value.filter((row) => row.__type === state.reservations.filter);
 });
+const recentActivityRows = computed(() => {
+  return state.activityOverview.activities
+    .filter(isUpcomingActivity)
+    .filter((activity) => state.activityOverview.scopeFilter === 'all' || activity.signup_scope === state.activityOverview.scopeFilter)
+    .slice()
+    .sort(compareActivities);
+});
+const selectedActivity = computed(() => (
+  recentActivityRows.value.find((activity) => activity.activity_id === state.activityOverview.selectedActivityId)
+  || recentActivityRows.value[0]
+  || null
+));
+const selectedActivitySignups = computed(() => {
+  const activityId = selectedActivity.value?.activity_id || '';
+  return state.activityOverview.signups
+    .filter((signup) => !activityId || signup.activity_id === activityId)
+    .slice()
+    .sort(compareActivitySignups);
+});
+const activityPanelSignups = computed(() => {
+  return selectedActivitySignups.value.filter((signup) => {
+    if (state.activityOverview.statusFilter === 'pending') return isPendingActivitySignup(signup);
+    if (state.activityOverview.statusFilter === 'memberPendingSettle') return canSettleActivitySignup(signup);
+    return true;
+  });
+});
+const activityStatusStats = computed(() => ({
+  pending: selectedActivitySignups.value.filter(isPendingActivitySignup).length,
+  memberPendingSettle: selectedActivitySignups.value.filter(canSettleActivitySignup).length,
+  total: selectedActivitySignups.value.length,
+}));
 
 function setStatus(text, tone = 'muted') {
   state.statusText = text;
@@ -355,7 +427,7 @@ function compareRecentRecords(left, right) {
 }
 
 function getRecordTime(row) {
-  const value = row.created_at || row.updated_at || row._createTime || row._updateTime || '';
+  const value = row.ordered_at || row.created_at || row.updated_at || row._createTime || row._updateTime || '';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
@@ -380,12 +452,11 @@ function getTableId(table) {
 
 function isActiveMealOrder(order) {
   const statusValues = [
-    order.order_status,
+    order.order_status || order.kitchen_status,
     order.payment_status,
     order.settlement_status,
-    order.kitchen_status,
   ].map((value) => String(value || '').toLowerCase());
-  const inactive = ['cancelled', 'canceled', 'completed', 'closed', 'settled', 'refunded'];
+  const inactive = ['cancelled', 'canceled', 'completed', 'closed', 'refunded', 'pending_payment', 'pending_wechat_pay', 'paying'];
   return !statusValues.some((value) => inactive.includes(value));
 }
 
@@ -421,6 +492,36 @@ function isTableOccupied(table) {
 function isTableBrowsing(table) {
   if ((table?.table_status || 'enabled') !== 'enabled' || isTableOccupied(table)) return false;
   return isBrowsingSession(getTableSession(table));
+}
+
+function tableActiveStartTime(table) {
+  const meta = tableStatusMeta(table);
+  if (meta.key === 'disabled' || meta.key === 'idle') return 0;
+
+  const session = getTableSession(table);
+  const sessionTime = getRecordTime(session || {});
+  const orderTimes = activeMealOrders.value
+    .filter((order) => isOrderForTable(order, table))
+    .map(getRecordTime)
+    .filter(Boolean);
+  const firstOrderTime = orderTimes.length ? Math.min(...orderTimes) : 0;
+  const candidates = [sessionTime, firstOrderTime].filter(Boolean);
+  return candidates.length ? Math.min(...candidates) : 0;
+}
+
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return '';
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours) return `${hours}小时${minutes}分`;
+  return `${minutes}分`;
+}
+
+function tableDurationText(table) {
+  const startTime = tableActiveStartTime(table);
+  if (!startTime) return '';
+  return `时间：${formatDuration(state.nowTick - startTime)}`;
 }
 
 function tableStatusMeta(table) {
@@ -484,6 +585,12 @@ function isPendingReservation(row) {
   return ['paid_pending_confirmation', 'pending_confirmation'].includes(row.reservation_status);
 }
 
+function canSettleMemberReservation(row) {
+  return row?.customer_type === 'member'
+    && row.settlement_status !== 'settled'
+    && row.payment_status !== 'settled';
+}
+
 function compareReservations(left, right) {
   const leftPending = isPendingReservation(left) ? 0 : 1;
   const rightPending = isPendingReservation(right) ? 0 : 1;
@@ -492,6 +599,145 @@ function compareReservations(left, right) {
   const rightDate = Date.parse(reservationDateValue(right)) || 0;
   if (leftDate !== rightDate) return leftDate - rightDate;
   return compareRecentRecords(left, right);
+}
+
+function toDateTime(value) {
+  if (!value) return 0;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function compareActivities(left, right) {
+  const leftPinned = left.is_pinned === true ? 0 : 1;
+  const rightPinned = right.is_pinned === true ? 0 : 1;
+  if (leftPinned !== rightPinned) return leftPinned - rightPinned;
+  const leftStart = toDateTime(left.start_at) || Number.MAX_SAFE_INTEGER;
+  const rightStart = toDateTime(right.start_at) || Number.MAX_SAFE_INTEGER;
+  if (leftStart !== rightStart) return leftStart - rightStart;
+  return String(left.title || '').localeCompare(String(right.title || ''), 'zh-Hans-CN');
+}
+
+function compareActivitySignups(left, right) {
+  const leftPending = isPendingActivitySignup(left) ? 0 : 1;
+  const rightPending = isPendingActivitySignup(right) ? 0 : 1;
+  if (leftPending !== rightPending) return leftPending - rightPending;
+  return compareRecentRecords(left, right);
+}
+
+function isUpcomingActivity(activity) {
+  if (!activity || activity.status === 'closed') return false;
+  const endTime = toDateTime(activity.end_at || activity.start_at);
+  return !endTime || endTime >= Date.now();
+}
+
+function activitySignupsFor(activity) {
+  return state.activityOverview.signups.filter((signup) => signup.activity_id === activity.activity_id);
+}
+
+function activeActivitySignupsFor(activity) {
+  return activitySignupsFor(activity).filter((signup) => ['pending_confirmation', 'confirmed', 'completed'].includes(signup.signup_status));
+}
+
+function activitySignupPeople(activity) {
+  const reserved = Number(activity.reserved_count) || 0;
+  const people = activeActivitySignupsFor(activity).reduce((sum, signup) => (
+    sum + (Number(signup.participant_count || signup.people_count) || 0)
+  ), 0);
+  return reserved + people;
+}
+
+function activityCapacity(activity) {
+  return Number(activity.capacity) || 0;
+}
+
+function activityProgress(activity) {
+  const capacity = activityCapacity(activity);
+  if (!capacity) return 0;
+  return Math.min(100, Math.round((activitySignupPeople(activity) / capacity) * 100));
+}
+
+function activityRemaining(activity) {
+  const capacity = activityCapacity(activity);
+  if (!capacity) return 0;
+  return Math.max(0, capacity - activitySignupPeople(activity));
+}
+
+function activityPendingCount(activity) {
+  return activitySignupsFor(activity).filter(isPendingActivitySignup).length;
+}
+
+function activityMemberSettleCount(activity) {
+  return activitySignupsFor(activity).filter(canSettleActivitySignup).length;
+}
+
+function activityTimeText(activity) {
+  const start = formatDateTime(activity.start_at);
+  const end = formatDateTime(activity.end_at);
+  if (start === '-' && end === '-') return activity.date || '-';
+  if (end === '-' || start === end) return start;
+  return `${start} - ${end.slice(11)}`;
+}
+
+function activityScopeLabel(value) {
+  if (value === 'members_only') return '会员专属';
+  if (value === 'public') return '公开报名';
+  return value || '-';
+}
+
+function formImageRows(fieldKey) {
+  return (form[`__${fieldKey}Rows`] || []).filter((item) => item && (item.preview || item.value));
+}
+
+function formImagePreview(item) {
+  return item?.preview || (isBrowserImageUrl(item?.value) ? item.value : '');
+}
+
+function activityPreviewFeeText() {
+  const guest = Number(form.guest_price) || 0;
+  const member = Number(form.member_price) || 0;
+  if (guest <= 0 && member <= 0) return '免费';
+  if (guest === member) return `${formatMoney(guest)} / 人`;
+  return `散客 ${formatMoney(guest)} · 会员 ${member > 0 ? formatMoney(member) : '免费'}`;
+}
+
+function isPendingActivitySignup(row) {
+  return row?.signup_status === 'pending_confirmation';
+}
+
+function canSettleActivitySignup(row) {
+  return row?.customer_type === 'member'
+    && row.signup_status === 'confirmed'
+    && row.settlement_status !== 'settled';
+}
+
+function signupStatusLabel(value) {
+  const labels = {
+    pending_confirmation: '待确认',
+    confirmed: '已确认',
+    completed: '已核销',
+    cancelled: '已取消',
+  };
+  return labels[value] || value || '-';
+}
+
+function paymentStatusLabel(value) {
+  const labels = {
+    unpaid: '未支付',
+    paid: '已支付',
+    refunded: '已退款',
+    offline: '线下',
+    settled: '已结算',
+  };
+  return labels[value] || value || '-';
+}
+
+function settlementStatusLabel(value) {
+  const labels = {
+    pending: '待核销',
+    unsettled: '待核销',
+    settled: '已核销',
+  };
+  return labels[value] || value || '-';
 }
 
 function normalizeReservationRow(row, type, collection) {
@@ -614,6 +860,11 @@ function normalizeBenefitNumber(value) {
 
 function normalizeMemberBenefitRow(row = {}, memberId = form.member_id) {
   const benefitKey = row.benefit_key || '';
+  const benefitType = row.benefit_type === 'quota' ? 'quota' : 'service';
+  const totalQuota = benefitType === 'quota' ? normalizeBenefitNumber(row.total_quota) : 0;
+  const usedQuota = benefitType === 'quota' ? normalizeBenefitNumber(row.used_quota) : 0;
+  const lockedQuota = benefitType === 'quota' ? normalizeBenefitNumber(row.locked_quota) : 0;
+  const remainingQuota = benefitType === 'quota' ? normalizeBenefitNumber(row.remaining_quota) : 0;
   return {
     _id: row._id || '',
     benefit_account_id: row.benefit_account_id || (memberId && benefitKey ? memberBenefitAccountId(memberId, benefitKey) : ''),
@@ -621,12 +872,12 @@ function normalizeMemberBenefitRow(row = {}, memberId = form.member_id) {
     level_id: row.level_id || form.level_id || '',
     benefit_key: benefitKey,
     benefit_name: row.benefit_name || '',
-    benefit_type: row.benefit_type || 'service',
-    total_quota: normalizeBenefitNumber(row.total_quota),
-    used_quota: normalizeBenefitNumber(row.used_quota),
-    locked_quota: normalizeBenefitNumber(row.locked_quota),
-    remaining_quota: normalizeBenefitNumber(row.remaining_quota),
-    quota_unit: row.quota_unit || '',
+    benefit_type: benefitType,
+    total_quota: totalQuota,
+    used_quota: usedQuota,
+    locked_quota: lockedQuota,
+    remaining_quota: remainingQuota,
+    quota_unit: benefitType === 'quota' ? row.quota_unit || '次' : '',
     valid_start_at: normalizeDateInput(row.valid_start_at || form.benefit_start_at),
     valid_end_at: normalizeDateInput(row.valid_end_at || form.benefit_end_at),
     account_status: row.account_status || 'active',
@@ -674,6 +925,10 @@ function normalizeLevelBenefitRows(row = {}) {
 
 function activeLevelBenefits(type) {
   return (form.__levelBenefitRows || []).filter((row) => row.benefit_type === type && row.is_enabled !== false);
+}
+
+function activeMemberBenefits(type) {
+  return (form.__memberBenefitRows || []).filter((row) => row.benefit_type === type && row.account_status !== 'disabled');
 }
 
 function addLevelBenefitRow(type) {
@@ -743,13 +998,14 @@ function addLevelBenefitsToMember() {
   form.__memberBenefitRows = (form.__memberBenefitRows || []).concat(nextRows);
 }
 
-function removeMemberBenefitRow(index) {
-  const row = form.__memberBenefitRows[index];
+function removeMemberBenefitRow(rowOrIndex) {
+  const row = typeof rowOrIndex === 'number' ? form.__memberBenefitRows[rowOrIndex] : rowOrIndex;
   if (row && row.benefit_account_id) {
     row.account_status = 'disabled';
     return;
   }
-  form.__memberBenefitRows.splice(index, 1);
+  const index = (form.__memberBenefitRows || []).indexOf(row);
+  if (index >= 0) form.__memberBenefitRows.splice(index, 1);
 }
 
 function recalculateMemberBenefitRemaining(row) {
@@ -859,7 +1115,7 @@ function removeContentBlockItem(block, index) {
 }
 
 function getPrimaryIdField(module = activeModule.value) {
-  if (!module || module.key === OVERVIEW_KEY || module.key === RESERVATION_CALENDAR_KEY) return null;
+  if (!module || module.key === OVERVIEW_KEY || module.key === RESERVATION_CALENDAR_KEY || module.key === RECENT_ACTIVITIES_KEY) return null;
   if (module.idField) return module.fields.find((field) => field.key === module.idField) || { key: module.idField };
   return module.fields.find((field) => field.required && /(^id$|_id$)/.test(field.key))
     || module.fields.find((field) => /(^id$|_id$)/.test(field.key))
@@ -937,7 +1193,7 @@ function tableQrPreviewUrl(row) {
 
 function resetForm() {
   Object.keys(form).forEach((key) => delete form[key]);
-  activeModule.value.fields.forEach((field) => {
+  editorModule.value.fields.forEach((field) => {
     if (field.type === 'boolean') form[field.key] = false;
     else if (field.type === 'number') form[field.key] = '';
     else if (field.type === 'json') form[field.key] = '[]';
@@ -951,6 +1207,7 @@ function resetForm() {
   });
   fileInputs.value = {};
   multiFileInputs.value = {};
+  videoFileInputs.value = {};
   contentBlockFileInputs.value = {};
 }
 
@@ -979,8 +1236,9 @@ function openCreate() {
     openCreateReservation('dining_reservations');
     return;
   }
+  state.editingCollection = activeModule.value.key;
   resetForm();
-  const idField = getPrimaryIdField();
+  const idField = getPrimaryIdField(editorModule.value);
   if (idField && activeModule.value.key !== 'members') form[idField.key] = nextRecordId();
   ['is_available', 'is_enabled'].forEach((key) => {
     if (Object.prototype.hasOwnProperty.call(form, key)) form[key] = true;
@@ -1035,13 +1293,13 @@ function openCreate() {
     form.account_status = 'active';
   }
   state.editingId = '';
-  state.editingCollection = '';
   state.drawerOpen = true;
 }
 
 function openEdit(row) {
+  state.editingCollection = row.__collection || activeModule.value.key;
   resetForm();
-  activeModule.value.fields.forEach((field) => {
+  editorModule.value.fields.forEach((field) => {
     const value = row[field.key];
     if (field.type === 'datetime') form[field.key] = normalizeDateInput(value);
     else if (field.type === 'json') form[field.key] = formatJson(value);
@@ -1051,11 +1309,12 @@ function openEdit(row) {
     else if (field.type === 'memberBenefits') form.__memberBenefitRows = normalizeMemberBenefitRows(row);
     else if (field.type === 'levelBenefits') form.__levelBenefitRows = normalizeLevelBenefitRows(row);
     else if (field.type === 'images') {
+      const shouldFallbackToPrimaryImage = field.key === 'image_urls';
       form[`__${field.key}Rows`] = normalizeImageRows(
         value,
         row._preview_urls?.[field.key],
-        row.image_url || '',
-        row._preview_urls?.image_url || '',
+        shouldFallbackToPrimaryImage ? row.image_url || '' : '',
+        shouldFallbackToPrimaryImage ? row._preview_urls?.image_url || '' : '',
       );
     }
     else if (field.type === 'boolean') form[field.key] = value === true;
@@ -1067,7 +1326,6 @@ function openEdit(row) {
   });
   if (isMealItemsModule.value) applyMealCategory(form.category_key || 'package');
   state.editingId = row._id;
-  state.editingCollection = row.__collection || activeModule.value.key;
   state.drawerOpen = true;
 }
 
@@ -1084,6 +1342,10 @@ async function loadRows() {
   }
   if (isReservationCalendar.value) {
     await loadReservationCalendar();
+    return;
+  }
+  if (isRecentActivities.value) {
+    await loadRecentActivities();
     return;
   }
   if (isReservationsModule.value) {
@@ -1176,6 +1438,35 @@ async function loadReservationCalendar() {
   }
 }
 
+async function loadRecentActivities() {
+  state.loading = true;
+  setStatus('连接中', 'muted');
+  try {
+    const [activities, signups] = await Promise.all([
+      callAdmin('list', { collection: 'activity_items', page_size: 100 }),
+      callAdmin('list', { collection: 'activity_signups', page_size: 100 }),
+    ]);
+    state.activityOverview.activities = activities.rows || [];
+    state.activityOverview.signups = signups.rows || [];
+    const exists = state.activityOverview.activities.some((activity) => activity.activity_id === state.activityOverview.selectedActivityId);
+    if (!exists) {
+      const next = state.activityOverview.activities.filter(isUpcomingActivity).sort(compareActivities)[0];
+      state.activityOverview.selectedActivityId = next?.activity_id || '';
+    }
+    state.rows = [];
+    setStatus('已连接', 'ok');
+  } catch (error) {
+    state.activityOverview.activities = [];
+    state.activityOverview.signups = [];
+    state.rows = [];
+    setStatus('连接失败', 'muted');
+    if (String(error.message || '').includes('登录')) state.loggedIn = false;
+    toast(error.message, 'error');
+  } finally {
+    state.loading = false;
+  }
+}
+
 async function loadReservations() {
   state.loading = true;
   setStatus('连接中', 'muted');
@@ -1210,6 +1501,7 @@ async function switchModule(key) {
   state.draggingBannerId = '';
   state.draggingMealId = '';
   state.draggingDiningRoomId = '';
+  if (key !== RECENT_ACTIVITIES_KEY) state.activityOverview.statusFilter = 'pending';
   if (key !== 'meal_items') state.mealCategoryKey = 'all';
   await loadRows();
 }
@@ -1240,6 +1532,83 @@ async function confirmReservationEvent(event) {
     const nextEvent = dashboardEvents.value.find((item) => item.collection === event.collection && item.row._id === event.row._id);
     state.calendar.selectedEvent = nextEvent || null;
     toast('预约已确认。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.saving = false;
+  }
+}
+
+async function confirmActivitySignup(row) {
+  if (!row?._id) return;
+  state.saving = true;
+  try {
+    await callAdmin('activitySignupStatusUpdate', {
+      _id: row._id,
+      signup_status: 'confirmed',
+      admin_remark: row.admin_remark || row.success_notice_remark || '',
+    });
+    await loadRows();
+    toast('活动报名已确认，通知已发送。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.saving = false;
+  }
+}
+
+async function cancelActivitySignup(row) {
+  if (!row?._id) return;
+  if (!window.confirm(`确认取消“${row.contact_name || row.order_no || '该报名'}”？`)) return;
+  state.saving = true;
+  try {
+    await callAdmin('activitySignupStatusUpdate', {
+      _id: row._id,
+      signup_status: 'cancelled',
+      admin_remark: row.admin_remark || '后台取消报名',
+    });
+    await loadRows();
+    toast('活动报名已取消。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.saving = false;
+  }
+}
+
+async function settleActivitySignup(row) {
+  if (!row?._id) return;
+  state.saving = true;
+  try {
+    await callAdmin('activitySignupStatusUpdate', {
+      _id: row._id,
+      signup_status: 'completed',
+      settle: true,
+      admin_remark: row.admin_remark || row.success_notice_remark || '',
+    });
+    await loadRows();
+    toast('活动报名已核销。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.saving = false;
+  }
+}
+
+async function settleMemberReservationEvent(event) {
+  if (!event?.collection || !event?.row?._id) return;
+  state.saving = true;
+  try {
+    await callAdmin('reservationStatusUpdate', {
+      collection: event.collection,
+      _id: event.row._id,
+      settle: true,
+      admin_remark: event.row.admin_remark || '会员线下核对完成',
+    });
+    await loadReservationCalendar();
+    const nextEvent = dashboardEvents.value.find((item) => item.collection === event.collection && item.row._id === event.row._id);
+    state.calendar.selectedEvent = nextEvent || null;
+    toast('会员核销已完成。');
   } catch (error) {
     toast(error.message, 'error');
   } finally {
@@ -1389,6 +1758,55 @@ async function clearSelectedTable() {
   }
 }
 
+async function completeAndClearSelectedTable() {
+  const table = selectedTable.value;
+  const orders = selectedTableOrders.value.slice();
+  if (!table) return;
+  if (!orders.length) {
+    toast('当前桌台没有点餐订单。', 'error');
+    return;
+  }
+  if (!window.confirm(`确认完成并清台“${table.table_name || table.table_id}”？`)) return;
+
+  state.saving = true;
+  try {
+    const session = getTableSession(table);
+    for (const order of orders) {
+      await callAdmin('mealOrderStatusUpdate', {
+        _id: order._id,
+        order_status: 'completed',
+        settle: true,
+        admin_remark: '后台桌台总览完成并清台',
+      });
+    }
+    if (session?._id) {
+      await callAdmin('update', {
+        collection: 'meal_table_sessions',
+        _id: session._id,
+        data: {
+          session_status: 'closed',
+          closed_reason: 'completed_and_cleared_by_admin',
+          closed_at: new Date().toISOString(),
+        },
+      });
+    }
+    if (table._id) {
+      await callAdmin('update', {
+        collection: 'meal_tables',
+        _id: table._id,
+        data: { current_session_id: '' },
+      });
+    }
+    state.overview.moveTargetTableId = '';
+    await loadOverview();
+    toast('已完成并清台。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.saving = false;
+  }
+}
+
 async function updateSelectedTableMealOrders(action) {
   const orders = selectedTableOrders.value;
   if (!orders.length) {
@@ -1408,7 +1826,7 @@ async function updateSelectedTableMealOrders(action) {
     for (const order of orders) {
       await callAdmin('mealOrderStatusUpdate', {
         _id: order._id,
-        kitchen_status: action === 'settled' ? '' : action,
+        order_status: action === 'settled' ? '' : action,
         settle: action === 'settled',
         admin_remark: `后台桌台总览更新为${label}`,
       });
@@ -1582,7 +2000,15 @@ function formPreviewUrl(fieldKey) {
 }
 
 function imageStyle(fieldKey) {
-  return { aspectRatio: activeModule.value.imageRatios?.[fieldKey] || '16 / 9' };
+  return { aspectRatio: editorModule.value.imageRatios?.[fieldKey] || '16 / 9' };
+}
+
+function uploadContextPayload() {
+  return {
+    record_title: form.title || form.name || '',
+    activity_title: form.title || '',
+    activity_id: form.activity_id || '',
+  };
 }
 
 function isBrowserImageUrl(value) {
@@ -1607,7 +2033,7 @@ async function resolveFormPreview(field) {
   state.previewingField = field.key;
   try {
     const data = await callAdmin('previewImage', {
-      collection: activeModule.value.key,
+      collection: editorModule.value.key,
       field: field.key,
       value,
     });
@@ -1678,7 +2104,7 @@ async function toggleStatusField(row, column) {
 
 function buildPayload() {
   const payload = {};
-  activeModule.value.fields.forEach((field) => {
+  editorModule.value.fields.forEach((field) => {
     if (field.type === 'memberBenefits') return;
     if (field.type === 'levelBenefits') return;
     let value = form[field.key];
@@ -1713,7 +2139,7 @@ function buildPayload() {
   if (isMembersModule.value && !payload.member_id) {
     throw new Error('请填写线下会员ID/卡号。');
   }
-  if (idField && !state.editingId && !isMembersModule.value) payload[idField.key] = payload[idField.key] || nextRecordId();
+  if (idField && !state.editingId && !isMembersModule.value) payload[idField.key] = payload[idField.key] || nextRecordId(editorModule.value);
   if (isMealItemsModule.value) {
     const category = getMealCategory(payload.category_key || state.mealCategoryKey);
     payload.category_key = category.key;
@@ -1836,7 +2262,7 @@ async function saveRecord() {
     return;
   }
 
-  const missing = activeModule.value.fields.find((field) => field.required && !payload[field.key]);
+  const missing = editorModule.value.fields.find((field) => field.required && !payload[field.key]);
   if (missing) {
     toast(`请填写 ${missing.label}。`, 'error');
     return;
@@ -1844,7 +2270,7 @@ async function saveRecord() {
 
   state.saving = true;
   try {
-    const collection = isReservationsModule.value ? state.editingCollection : activeModule.value.key;
+    const collection = state.editingCollection || activeModule.value.key;
     if (state.editingId) {
       await callAdmin('update', { collection, _id: state.editingId, data: payload });
     } else {
@@ -2120,6 +2546,101 @@ async function downloadTableQrCode(row) {
   document.body.removeChild(link);
 }
 
+function activityQrPreviewUrl(row) {
+  return row?._preview_urls?.qr_image_file_id || '';
+}
+
+function selectRecentActivity(activity) {
+  state.activityOverview.selectedActivityId = activity?.activity_id || '';
+}
+
+function openActivitySignups(activity) {
+  selectRecentActivity(activity);
+  state.activityOverview.statusFilter = 'all';
+  state.activityOverview.focusPanel = true;
+  window.setTimeout(() => {
+    state.activityOverview.focusPanel = false;
+  }, 900);
+}
+
+function openRecentActivityEditor(row) {
+  state.editingCollection = 'activity_items';
+  resetForm();
+  editorModule.value.fields.forEach((field) => {
+    const value = row[field.key];
+    if (field.type === 'datetime') form[field.key] = normalizeDateInput(value);
+    else if (field.type === 'json') form[field.key] = formatJson(value);
+    else if (field.type === 'images') {
+      form[`__${field.key}Rows`] = normalizeImageRows(
+        value,
+        row._preview_urls?.[field.key],
+        '',
+        '',
+      );
+    }
+    else if (field.type === 'boolean') form[field.key] = value === true;
+    else form[field.key] = value ?? '';
+
+    if (field.type === 'image' && row._preview_urls?.[field.key]) {
+      form[`__preview_${field.key}`] = row._preview_urls[field.key];
+    }
+  });
+  state.editingId = row._id;
+  state.drawerOpen = true;
+}
+
+async function generateActivityQrCode(row) {
+  if (!row?._id) return;
+  state.generatingQrId = row._id;
+  try {
+    const data = await callAdmin('generateActivityQrCode', { _id: row._id });
+    row.qr_image_file_id = data.fileID || '';
+    row.qr_scene = data.qr_scene || '';
+    row.qr_version = data.qr_version || row.qr_version;
+    row._preview_urls = Object.assign({}, row._preview_urls, { qr_image_file_id: data.tempFileURL || '' });
+    await loadRecentActivities();
+    toast('活动二维码已生成。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.generatingQrId = '';
+  }
+}
+
+async function downloadActivityQrCode(row) {
+  if (!row?.qr_image_file_id) {
+    toast('请先生成该活动的二维码。', 'error');
+    return;
+  }
+
+  let url = activityQrPreviewUrl(row);
+  if (!url) {
+    try {
+      const data = await callAdmin('previewImage', {
+        collection: 'activity_items',
+        field: 'qr_image_file_id',
+        value: row.qr_image_file_id,
+      });
+      url = data.tempFileURL || '';
+    } catch (error) {
+      toast(error.message, 'error');
+      return;
+    }
+  }
+  if (!url) {
+    toast('二维码下载地址生成失败。', 'error');
+    return;
+  }
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${row.title || row.activity_id || '活动二维码'}.png`;
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 function imageFieldRows(fieldKey) {
   if (!Array.isArray(form[`__${fieldKey}Rows`])) form[`__${fieldKey}Rows`] = [];
   return form[`__${fieldKey}Rows`];
@@ -2147,6 +2668,104 @@ function removeImageRow(fieldKey, index) {
   syncPrimaryImageFromGallery(fieldKey);
 }
 
+// ── 云存储选择器 ──
+async function openCloudStoragePicker(field) {
+  const folder = editorModule.value.imageFields?.[field.key]
+    || editorModule.value.videoFields?.[field.key]
+    || '';
+  state.cloudPicker = {
+    visible: true,
+    fieldKey: field.key,
+    folder,
+    files: [],
+    loading: true,
+    selectedFileID: '',
+  };
+  await fetchCloudFiles(folder);
+}
+
+async function fetchCloudFiles(folder) {
+  state.cloudPicker.loading = true;
+  try {
+    const data = await callAdmin('listCloudFiles', { folder, limit: 80 });
+    let files = data.files || [];
+
+    // 获取临时下载链接用于预览
+    if (files.length > 0) {
+      try {
+        const app = await getApp();
+        const result = await app.getTempFileURL({
+          fileList: files.map(f => f.fileID),
+        });
+        const urlMap = {};
+        (result.fileList || []).forEach((item, i) => {
+          if (item.tempFileURL) {
+            urlMap[files[i].fileID] = item.tempFileURL;
+          }
+        });
+        files = files.map(f => ({ ...f, previewUrl: urlMap[f.fileID] || '' }));
+      } catch (e) {
+        // 获取预览链接失败不影响文件列表展示
+        console.warn('获取云存储预览链接失败:', e);
+      }
+    }
+
+    state.cloudPicker.files = files;
+  } catch (error) {
+    toast(error.message, 'error');
+    state.cloudPicker.files = [];
+  } finally {
+    state.cloudPicker.loading = false;
+  }
+}
+
+function closeCloudStoragePicker() {
+  state.cloudPicker.visible = false;
+  state.cloudPicker.files = [];
+  state.cloudPicker.selectedFileID = '';
+}
+
+function toggleFileSelect(fileID) {
+  state.cloudPicker.selectedFileID =
+    state.cloudPicker.selectedFileID === fileID ? '' : fileID;
+}
+
+function selectCloudFile() {
+  const file = state.cloudPicker.files.find((f) => f.fileID === state.cloudPicker.selectedFileID);
+  if (!file) {
+    toast('请先选择一个文件。', 'error');
+    return;
+  }
+  const fieldKey = state.cloudPicker.fieldKey;
+  const field = visibleFields.value.find((f) => f && f.key === fieldKey);
+  if (!field) return;
+
+  if (field.type === 'images') {
+    const rows = imageFieldRows(fieldKey);
+    rows.push({
+      value: file.fileID,
+      preview: file.previewUrl || '',
+    });
+    syncPrimaryImageFromGallery(fieldKey);
+  } else {
+    form[fieldKey] = file.fileID;
+    form[`__preview_${fieldKey}`] = file.previewUrl || '';
+  }
+  closeCloudStoragePicker();
+  toast('已选择云存储文件。');
+}
+
+function isImageFile(file) {
+  return /\.(jpe?g|png|webp|gif)$/i.test(file.cloudPath || file.fileName || '');
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 async function uploadImages(field) {
   const input = multiFileInputs.value[field.key];
   const files = Array.from(input?.files || []);
@@ -2166,11 +2785,12 @@ async function uploadImages(field) {
     for (const file of files) {
       const base64 = await fileToBase64(file);
       const data = await callAdmin('uploadImage', {
-        collection: activeModule.value.key,
+        collection: editorModule.value.key,
         field: field.key,
         file_name: file.name,
         content_type: file.type,
         base64,
+        ...uploadContextPayload(),
       });
       rows.push({
         value: data.fileID,
@@ -2203,15 +2823,49 @@ async function uploadImage(field) {
   try {
     const base64 = await fileToBase64(file);
     const data = await callAdmin('uploadImage', {
-      collection: activeModule.value.key,
+      collection: editorModule.value.key,
       field: field.key,
       file_name: file.name,
       content_type: file.type,
       base64,
+      ...uploadContextPayload(),
     });
     form[field.key] = data.fileID;
     form[`__preview_${field.key}`] = URL.createObjectURL(file);
-    toast(`图片已上传到 ${activeModule.value.imageFields[field.key]}。`);
+    toast(`图片已上传到 ${editorModule.value.imageFields[field.key]}。`);
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.uploadingField = '';
+  }
+}
+
+async function uploadVideo(field) {
+  const input = videoFileInputs.value[field.key];
+  const file = input?.files?.[0];
+  if (!file) {
+    toast('请先选择视频。', 'error');
+    return;
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    toast('视频不能超过 50MB。', 'error');
+    return;
+  }
+
+  state.uploadingField = field.key;
+  try {
+    const base64 = await fileToBase64(file);
+    const data = await callAdmin('uploadMedia', {
+      collection: editorModule.value.key,
+      field: field.key,
+      file_name: file.name,
+      content_type: file.type,
+      base64,
+      ...uploadContextPayload(),
+    });
+    form[field.key] = data.fileID;
+    input.value = '';
+    toast(`视频已上传到 ${data.cloudPath || editorModule.value.videoFields?.[field.key] || '云存储'}。`);
   } catch (error) {
     toast(error.message, 'error');
   } finally {
@@ -2253,8 +2907,17 @@ async function uploadContentBlockImage(block, index) {
   }
 }
 
+let clockTimer = null;
+
 onMounted(() => {
   if (state.loggedIn) loadRows();
+  clockTimer = window.setInterval(() => {
+    state.nowTick = Date.now();
+  }, 60000);
+});
+
+onUnmounted(() => {
+  if (clockTimer) window.clearInterval(clockTimer);
 });
 </script>
 
@@ -2322,6 +2985,14 @@ onMounted(() => {
               @click="switchModule(RESERVATION_CALENDAR_KEY)"
             >
               预定日历
+            </button>
+            <button
+              class="nav-item"
+              :class="{ active: isRecentActivities }"
+              type="button"
+              @click="switchModule(RECENT_ACTIVITIES_KEY)"
+            >
+              近期活动
             </button>
           </div>
         </section>
@@ -2400,8 +3071,12 @@ onMounted(() => {
               type="button"
               @click="selectOverviewTable(table)"
             >
+              <em v-if="getTableSession(table)?.customer_type" class="card-customer-tag" :class="getTableSession(table)?.customer_type">
+                {{ getTableSession(table)?.customer_type === 'member' ? '会员' : '散客' }}
+              </em>
               <strong>{{ table.table_name || table.table_id }}</strong>
               <span>{{ table.table_area || '未分区' }} · {{ table.capacity || '-' }} 人</span>
+              <span v-if="tableDurationText(table)" class="table-duration">{{ tableDurationText(table) }}</span>
               <em>{{ tableStatusMeta(table).label }}</em>
             </button>
           </div>
@@ -2409,8 +3084,8 @@ onMounted(() => {
           <div v-if="selectedTable" class="table-detail-panel">
             <div class="table-detail-head">
               <div>
-                <h2>{{ selectedTable.table_name || selectedTable.table_id }}</h2>
-                <p>{{ selectedTable.table_area || '未分区' }} · {{ selectedTable.capacity || '-' }} 人 · {{ tableStatusMeta(selectedTable).label }}</p>
+                <h2>{{ selectedTable.table_name || selectedTable.table_id }}<em v-if="getTableSession(selectedTable)?.customer_type === 'member'" class="tag-member">会员</em></h2>
+                <p>{{ selectedTable.table_area || '未分区' }} · {{ selectedTable.capacity || '-' }} 人 · {{ tableStatusMeta(selectedTable).label }}{{ tableDurationText(selectedTable) ? ` · ${tableDurationText(selectedTable)}` : '' }}</p>
               </div>
               <button class="icon-btn" type="button" title="关闭" @click="closeOverviewTablePanel">×</button>
             </div>
@@ -2421,7 +3096,7 @@ onMounted(() => {
                 <div v-if="!selectedTableItems.length" class="mini-empty">暂无点餐记录</div>
                 <div v-else class="dish-list">
                   <div v-for="(item, index) in selectedTableItems" :key="`${item.order_no}-${item.name}-${index}`" class="dish-row">
-                    <span>{{ item.name }}</span>
+                    <span>{{ item.name }}<em v-if="item.customer_type === 'member'" class="tag-member">会员</em></span>
                     <small>x{{ item.quantity }}</small>
                     <strong>{{ formatMoney(item.amount) }}</strong>
                   </div>
@@ -2441,10 +3116,7 @@ onMounted(() => {
                 </label>
                 <div class="table-actions">
                   <button class="btn secondary" type="button" :disabled="state.saving || !state.overview.moveTargetTableId" @click="moveSelectedTableOrder">移桌</button>
-                  <button class="btn secondary" type="button" :disabled="state.saving || !selectedTableOrders.length" @click="updateSelectedTableMealOrders('preparing')">制作中</button>
-                  <button class="btn secondary" type="button" :disabled="state.saving || !selectedTableOrders.length" @click="updateSelectedTableMealOrders('completed')">已完成</button>
-                  <button class="btn primary" type="button" :disabled="state.saving || !selectedTableOrders.length" @click="updateSelectedTableMealOrders('settled')">已结算</button>
-                  <button class="btn danger" type="button" :disabled="state.saving" @click="clearSelectedTable">清台</button>
+                  <button class="btn danger" type="button" :disabled="state.saving || !selectedTableOrders.length" @click="completeAndClearSelectedTable">完成并清台</button>
                 </div>
               </section>
             </div>
@@ -2464,11 +3136,142 @@ onMounted(() => {
             type="button"
             @click="switchModule('meal_orders')"
           >
-            <strong>{{ order.order_no || order.order_id || '未编号订单' }}</strong>
+            <strong>{{ order.order_no || order.order_id || '未编号订单' }}<em v-if="order.customer_type === 'member'" class="tag-member">会员</em></strong>
             <span>{{ order.table_name || order.table_id || '未关联桌台' }}</span>
             <small>{{ formatDateTime(order.created_at || order.updated_at || order._createTime) }}</small>
             <em>{{ formatMoney(orderAmount(order)) }}</em>
           </button>
+        </aside>
+      </section>
+
+      <section v-else-if="isRecentActivities" class="activity-overview-page">
+        <section class="activity-overview-panel">
+          <div class="section-head">
+            <div>
+              <h2>近期活动</h2>
+              <p>查看未结束活动的报名进度，快速生成二维码、修改活动和处理报名。</p>
+            </div>
+            <div class="meal-filter-tabs compact">
+              <button class="filter-tab" :class="{ active: state.activityOverview.scopeFilter === 'all' }" type="button" @click="state.activityOverview.scopeFilter = 'all'">全部</button>
+              <button class="filter-tab" :class="{ active: state.activityOverview.scopeFilter === 'public' }" type="button" @click="state.activityOverview.scopeFilter = 'public'">公开报名</button>
+              <button class="filter-tab" :class="{ active: state.activityOverview.scopeFilter === 'members_only' }" type="button" @click="state.activityOverview.scopeFilter = 'members_only'">会员专属</button>
+            </div>
+          </div>
+
+          <div v-if="!recentActivityRows.length" class="mini-empty">暂无近期活动</div>
+          <div v-else class="activity-overview-grid">
+            <article
+              v-for="activity in recentActivityRows"
+              :key="activity._id || activity.activity_id"
+              class="activity-overview-card"
+              :class="{ selected: selectedActivity && selectedActivity.activity_id === activity.activity_id }"
+            >
+              <button class="activity-overview-main" type="button" @click="selectRecentActivity(activity)">
+                <img v-if="previewUrl(activity, 'image_url')" :src="previewUrl(activity, 'image_url')" alt="活动封面" />
+                <div v-else class="activity-cover-empty">活动</div>
+                <div class="activity-card-body">
+                  <div class="activity-card-title">
+                    <strong>{{ activity.title || '未命名活动' }}</strong>
+                    <em v-if="activity.is_pinned">置顶</em>
+                    <span>{{ activityScopeLabel(activity.signup_scope) }}</span>
+                  </div>
+                  <p>{{ activity.subtitle || activityTimeText(activity) }}</p>
+                  <small>{{ activityTimeText(activity) }} · {{ activity.location || '未填写地点' }}</small>
+                  <div class="activity-progress-meta">
+                    <span>报名 {{ activitySignupPeople(activity) }} / {{ activityCapacity(activity) || '不限' }}</span>
+                    <span>剩余 {{ activityCapacity(activity) ? activityRemaining(activity) : '不限' }}</span>
+                  </div>
+                  <div class="activity-progress-bar">
+                    <i :style="{ width: `${activityProgress(activity)}%` }"></i>
+                  </div>
+                  <div class="activity-card-stats">
+                    <span>待确认 {{ activityPendingCount(activity) }}</span>
+                    <span>会员待核销 {{ activityMemberSettleCount(activity) }}</span>
+                  </div>
+                </div>
+              </button>
+              <div class="activity-card-actions">
+                <button class="btn secondary compact-btn" type="button" :disabled="state.generatingQrId === activity._id" @click="generateActivityQrCode(activity)">
+                  {{ state.generatingQrId === activity._id ? '生成中' : '生成二维码' }}
+                </button>
+                <button class="btn secondary compact-btn" type="button" :disabled="!activity.qr_image_file_id" @click="downloadActivityQrCode(activity)">下载二维码</button>
+                <button class="btn secondary compact-btn" type="button" @click="openRecentActivityEditor(activity)">修改活动</button>
+                <button class="btn primary compact-btn" type="button" @click="openActivitySignups(activity)">查看报名</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <aside class="activity-signup-panel" :class="{ focused: state.activityOverview.focusPanel }">
+          <div>
+            <h2>报名情况</h2>
+            <p>{{ selectedActivity ? selectedActivity.title : '请选择活动' }}</p>
+          </div>
+          <div class="reservation-status-summary">
+            <button
+              type="button"
+              :class="{ active: state.activityOverview.statusFilter === 'pending' }"
+              @click="state.activityOverview.statusFilter = 'pending'"
+            >
+              待确认 {{ activityStatusStats.pending }}
+            </button>
+            <button
+              type="button"
+              :class="{ active: state.activityOverview.statusFilter === 'memberPendingSettle' }"
+              @click="state.activityOverview.statusFilter = 'memberPendingSettle'"
+            >
+              会员待核销 {{ activityStatusStats.memberPendingSettle }}
+            </button>
+            <button
+              type="button"
+              :class="{ active: state.activityOverview.statusFilter === 'all' }"
+              @click="state.activityOverview.statusFilter = 'all'"
+            >
+              总数 {{ activityStatusStats.total }}
+            </button>
+          </div>
+          <div v-if="!activityPanelSignups.length" class="mini-empty">暂无匹配报名</div>
+          <article
+            v-for="signup in activityPanelSignups"
+            :key="signup._id || signup.signup_id || signup.order_no"
+            class="activity-signup-card"
+          >
+            <div>
+              <strong>{{ signup.contact_name || '未填写联系人' }}<em v-if="signup.customer_type === 'member'" class="tag-member">会员</em></strong>
+              <span>{{ signup.contact_mobile || '-' }} · {{ signup.participant_count || signup.people_count || 1 }} 人</span>
+              <small>{{ formatMoney(signup.amount) }} · {{ signupStatusLabel(signup.signup_status) }} · {{ paymentStatusLabel(signup.payment_status) }} / {{ settlementStatusLabel(signup.settlement_status) }}</small>
+              <p v-if="signup.remark || signup.admin_remark">{{ signup.remark || signup.admin_remark }}</p>
+            </div>
+            <div class="activity-signup-actions">
+              <button
+                v-if="isPendingActivitySignup(signup)"
+                class="btn primary compact-btn"
+                type="button"
+                :disabled="state.saving"
+                @click="confirmActivitySignup(signup)"
+              >
+                确认
+              </button>
+              <button
+                v-if="isPendingActivitySignup(signup)"
+                class="btn danger compact-btn"
+                type="button"
+                :disabled="state.saving"
+                @click="cancelActivitySignup(signup)"
+              >
+                取消
+              </button>
+              <button
+                v-if="canSettleActivitySignup(signup)"
+                class="btn primary compact-btn"
+                type="button"
+                :disabled="state.saving"
+                @click="settleActivitySignup(signup)"
+              >
+                核销
+              </button>
+            </div>
+          </article>
         </aside>
       </section>
 
@@ -2531,13 +3334,31 @@ onMounted(() => {
             <p>待确认预约先以灰色显示，确认后同步到日历视图。</p>
           </div>
           <div class="reservation-status-summary">
-            <span>待确认 {{ calendarStatusStats.pending }}</span>
-            <span>已确认 {{ calendarStatusStats.confirmed }}</span>
-            <span>总数 {{ calendarStatusStats.total }}</span>
+            <button
+              type="button"
+              :class="{ active: state.calendar.statusFilter === 'pending' }"
+              @click="state.calendar.statusFilter = 'pending'"
+            >
+              待确认 {{ calendarStatusStats.pending }}
+            </button>
+            <button
+              type="button"
+              :class="{ active: state.calendar.statusFilter === 'memberPendingSettle' }"
+              @click="state.calendar.statusFilter = 'memberPendingSettle'"
+            >
+              会员待核销 {{ calendarStatusStats.memberPendingSettle }}
+            </button>
+            <button
+              type="button"
+              :class="{ active: state.calendar.statusFilter === 'all' }"
+              @click="state.calendar.statusFilter = 'all'"
+            >
+              总数 {{ calendarStatusStats.total }}
+            </button>
           </div>
-          <div v-if="!pendingReservationEvents.length" class="mini-empty">暂无待确认预约</div>
+          <div v-if="!statusPanelReservationEvents.length" class="mini-empty">暂无匹配预约</div>
           <article
-            v-for="event in pendingReservationEvents"
+            v-for="event in statusPanelReservationEvents"
             :key="event.id || `${event.type}-${event.date}-${event.customer}`"
             class="reservation-status-card"
           >
@@ -2550,9 +3371,9 @@ onMounted(() => {
               class="btn primary compact-btn"
               type="button"
               :disabled="state.saving"
-              @click="confirmReservationEvent(event)"
+              @click="isPendingReservation(event.row) ? confirmReservationEvent(event) : openDashboardEvent(event)"
             >
-              确认
+              {{ isPendingReservation(event.row) ? '确认' : '查看' }}
             </button>
           </article>
         </aside>
@@ -2622,6 +3443,13 @@ onMounted(() => {
                   </span>
                   <span v-else-if="isReservationsModule && column === '__date'">{{ reservationDateValue(row) || '-' }}</span>
                   <span
+                    v-else-if="column === 'customer_type'"
+                    class="customer-type-badge"
+                    :class="row.customer_type"
+                  >
+                    {{ row.customer_type === 'member' ? '会员' : '散客' }}
+                  </span>
+                  <span
                     v-else-if="column === 'reservation_status'"
                     class="reservation-status-badge"
                     :class="reservationStatusTone(row.reservation_status)"
@@ -2675,6 +3503,24 @@ onMounted(() => {
                 </td>
                 <td class="row-actions">
                   <button class="btn secondary" type="button" @click="openEdit(row)">编辑</button>
+                  <button
+                    v-if="isActivitySignupsModule && row.signup_status === 'pending_confirmation'"
+                    class="btn primary"
+                    type="button"
+                    :disabled="state.saving"
+                    @click="confirmActivitySignup(row)"
+                  >
+                    确认报名
+                  </button>
+                  <button
+                    v-if="isActivitySignupsModule && row.customer_type === 'member' && row.signup_status === 'confirmed' && row.settlement_status !== 'settled'"
+                    class="btn primary"
+                    type="button"
+                    :disabled="state.saving"
+                    @click="settleActivitySignup(row)"
+                  >
+                    会员核销
+                  </button>
                   <button
                     v-if="isContentPagesModule"
                     class="btn secondary"
@@ -2737,7 +3583,11 @@ onMounted(() => {
             <span>餐标</span>
             <strong>{{ mealStandardLabel(state.calendar.selectedEvent.row) }}</strong>
           </div>
-          <div v-else>
+          <div v-if="state.calendar.selectedEvent.type === 'accommodation'">
+            <span>入住日期</span>
+            <strong>{{ state.calendar.selectedEvent.row.checkin_date || '-' }}</strong>
+          </div>
+          <div v-if="state.calendar.selectedEvent.type === 'accommodation'">
             <span>离店日期</span>
             <strong>{{ state.calendar.selectedEvent.row.checkout_date || '-' }}</strong>
           </div>
@@ -2757,6 +3607,15 @@ onMounted(() => {
           >
             {{ state.saving ? '确认中' : '确认预约' }}
           </button>
+          <button
+            v-if="canSettleMemberReservation(state.calendar.selectedEvent.row)"
+            class="btn primary"
+            type="button"
+            :disabled="state.saving"
+            @click="settleMemberReservationEvent(state.calendar.selectedEvent)"
+          >
+            {{ state.saving ? '处理中' : '会员核销完成' }}
+          </button>
           <button class="btn primary" type="button" @click="editReservationEvent(state.calendar.selectedEvent)">编辑预约</button>
         </div>
       </section>
@@ -2764,11 +3623,11 @@ onMounted(() => {
 
     <div v-if="state.drawerOpen" class="editor-modal" aria-modal="true">
       <button class="modal-mask" type="button" aria-label="关闭" @click="closeDrawer"></button>
-      <form class="editor-dialog" @submit.prevent="saveRecord">
+      <form class="editor-dialog" :class="{ 'activity-editor-dialog': state.editingCollection === 'activity_items' }" @submit.prevent="saveRecord">
         <div class="drawer-head">
           <div>
             <h2>{{ state.editingId ? '编辑记录' : '新建记录' }}</h2>
-            <p>{{ activeModule.name }} / {{ activeModule.key }}</p>
+            <p>{{ editorModule.name }} / {{ editorModule.key }}</p>
           </div>
           <button class="icon-btn" type="button" title="关闭" @click="closeDrawer">×</button>
         </div>
@@ -2790,7 +3649,7 @@ onMounted(() => {
         </div>
 
         <div class="form-grid">
-          <label v-for="field in visibleFields" :key="field.key" class="field" :class="{ wide: field.type === 'textarea' || field.type === 'json' || field.type === 'image' || field.type === 'images' || field.type === 'itemDetails' || field.type === 'standardDishes' || field.type === 'contentBlocks' || field.type === 'memberBenefits' || field.type === 'levelBenefits' }">
+          <label v-for="field in visibleFields" :key="field.key" class="field" :class="{ wide: field.type === 'textarea' || field.type === 'json' || field.type === 'image' || field.type === 'images' || field.type === 'video' || field.type === 'itemDetails' || field.type === 'standardDishes' || field.type === 'contentBlocks' || field.type === 'memberBenefits' || field.type === 'levelBenefits' }">
             <span>{{ field.label }}{{ field.required ? ' *' : '' }}</span>
 
             <template v-if="field.type === 'image'">
@@ -2799,6 +3658,7 @@ onMounted(() => {
                 <button class="btn secondary" type="button" :disabled="state.uploadingField === field.key" @click="uploadImage(field)">
                   {{ state.uploadingField === field.key ? '上传中' : '上传图片' }}
                 </button>
+                <button class="btn secondary" type="button" @click="openCloudStoragePicker(field)">从云存储选择</button>
               </div>
               <input
                 v-model="form[field.key]"
@@ -2808,7 +3668,7 @@ onMounted(() => {
                 @blur="resolveFormPreview(field)"
                 @change="resolveFormPreview(field)"
               />
-              <small>上传目录：{{ activeModule.imageFields[field.key] }}。上传成功后会自动填入，通常不用手动输入。</small>
+              <small>上传目录：{{ editorModule.imageFields[field.key] }}。上传成功后会自动填入，通常不用手动输入。</small>
               <img
                 v-if="formPreviewUrl(field.key)"
                 class="image-preview"
@@ -2818,14 +3678,27 @@ onMounted(() => {
               />
             </template>
 
+            <template v-else-if="field.type === 'video'">
+              <div class="upload-row">
+                <input :ref="(el) => { if (el) videoFileInputs[field.key] = el; }" type="file" accept="video/mp4,video/quicktime,video/webm" />
+                <button class="btn secondary" type="button" :disabled="state.uploadingField === field.key" @click="uploadVideo(field)">
+                  {{ state.uploadingField === field.key ? '上传中' : '上传视频' }}
+                </button>
+                <button class="btn secondary" type="button" @click="openCloudStoragePicker(field)">从云存储选择</button>
+              </div>
+              <input v-model="form[field.key]" type="text" placeholder="上传后自动生成云存储 fileID，也可填写 https:// 视频地址" />
+              <small>上传目录：activities/{{ form.title || form.activity_id || '活动标题' }}。上传成功后会自动填入。</small>
+            </template>
+
             <template v-else-if="field.type === 'images'">
               <div class="upload-row">
                 <input :ref="(el) => { if (el) multiFileInputs[field.key] = el; }" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple />
                 <button class="btn secondary" type="button" :disabled="state.uploadingField === field.key" @click="uploadImages(field)">
                   {{ state.uploadingField === field.key ? '上传中' : '上传多图' }}
                 </button>
+                <button class="btn secondary" type="button" @click="openCloudStoragePicker(field)">从云存储选择</button>
               </div>
-              <small>支持一次选择多张；列表顺序就是小程序轮播顺序，第一张会同步为客房封面图。</small>
+              <small>支持一次选择多张；活动图片会上传到 activities/{{ form.title || form.activity_id || '活动标题' }}。</small>
               <div class="multi-image-editor">
                 <div
                   v-for="(image, index) in form[`__${field.key}Rows`]"
@@ -3005,68 +3878,115 @@ onMounted(() => {
                 <button class="btn secondary compact-btn" type="button" @click="addLevelBenefitsToMember">同步当前等级权益</button>
               </div>
               <div v-if="!form.__memberBenefitRows.length" class="multi-image-empty">暂无个人权益。选择会员等级后，可点击“同步当前等级权益”。</div>
-              <article
-                v-for="(benefit, index) in form.__memberBenefitRows"
-                :key="benefit.benefit_account_id || `${benefit.benefit_key}-${index}`"
-                class="member-benefit-card"
-              >
-                <div class="member-benefit-head">
+              <section v-if="form.__memberBenefitRows.length" class="member-benefit-section">
+                <div class="member-benefit-section-head">
                   <div>
-                    <strong>{{ benefit.benefit_name || '未命名权益' }}</strong>
-                    <span>{{ benefit.benefit_type === 'quota' ? '次数权益' : '服务权益' }}</span>
-                  </div>
-                  <button class="btn danger compact-btn" type="button" @click="removeMemberBenefitRow(index)">停用/移除</button>
-                </div>
-                <div class="member-benefit-grid">
-                  <div class="member-benefit-field">
-                    <span>权益名称</span>
-                    <input v-model="benefit.benefit_name" type="text" />
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>类型</span>
-                    <select v-model="benefit.benefit_type">
-                      <option value="service">服务权益</option>
-                      <option value="quota">次数权益</option>
-                    </select>
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>总次数</span>
-                    <input v-model.number="benefit.total_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>已用</span>
-                    <input v-model.number="benefit.used_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>锁定</span>
-                    <input v-model.number="benefit.locked_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>剩余</span>
-                    <input v-model.number="benefit.remaining_quota" type="number" min="0" step="1" />
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>单位</span>
-                    <input v-model="benefit.quota_unit" type="text" placeholder="次 / 人次" />
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>状态</span>
-                    <select v-model="benefit.account_status">
-                      <option value="active">生效中</option>
-                      <option value="expired">已到期</option>
-                      <option value="disabled">已停用</option>
-                    </select>
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>有效开始</span>
-                    <input v-model="benefit.valid_start_at" type="datetime-local" />
-                  </div>
-                  <div class="member-benefit-field">
-                    <span>有效结束</span>
-                    <input v-model="benefit.valid_end_at" type="datetime-local" />
+                    <strong>服务权益</strong>
+                    <span>只维护服务内容、状态和有效期，不编辑次数。</span>
                   </div>
                 </div>
-              </article>
+                <div v-if="!activeMemberBenefits('service').length" class="multi-image-empty">暂无服务权益。</div>
+                <article
+                  v-for="benefit in activeMemberBenefits('service')"
+                  :key="benefit.benefit_account_id || benefit.benefit_key"
+                  class="member-benefit-card service"
+                >
+                  <div class="member-benefit-head">
+                    <div>
+                      <strong>{{ benefit.benefit_name || '未命名权益' }}</strong>
+                      <span>服务权益</span>
+                    </div>
+                    <button class="btn danger compact-btn" type="button" @click="removeMemberBenefitRow(benefit)">停用/移除</button>
+                  </div>
+                  <div class="member-benefit-grid service">
+                    <div class="member-benefit-field">
+                      <span>权益名称</span>
+                      <input v-model="benefit.benefit_name" type="text" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>状态</span>
+                      <select v-model="benefit.account_status">
+                        <option value="active">生效中</option>
+                        <option value="expired">已到期</option>
+                        <option value="disabled">已停用</option>
+                      </select>
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>有效开始</span>
+                      <input v-model="benefit.valid_start_at" type="datetime-local" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>有效结束</span>
+                      <input v-model="benefit.valid_end_at" type="datetime-local" />
+                    </div>
+                  </div>
+                </article>
+              </section>
+
+              <section v-if="form.__memberBenefitRows.length" class="member-benefit-section">
+                <div class="member-benefit-section-head">
+                  <div>
+                    <strong>次数权益</strong>
+                    <span>维护可核销的次数、已用、锁定和剩余。</span>
+                  </div>
+                </div>
+                <div v-if="!activeMemberBenefits('quota').length" class="multi-image-empty">暂无次数权益。</div>
+                <article
+                  v-for="benefit in activeMemberBenefits('quota')"
+                  :key="benefit.benefit_account_id || benefit.benefit_key"
+                  class="member-benefit-card quota"
+                >
+                  <div class="member-benefit-head">
+                    <div>
+                      <strong>{{ benefit.benefit_name || '未命名权益' }}</strong>
+                      <span>次数权益</span>
+                    </div>
+                    <button class="btn danger compact-btn" type="button" @click="removeMemberBenefitRow(benefit)">停用/移除</button>
+                  </div>
+                  <div class="member-benefit-grid quota">
+                    <div class="member-benefit-field">
+                      <span>权益名称</span>
+                      <input v-model="benefit.benefit_name" type="text" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>总次数</span>
+                      <input v-model.number="benefit.total_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>已用</span>
+                      <input v-model.number="benefit.used_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>锁定</span>
+                      <input v-model.number="benefit.locked_quota" type="number" min="0" step="1" @input="recalculateMemberBenefitRemaining(benefit)" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>剩余</span>
+                      <input v-model.number="benefit.remaining_quota" type="number" min="0" step="1" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>单位</span>
+                      <input v-model="benefit.quota_unit" type="text" placeholder="次 / 人次" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>状态</span>
+                      <select v-model="benefit.account_status">
+                        <option value="active">生效中</option>
+                        <option value="expired">已到期</option>
+                        <option value="disabled">已停用</option>
+                      </select>
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>有效开始</span>
+                      <input v-model="benefit.valid_start_at" type="datetime-local" />
+                    </div>
+                    <div class="member-benefit-field">
+                      <span>有效结束</span>
+                      <input v-model="benefit.valid_end_at" type="datetime-local" />
+                    </div>
+                  </div>
+                </article>
+              </section>
             </div>
             <div v-else-if="field.type === 'levelBenefits'" class="level-benefit-editor">
               <div class="member-benefit-toolbar">
@@ -3161,6 +4081,60 @@ onMounted(() => {
           </div>
         </div>
 
+        <aside v-if="state.editingCollection === 'activity_items'" class="activity-editor-preview">
+          <div>
+            <h3>页面预览</h3>
+            <p>按小程序活动详情页的阅读顺序预览。</p>
+          </div>
+          <div class="activity-phone-preview">
+            <div class="phone-preview-bar"></div>
+            <section class="phone-hero">
+              <img v-if="formPreviewUrl('image_url')" :src="formPreviewUrl('image_url')" alt="活动封面预览" />
+              <div v-else class="activity-cover-empty">活动封面</div>
+              <div class="phone-hero-copy">
+                <small>{{ form.start_at ? formatDateTime(form.start_at) : '活动时间' }}</small>
+                <h4>{{ form.title || '活动标题' }}</h4>
+                <p>{{ form.subtitle || '活动副标题' }}</p>
+                <div>
+                  <em>{{ activityPreviewFeeText() }}</em>
+                  <em>{{ activityScopeLabel(form.signup_scope) }}</em>
+                  <em v-if="form.is_pinned">置顶</em>
+                </div>
+              </div>
+            </section>
+            <section class="phone-info-list">
+              <div><span>活动时间</span><strong>{{ activityTimeText(form) }}</strong></div>
+              <div><span>活动地点</span><strong>{{ form.location || '未填写地点' }}</strong></div>
+              <div><span>人数上限</span><strong>{{ form.capacity || '不限' }}</strong></div>
+              <div><span>报名截止</span><strong>{{ form.signup_deadline ? formatDateTime(form.signup_deadline) : '未设置' }}</strong></div>
+            </section>
+            <section class="phone-content-section">
+              <h5>活动介绍</h5>
+              <p>{{ form.intro_text || '活动介绍文字会显示在这里。' }}</p>
+              <div v-if="form.video_url" class="phone-video-placeholder">活动视频</div>
+              <div v-if="formImageRows('intro_images').length" class="phone-intro-images">
+                <template v-for="(image, index) in formImageRows('intro_images')" :key="`${image.value}-${index}`">
+                  <img v-if="formImagePreview(image)" :src="formImagePreview(image)" alt="活动介绍图片" />
+                  <div v-else class="phone-image-file">图片 {{ index + 1 }}</div>
+                </template>
+              </div>
+            </section>
+            <section v-if="formImageRows('highlight_images').length" class="phone-content-section">
+              <h5>精彩瞬间</h5>
+              <div class="phone-moment-grid">
+                <template v-for="(image, index) in formImageRows('highlight_images').slice(0, 6)" :key="`${image.value}-${index}`">
+                  <img v-if="formImagePreview(image)" :src="formImagePreview(image)" alt="精彩瞬间图片" />
+                  <div v-else class="phone-image-file">图片</div>
+                </template>
+              </div>
+            </section>
+            <button class="phone-submit-preview" type="button">立即报名</button>
+          </div>
+          <div v-if="formPreviewUrl('qr_image_file_id')" class="qr-preview-box">
+            <img :src="formPreviewUrl('qr_image_file_id')" alt="活动二维码" />
+          </div>
+        </aside>
+
         <div class="drawer-actions">
           <button class="btn secondary" type="button" @click="closeDrawer">取消</button>
           <button class="btn primary" type="submit" :disabled="state.saving">
@@ -3168,6 +4142,86 @@ onMounted(() => {
           </button>
         </div>
       </form>
+    </div>
+
+    <!-- 云存储选择器 -->
+    <div v-if="state.cloudPicker.visible" class="cloud-picker-modal" aria-modal="true">
+      <button class="modal-mask" type="button" aria-label="关闭" @click="closeCloudStoragePicker"></button>
+      <div class="cloud-picker-dialog">
+        <div class="cloud-picker-head">
+          <h3>从云存储选择文件</h3>
+          <small>{{ state.cloudPicker.folder || '全部目录' }}</small>
+          <button class="icon-btn" type="button" @click="closeCloudStoragePicker">×</button>
+        </div>
+
+        <div class="cloud-picker-toolbar">
+          <select v-model="state.cloudPicker.folder" @change="fetchCloudFiles(state.cloudPicker.folder)">
+            <option value="">全部目录</option>
+            <option value="home/banners">home/banners</option>
+            <option value="home/cards">home/cards</option>
+            <option value="intro">intro</option>
+            <option value="meal-items">meal-items</option>
+            <option value="rooms">rooms</option>
+            <option value="dining-standards">dining-standards</option>
+            <option value="activities">activities</option>
+            <option value="activities/banners">activities/banners</option>
+            <option value="meal-tables">meal-tables</option>
+          </select>
+          <button class="btn secondary compact-btn" type="button" @click="fetchCloudFiles(state.cloudPicker.folder)">
+            刷新
+          </button>
+        </div>
+
+        <div v-if="state.cloudPicker.loading" class="cloud-picker-loading">加载中...</div>
+
+        <div v-else-if="!state.cloudPicker.files.length" class="cloud-picker-empty">
+          该目录下暂无文件。请先通过"上传"按钮上传文件到云存储。
+        </div>
+
+        <div v-else class="cloud-picker-grid">
+          <button
+            v-for="file in state.cloudPicker.files"
+            :key="file.fileID"
+            type="button"
+            class="cloud-picker-card"
+            :class="{ selected: state.cloudPicker.selectedFileID === file.fileID }"
+            @click="toggleFileSelect(file.fileID)"
+          >
+            <span class="cloud-picker-preview">
+              <img
+                v-if="isImageFile(file) && file.previewUrl"
+                class="cloud-picker-thumb-img"
+                :src="file.previewUrl"
+                :alt="file.fileName || file.cloudPath"
+                loading="lazy"
+              />
+              <span v-else class="cloud-picker-file-icon">
+                {{ (file.extension || 'FILE').toUpperCase() }}
+              </span>
+            </span>
+            <span class="cloud-picker-file-info">
+              <strong class="cloud-picker-file-name" :title="file.cloudPath">
+                {{ file.fileName || file.cloudPath }}
+              </strong>
+              <small class="cloud-picker-file-size">
+                {{ formatFileSize(file.size) || (file.extension || '文件').toUpperCase() }}
+              </small>
+            </span>
+          </button>
+        </div>
+
+        <div class="cloud-picker-actions" v-if="state.cloudPicker.files.length">
+          <button class="btn secondary" type="button" @click="closeCloudStoragePicker">取消</button>
+          <button
+            class="btn primary"
+            type="button"
+            :disabled="!state.cloudPicker.selectedFileID"
+            @click="selectCloudFile"
+          >
+            确认选择
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="state.toastText" class="toast" :class="state.toastType" role="status">

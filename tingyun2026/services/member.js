@@ -66,12 +66,14 @@ async function getMemberProfile(input = {}) {
 function buildMemberUser(profile, baseUser = guestUser) {
   const member = profile && profile.member;
   if (!member) return null;
+  const level = profile && profile.level;
   return Object.assign({}, baseUser, {
     mobile: member.mobile,
     nickname: member.member_name,
     member_id: member.member_id,
     level_id: member.level_id,
-    member_level: (profile.level && profile.level.level_name) || member.member_level || '',
+    member_level: (level && level.level_name) || member.member_level || '',
+    member_level_no: (level && level.level_no) || '',
     benefit_start_at: member.benefit_start_at,
     benefit_end_at: member.benefit_end_at,
     points_balance: member.points_balance,

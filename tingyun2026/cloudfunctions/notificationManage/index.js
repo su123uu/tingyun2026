@@ -5,19 +5,23 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 const _ = db.command;
+let miniProgramAccessTokenCache = null;
 
 const TEMPLATE_IDS = {
-  mealOrderStatus: process.env.WX_SUBSCRIBE_MEAL_ORDER_STATUS_TEMPLATE_ID || 'C4zcP7Aa--zKTf_hCrhfdOlHftnc235j3x83-D4PS88',
+  mealOrderStatus: process.env.WX_SUBSCRIBE_MEAL_ORDER_STATUS_TEMPLATE_ID || 'C4zcP7Aa--zKTf_hCrhfdBwtGt7g-NTN2V6yEQ0mJ3Q',
   reservationStatus: process.env.WX_SUBSCRIBE_RESERVATION_STATUS_TEMPLATE_ID || 'pxIcS6FOmd-u0Nw9p6n59FK1bqFBzEkYp39S7LmfRKk',
+  memberConsumption: process.env.WX_SUBSCRIBE_MEMBER_CONSUMPTION_TEMPLATE_ID || 't7Ae7NshuMt3CPQkEeati0WHdRG4jNuWc0WTa301rpM',
+  activitySignupSuccess: process.env.WX_SUBSCRIBE_ACTIVITY_SIGNUP_SUCCESS_TEMPLATE_ID || 'xZMhkpopzqoggQ-74qPwDsGhxEvInEAmSctDSrtBCJM',
+  diningReservationStatus: process.env.WX_SUBSCRIBE_DINING_RESERVATION_STATUS_TEMPLATE_ID || 'qPXI6JBsNa70p6K-mL-8zhe8kW5xFwqJ4zZU5jwBkw4',
 };
 
 const TEMPLATE_FIELDS = {
   mealOrderStatus: {
-    store: process.env.WX_SUBSCRIBE_MEAL_STORE_FIELD || 'name4',
+    store: process.env.WX_SUBSCRIBE_MEAL_STORE_FIELD || 'thing7',
     table: process.env.WX_SUBSCRIBE_MEAL_TABLE_FIELD || 'character_string1',
     status: process.env.WX_SUBSCRIBE_MEAL_STATUS_FIELD || 'phrase3',
     time: process.env.WX_SUBSCRIBE_MEAL_TIME_FIELD || 'time5',
-    amount: process.env.WX_SUBSCRIBE_MEAL_AMOUNT_FIELD || 'amount8',
+    amount: process.env.WX_SUBSCRIBE_MEAL_AMOUNT_FIELD || 'amount2',
   },
   reservationStatus: {
     guest: process.env.WX_SUBSCRIBE_RESERVATION_GUEST_FIELD || 'name6',
@@ -26,14 +30,33 @@ const TEMPLATE_FIELDS = {
     room: process.env.WX_SUBSCRIBE_RESERVATION_ROOM_FIELD || 'thing8',
     result: process.env.WX_SUBSCRIBE_RESERVATION_RESULT_FIELD || 'thing5',
   },
+  memberConsumption: {
+    store: process.env.WX_SUBSCRIBE_MEMBER_CONSUMPTION_STORE_FIELD || 'thing1',
+    amount: process.env.WX_SUBSCRIBE_MEMBER_CONSUMPTION_AMOUNT_FIELD || 'amount2',
+    time: process.env.WX_SUBSCRIBE_MEMBER_CONSUMPTION_TIME_FIELD || 'time7',
+  },
+  activitySignupSuccess: {
+    title: process.env.WX_SUBSCRIBE_ACTIVITY_TITLE_FIELD || 'thing1',
+    time: process.env.WX_SUBSCRIBE_ACTIVITY_TIME_FIELD || 'time2',
+    location: process.env.WX_SUBSCRIBE_ACTIVITY_LOCATION_FIELD || 'thing3',
+    remark: process.env.WX_SUBSCRIBE_ACTIVITY_REMARK_FIELD || 'thing6',
+  },
+  diningReservationStatus: {
+    date: process.env.WX_SUBSCRIBE_DINING_DATE_FIELD || 'date1',
+    name: process.env.WX_SUBSCRIBE_DINING_NAME_FIELD || 'name2',
+    mealTime: process.env.WX_SUBSCRIBE_DINING_MEAL_TIME_FIELD || 'thing6',
+    peopleCount: process.env.WX_SUBSCRIBE_DINING_PEOPLE_COUNT_FIELD || 'number7',
+    roomName: process.env.WX_SUBSCRIBE_DINING_ROOM_NAME_FIELD || 'thing12',
+  },
 };
 
 const STATUS_LABELS = {
-  kitchen_notified: '已接单',
+  kitchen_notified: '订单已提交',
   preparing: '制作中',
   completed: '已完成',
   settled: '已结算',
   pending_payment: '待支付',
+  pending_notice: '订单已提交',
   paid_pending_confirmation: '待确认',
   pending_confirmation: '待确认',
   confirmed: '已确认',
@@ -61,9 +84,21 @@ function cleanText(value, maxLength = 500) {
   return String(value).trim().slice(0, maxLength);
 }
 
+function cleanCharacterString(value, maxLength = 32) {
+  return cleanText(value, maxLength * 2).replace(/[^\w-]/g, '').slice(0, maxLength);
+}
+
 function firstText(values, maxLength = 500) {
   for (const value of values) {
     const text = cleanText(value, maxLength);
+    if (text) return text;
+  }
+  return '';
+}
+
+function firstCharacterString(values, maxLength = 32) {
+  for (const value of values) {
+    const text = cleanCharacterString(value, maxLength);
     if (text) return text;
   }
   return '';
@@ -79,7 +114,8 @@ function normalizeDate(value) {
 function formatTime(value) {
   const date = normalizeDate(value);
   const pad = (number) => String(number).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const local = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  return `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())} ${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`;
 }
 
 function statusLabel(status) {
@@ -88,6 +124,11 @@ function statusLabel(status) {
 
 function getTemplateId(key) {
   return TEMPLATE_IDS[key] || '';
+}
+
+function shouldFallbackToHttpApi(error) {
+  const message = String((error && (error.errMsg || error.message)) || '');
+  return message.includes('INVALID_WX_ACCESS_TOKEN') || message.includes('invalid wx openapi access_token');
 }
 
 function putField(data, field, value, maxLength = 20) {
@@ -101,15 +142,20 @@ function formatAmount(value) {
   return String(Math.round(number * 100) / 100);
 }
 
+function mealStoreName(values = {}) {
+  const tableArea = cleanText(values.table_area, 12);
+  return tableArea ? `停云山居-${tableArea}` : '停云山居';
+}
+
 function mealTemplateData(values = {}) {
   const fields = TEMPLATE_FIELDS.mealOrderStatus;
   const data = {};
-  putField(data, fields.store, process.env.STORE_NAME || '停云山居', 10);
-  putField(data, fields.table, firstText([
-    values.table_name,
-    values.room_name,
-    values.room_id,
+  putField(data, fields.store, process.env.STORE_NAME || mealStoreName(values), 20);
+  putField(data, fields.table, firstCharacterString([
     values.table_id,
+    values.room_id,
+    Array.isArray(values.room_ids) ? values.room_ids.join('-') : '',
+    values.table_name,
     values.business_no,
   ], 32), 32);
   putField(data, fields.status, values.status_label || statusLabel(values.status || values.order_status || values.reservation_status), 10);
@@ -149,12 +195,117 @@ function reservationTemplateData(values = {}) {
   return data;
 }
 
+function memberConsumptionTemplateData(values = {}) {
+  const fields = TEMPLATE_FIELDS.memberConsumption;
+  const data = {};
+  const businessType = cleanText(values.business_type, 80);
+  const storeName = businessType === 'meal_order' ? '停云山居-扫码点餐'
+    : businessType === 'accommodation_reservation' ? '停云山居-预订住宿'
+    : businessType === 'dining_reservation' ? '停云山居-预定用餐'
+    : businessType === 'activity_signup' ? '停云山居-活动报名'
+    : '停云山居';
+  putField(data, fields.store, storeName, 20);
+  putField(data, fields.amount, formatAmount(values.amount || values.total_amount || values.pay_amount), 10);
+  putField(data, fields.time, formatTime(values.completed_at || values.settled_at || values.updated_at || values.created_at || now()), 20);
+  return data;
+}
+
+function extractActivityDateTime(values = {}) {
+  const candidates = [
+    cleanText(values.activity_time, 30),
+    [cleanText(values.date, 20), cleanText(values.time, 20)].filter(Boolean).join(' '),
+  ];
+  for (const text of candidates) {
+    if (!text) continue;
+    // 微信 time 类型参数只接受 YYYY-MM-DD HH:mm 格式，不能包含时间范围（如 09:00-11:00）
+    // 如果包含 "-" 且前面有时间部分，说明可能是时间范围格式，需要提取起始时间
+    const trimmed = text.trim();
+    // 尝试匹配标准日期时间格式 YYYY-MM-DD HH:mm 或 YYYY-MM-DD H:mm
+    if (/^\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}$/.test(trimmed)) return trimmed;
+    // 匹配带时间范围的格式：YYYY-MM-dd HH:mm-HH:mm 或 YYYY-MM-dd HH:mm~HH:mm，提取起始部分
+    const match = trimmed.match(/^(\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2})[~-]/);
+    if (match) return match[1];
+    // 纯日期格式，补零时零分
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return `${trimmed} 00:00`;
+  }
+  return '';
+}
+
+function activitySignupTemplateData(values = {}) {
+  const fields = TEMPLATE_FIELDS.activitySignupSuccess;
+  const data = {};
+  const activityTime = extractActivityDateTime(values) || formatTime(values.start_at || values.updated_at || values.created_at);
+  putField(data, fields.title, firstText([
+    values.activity_title,
+    values.title,
+    values.name,
+    '活动',
+  ], 20), 20);
+  putField(data, fields.time, activityTime || formatTime(values.updated_at || values.created_at), 20);
+  putField(data, fields.location, firstText([
+    values.location,
+    values.activity_location,
+    '停云山居',
+  ], 20), 20);
+  putField(data, fields.remark, firstText([
+    values.success_notice_remark,
+    values.admin_remark,
+    values.remark,
+    '报名已确认',
+  ], 20), 20);
+  return data;
+}
+
+function diningReservationTemplateData(values = {}) {
+  const fields = TEMPLATE_FIELDS.diningReservationStatus;
+  const data = {};
+  // date1: 日期 - 微信 date 类型，格式 YYYY-MM-DD
+  const dateText = firstText([
+    values.date,
+    values.reservation_date,
+  ], 20);
+  if (dateText) {
+    // 确保 date 类型格式正确：取 YYYY-MM-DD 部分
+    const dateMatch = String(dateText).match(/^(\d{4}-\d{2}-\d{2})/);
+    putField(data, fields.date, dateMatch ? dateMatch[1] : dateText, 20);
+  }
+  // name2: 预订人
+  putField(data, fields.name, firstText([
+    values.contact_name,
+    values.customer_name,
+    values.member_name,
+    '客人',
+  ], 10), 10);
+  // thing6: 餐次 - 格式如 "午餐 - 养云套餐"
+  const timeSlot = cleanText(values.time_slot || values.reservation_time, 20);
+  const slotLabel = timeSlot === 'lunch' ? '午餐' : timeSlot === 'dinner' ? '晚餐' : timeSlot;
+  const standardName = cleanText(values.meal_standard_name, 20);
+  const mealTimeText = slotLabel && standardName ? `${slotLabel} - ${standardName}` : slotLabel || standardName || '用餐';
+  putField(data, fields.mealTime, mealTimeText, 20);
+  // number7: 人数
+  const peopleCount = Number(values.people_count || values.guest_count || 0);
+  if (Number.isFinite(peopleCount) && peopleCount > 0) {
+    data[fields.peopleCount] = { value: peopleCount };
+  }
+  // thing12: 包厢名称
+  putField(data, fields.roomName, firstText([
+    values.room_name,
+    '未指定',
+  ], 20), 20);
+  return data;
+}
+
 function templateData(templateKey, values = {}) {
   if (templateKey === 'reservationStatus') return reservationTemplateData(values);
+  if (templateKey === 'memberConsumption') return memberConsumptionTemplateData(values);
+  if (templateKey === 'activitySignupSuccess') return activitySignupTemplateData(values);
+  if (templateKey === 'diningReservationStatus') return diningReservationTemplateData(values);
   return mealTemplateData(values);
 }
 
 function templateKeyForBusiness(type) {
+  if (type === 'activity_signup') return 'activitySignupSuccess';
+  if (type === 'dining_reservation') return 'diningReservationStatus';
   if (type === 'accommodation_reservation') return 'reservationStatus';
   return 'mealOrderStatus';
 }
@@ -165,6 +316,7 @@ function defaultTemplateKeysForBusiness(type) {
 
 function pageForBusiness(type, businessNo) {
   if (type === 'meal_order') return `pages/order-detail/order-detail?id=${encodeURIComponent(businessNo)}`;
+  if (type === 'activity_signup') return 'pages/activity-list/activity-list';
   return `pages/reservation-detail/reservation-detail?id=${encodeURIComponent(businessNo)}`;
 }
 
@@ -269,14 +421,15 @@ async function sendSubscribeNotification(event = {}) {
   });
 
   try {
-    const response = await cloud.openapi.subscribeMessage.send({
+    const sendOptions = {
       touser: openid,
       templateId,
       page: miniProgramPage(event.page || subscription.page || pageForBusiness(businessType, businessNo)),
       miniprogramState: process.env.WX_SUBSCRIBE_MINIPROGRAM_STATE || 'formal',
       lang: 'zh_CN',
       data: templateData(templateKey, values),
-    });
+    };
+    const response = await sendSubscribeMessage(sendOptions);
     await db.collection('notification_subscriptions').doc(subscription._id).update({
       data: {
         status: 'used',
@@ -316,6 +469,55 @@ async function sendSubscribeNotification(event = {}) {
     });
     return { sent: false, reason: error.message };
   }
+}
+
+async function sendSubscribeMessage(options) {
+  try {
+    return await cloud.openapi.subscribeMessage.send(options);
+  } catch (error) {
+    if (!shouldFallbackToHttpApi(error)) throw error;
+    console.warn('cloud openapi subscribeMessage failed, fallback to http api', error);
+    return sendSubscribeMessageByHttpApi(options);
+  }
+}
+
+async function getMiniProgramAccessToken() {
+  if (miniProgramAccessTokenCache && miniProgramAccessTokenCache.expiresAt > Date.now() + 60000) {
+    return miniProgramAccessTokenCache.accessToken;
+  }
+
+  const appid = process.env.WX_APPID || process.env.MINIPROGRAM_APPID || 'wxb8d9824edccbdfd1';
+  const secret = process.env.WX_APP_SECRET || process.env.WECHAT_APP_SECRET || process.env.MINIPROGRAM_APP_SECRET;
+  if (!appid || !secret) {
+    throw new Error('cloud.openapi 获取 access_token 失败，请在 notificationManage 环境变量配置 WX_APP_SECRET');
+  }
+
+  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appid)}&secret=${encodeURIComponent(secret)}`;
+  const data = await requestJson('GET', url);
+  if (!data.access_token) {
+    throw new Error(data.errmsg || `微信 access_token 获取失败：${data.errcode || 'UNKNOWN'}`);
+  }
+  miniProgramAccessTokenCache = {
+    accessToken: data.access_token,
+    expiresAt: Date.now() + Math.max(300, Number(data.expires_in || 7200) - 300) * 1000,
+  };
+  return miniProgramAccessTokenCache.accessToken;
+}
+
+async function sendSubscribeMessageByHttpApi(options) {
+  const accessToken = await getMiniProgramAccessToken();
+  const response = await requestJson('POST', `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(accessToken)}`, {
+    touser: options.touser,
+    template_id: options.templateId,
+    page: options.page,
+    data: options.data,
+    miniprogram_state: options.miniprogramState,
+    lang: options.lang || 'zh_CN',
+  });
+  if (response.errcode && response.errcode !== 0) {
+    throw new Error(response.errmsg || `订阅消息发送失败：${response.errcode}`);
+  }
+  return response;
 }
 
 function requestJson(method, url, payload) {
@@ -377,23 +579,42 @@ function staffRemarkText(payload = {}) {
 
 function buildStaffMessage(event = {}) {
   const payload = event.payload || {};
+  const businessType = cleanText(event.business_type, 80);
   const title = cleanText(event.title, 80) || '停云山居通知';
   const businessNo = cleanText(event.business_no || event.order_no || event.order_id || payload.order_no, 120);
   const itemsText = mealItemsText(payload.items);
   const remarkText = staffRemarkText(payload);
+  const activityTitle = cleanText(payload.activity_title || payload.title, 80);
   const lines = [
     title,
     businessNo ? `单号：${businessNo}` : '',
-    payload.table_name ? `桌台：${payload.table_name}` : '',
-    payload.room_name ? `房间：${payload.room_name}` : '',
+    activityTitle ? `活动：${activityTitle}` : '',
     payload.customer_name || payload.contact_name ? `联系人：${payload.customer_name || payload.contact_name}` : '',
     payload.customer_mobile || payload.mobile ? `电话：${payload.customer_mobile || payload.mobile}` : '',
-    itemsText ? `菜品：${itemsText}` : '',
-    payload.amount !== undefined ? `金额：${payload.amount}` : '',
-    event.status ? `状态：${statusLabel(event.status)}` : '',
-    remarkText ? `备注：${remarkText}` : '',
-  ].filter(Boolean);
-  return lines.join('\n');
+  ];
+  // 用餐预定专用字段
+  if (businessType === 'dining_reservation') {
+    const peopleCount = payload.people_count || payload.guest_count;
+    if (peopleCount) lines.push(`人数：${peopleCount}`);
+    if (payload.room_name) lines.push(`包间：${payload.room_name}`);
+    const dateText = payload.date || payload.reservation_date;
+    if (dateText) lines.push(`日期：${dateText}`);
+    const timeSlot = payload.time_slot || payload.reservation_time;
+    if (timeSlot) lines.push(`时段：${timeSlot === 'lunch' ? '午餐' : timeSlot === 'dinner' ? '晚餐' : timeSlot}`);
+    if (payload.meal_standard_name) lines.push(`餐标：${payload.meal_standard_name}`);
+    if (payload.amount !== undefined) lines.push(`金额：${payload.amount}`);
+    if (event.status) lines.push(`状态：${statusLabel(event.status)}`);
+    if (remarkText) lines.push(`备注：${remarkText}`);
+  } else {
+    // 其他业务类型保持原有逻辑
+    if (payload.table_name) lines.push(`桌台：${payload.table_name}`);
+    if (payload.room_name) lines.push(`房间：${payload.room_name}`);
+    if (itemsText) lines.push(`菜品：${itemsText}`);
+    if (payload.amount !== undefined) lines.push(`金额：${payload.amount}`);
+    if (event.status) lines.push(`状态：${statusLabel(event.status)}`);
+    if (remarkText) lines.push(`备注：${remarkText}`);
+  }
+  return lines.filter(Boolean).join('\n');
 }
 
 function staffMessage(event = {}) {

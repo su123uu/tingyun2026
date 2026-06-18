@@ -14,7 +14,6 @@
     .table-card { display:flex; flex:0 0 auto; align-items:center; justify-content:space-between; gap:10px; margin: 10px 14px 12px; padding: 13px 14px; border-radius: 12px; color: var(--ink-soft); background:#fff; box-shadow:var(--shadow); }
     .table-card strong { display:block; color:var(--ink); font-size:14px; }
     .table-card span { display:block; margin-top:4px; color:var(--mist); font-size:11px; }
-    .scan-btn { flex:0 0 auto; min-height:34px; padding:0 11px; border-radius:9px; color:#fff; background:var(--bronze); font-size:12px; }
     .menu-layout { display:grid; min-height:0; flex:1; grid-template-columns:78px minmax(0,1fr); overflow:hidden; border-top:1px solid var(--line); background:rgba(255,255,255,.40); }
     .categories { align-self:stretch; padding:8px 0; overflow:hidden; background:rgba(232,228,220,.55); }
     .category { width:100%; min-height:54px; padding:0 7px; border-left:3px solid transparent; color:var(--mist); font-size:13px; }
@@ -68,7 +67,6 @@
           <strong id="tableTitle">浏览菜单</strong>
           <span id="tableDesc">桌上扫码后可填写人数并结算</span>
         </div>
-        <button class="scan-btn" type="button" onclick="simulateScan()">模拟扫码</button>
       </section>
       <div class="menu-layout">
         <aside class="categories" id="categories"></aside>
@@ -96,14 +94,6 @@
     </nav>
   </main>
 
-  <div class="modal" id="peopleModal">
-    <div class="sheet">
-      <h2 class="sheet-title">桌号 A01</h2>
-      <p class="sheet-copy">已识别桌上二维码，请填写本桌用餐人数。</p>
-      <input class="field" id="peopleInput" type="number" min="1" max="20" value="2" aria-label="用餐人数">
-      <div class="sheet-actions"><button class="button" type="button" onclick="confirmScan()">确认并开始点餐</button></div>
-    </div>
-  </div>
   <div class="modal" id="cartModal" onclick="closeCart(event)">
     <div class="sheet">
       <h2 class="sheet-title">已选菜品</h2>
@@ -157,8 +147,6 @@
     }
     function goCategory(cat){ active=cat; renderCategories(); const target=document.getElementById(categoryId(cat)); document.querySelector(".goods").scrollTo({top:target.offsetTop-12,behavior:"smooth"}); }
     function change(id, delta){ cart[id]=Math.max(0,qty(id)+delta); if(!cart[id]) delete cart[id]; persist(); render(); }
-    function simulateScan(){ document.getElementById("peopleModal").classList.add("open"); }
-    function confirmScan(){ table="A01"; people=document.getElementById("peopleInput").value || "2"; persist(); document.getElementById("peopleModal").classList.remove("open"); render(); showToast("已识别桌号 A01"); }
     function openCart(){ const selected=products.filter(p=>qty(p.id)); document.getElementById("cartLines").innerHTML=selected.length?selected.map(p=>`<div class="sheet-row cart-line"><img src="${p.img}" alt="${p.name}"><div class="cart-line-main"><strong>${p.name}</strong><span>${money(p.price)} × ${qty(p.id)}</span></div><strong class="cart-line-total">${money(p.price*qty(p.id))}</strong></div>`).join(""):"<p class='sheet-copy'>还未选择菜品。</p>"; document.getElementById("cartModal").classList.add("open"); }
     function closeCart(e){ if(e.target.id==="cartModal") e.currentTarget.classList.remove("open"); }
     function checkout(){ const count=Object.values(cart).reduce((a,b)=>a+b,0); if(!table){showToast("请先扫描桌上二维码");return;} if(!count){showToast("请先选择菜品");return;} navigateTo("order-confirm"); }

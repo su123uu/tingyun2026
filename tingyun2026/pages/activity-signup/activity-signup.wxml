@@ -1,1 +1,73 @@
-<view wx:if="{{activity}}" class="page signup"><text class="title">活动报名</text><text class="subtitle">{{activity.title}}</text><view class="card info"><text>{{activity.date}} · {{activity.time}}</text><text>{{activity.location}}</text></view><text class="section-title">报名人数</text><view class="people card"><button size="mini" data-step="-1" bindtap="people">-</button><strong>{{people}}</strong><button size="mini" data-step="1" bindtap="people">+</button></view><text class="section-title">联系信息</text><view class="inputs card"><input value="{{contact}}" bindinput="contact" placeholder="联系人"/><input value="{{mobile}}" bindinput="mobile" type="number" placeholder="手机号"/></view><button class="primary-button submit" bindtap="submit">提交报名</button></view>
+<view wx:if="{{activity}}" class="page inner">
+  <view class="topbar">
+    <view class="head" style="padding-top: {{navTop}}px;">
+      <view class="nav-row" style="height: {{navHeight}}px;">
+        <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
+        <text class="title">确认报名</text>
+      </view>
+      <text class="subtitle">确认活动与报名信息</text>
+    </view>
+  </view>
+
+  <view class="content">
+    <view class="activity card">
+      <image src="{{activity.image_url}}" mode="aspectFill" />
+      <view class="activity-body">
+        <text class="date">{{activity.date}} {{activity.time}}</text>
+        <text class="activity-title">{{activity.title}}</text>
+        <text wx:if="{{activity.subtitle}}" class="activity-copy">{{activity.subtitle}}</text>
+        <view class="activity-foot">
+          <text class="tag">{{payment_method_text}}</text>
+          <block wx:if="{{effectiveCustomerType === 'member'}}">
+            <view class="identity-badge member-badge">
+              <view class="badge-icon member-icon">{{identityInitial}}</view>
+              <view class="badge-info">
+                <text class="badge-tag member-tag">会员</text>
+                <text class="badge-level">{{memberLevel || '会员'}}</text>
+              </view>
+            </view>
+          </block>
+          <block wx:else>
+            <view class="identity-badge guest-badge">
+              <view class="badge-icon guest-icon">{{identityInitial}}</view>
+              <view class="badge-info">
+                <text class="badge-tag guest-tag">访客</text>
+                <text class="badge-level">散客</text>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+
+    <text class="section-title">报名人数</text>
+    <view class="people card">
+      <button size="mini" data-step="-1" bindtap="people">-</button>
+      <strong>{{people}}</strong>
+      <button size="mini" data-step="1" bindtap="people">+</button>
+    </view>
+    <text class="people-hint">{{people_hint}}</text>
+
+    <text class="section-title">费用合计</text>
+    <view class="amount-summary card">
+      <view><text>活动费用</text><strong>{{fee_text}}</strong></view>
+      <view><text>报名人数</text><strong>{{people}} 人</strong></view>
+      <view class="amount-total"><text>{{payment_method_text}}</text><strong>{{total_fee_text}}</strong></view>
+    </view>
+
+    <text class="section-title">联系信息</text>
+    <view class="inputs card">
+      <input value="{{contact}}" bindinput="contact" placeholder="联系人" />
+      <input value="{{mobile}}" bindinput="mobile" type="number" placeholder="手机号" />
+      <textarea value="{{remark}}" bindinput="remark" placeholder="备注，可选" />
+    </view>
+  </view>
+
+  <view class="footer">
+    <view class="pay-copy">
+      <text>应付金额</text>
+      <strong>{{total_fee_text}}</strong>
+    </view>
+    <button class="pay-button" disabled="{{submitting || submitted}}" bindtap="submit">{{submitted ? '已提交' : (submitting ? '提交中' : '提交报名')}}</button>
+  </view>
+</view>

@@ -5,15 +5,7 @@ const notification = require('../../services/notification');
 const assets = require('../../config/assets').assets;
 
 const ROOM_IMAGE = assets.rooms.accommodation;
-const ROOM_BEDS = {
-  chunyue: '1.5m + 1.2m',
-  xiashe: '1.5m',
-  qiude: '1.2m + 1.2m',
-  dongyu: '5m 榻榻米',
-  gengyan: '1.5m',
-  cangmiao: '5m 榻榻米',
-  chancha: '5m 榻榻米',
-};
+const DEFAULT_BED_TYPE = '请咨询客服';
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -100,6 +92,9 @@ Page({
     roomGalleryCurrent: 0,
     contact: '山里人',
     mobile: '13800136688',
+    hasSavedContact: false,
+    savedContactName: '',
+    savedContactMobile: '',
     remark: '',
     amount: 0,
     nights: 1,
@@ -118,8 +113,22 @@ Page({
   async onLoad() {
     this.setNavigationMetrics();
     const user = await auth.getCurrentUser();
-    this.setData({ customerType: user.customer_type });
+    this.setData({
+      customerType: user.customer_type,
+      contact: user.nickname || user.customer_name || this.data.contact,
+      mobile: user.mobile || this.data.mobile,
+    });
+    await this.loadContactProfile();
     await this.refreshRooms();
+  },
+  async loadContactProfile() {
+    const profile = await reservations.getContactProfile();
+    if (!profile || !profile.has_contact) return;
+    this.setData({
+      hasSavedContact: true,
+      savedContactName: profile.contact_name || '',
+      savedContactMobile: profile.mobile || '',
+    });
   },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -203,7 +212,7 @@ Page({
       return Object.assign({}, room, {
         images,
         image: images[0] || ROOM_IMAGE,
-        bed: ROOM_BEDS[room.room_id] || '详询客服',
+        bed: room.bed_type || room.bed || DEFAULT_BED_TYPE,
         selected: selectedRooms.includes(room.room_id),
       });
     });
@@ -248,6 +257,12 @@ Page({
   stop() {},
   contact(event) { this.setData({ contact: event.detail.value }); },
   mobile(event) { this.setData({ mobile: event.detail.value }); },
+  useSavedContact() {
+    this.setData({
+      contact: this.data.savedContactName || this.data.contact,
+      mobile: this.data.savedContactMobile || this.data.mobile,
+    });
+  },
   remark(event) { this.setData({ remark: event.detail.value }); },
   total() {
     if (!this.data.checkIn || !this.data.checkOut) return;
@@ -269,7 +284,9 @@ Page({
   },
   async create() {
     try {
-      const subscription = await notification.requestReservationStatus();
+      const subscription = this.data.customerType === 'member'
+        ? await notification.requestReservationWithConsumption()
+        : await notification.requestReservationStatus();
       let order = await reservations.createAccommodationReservation({
         check_in_date: this.data.checkIn,
         check_out_date: this.data.checkOut,

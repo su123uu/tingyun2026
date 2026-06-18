@@ -15,14 +15,9 @@
   </view>
 
   <view class="content">
-    <text class="section-title">基础信息</text>
-    <view class="detail-card card">
-      <view class="info-line"><text class="info-label">订单编号</text><text>{{order.order_no}}</text></view>
-      <view class="info-line"><text class="info-label">创建时间</text><text>{{order.created_text}}</text></view>
-    </view>
-
     <text class="section-title">就餐信息</text>
     <view class="detail-card card">
+      <view class="info-line"><text class="info-label">区域</text><strong>{{order.table_area}}</strong></view>
       <view class="info-line"><text class="info-label">桌号</text><strong>{{order.table_id}}</strong></view>
       <view class="info-line"><text class="info-label">用餐人数</text><text>{{order.people_count}} 位</text></view>
     </view>
@@ -45,20 +40,24 @@
       </view>
     </view>
 
-    <text class="section-title">支付信息</text>
-    <view class="detail-card card">
-      <view class="info-line"><text class="info-label">商品金额</text><text>¥{{order.total_amount}}</text></view>
-      <view class="info-line"><text class="info-label">{{order.payment_label}}</text><strong>¥{{order.total_amount}}</strong></view>
-      <view class="info-line"><text class="info-label">结算状态</text><text>{{order.settlement_text}}</text></view>
-      <view wx:if="{{order.paid_text}}" class="info-line"><text class="info-label">支付时间</text><text>{{order.paid_text}}</text></view>
-    </view>
+    <button wx:if="{{order.can_add_meal}}" class="add-meal-button" bindtap="addMeal">加餐</button>
 
     <text class="section-title">备注信息</text>
     <view class="detail-card card">
       <view class="info-line remark-line"><text class="info-label">用户备注</text><text>{{order.remark_text}}</text></view>
     </view>
 
-    <text class="section-title">厨房进度</text>
+    <text class="section-title">支付信息</text>
+    <view class="detail-card card">
+      <view class="info-line"><text class="info-label">订单编号</text><text>{{order.order_no}}</text></view>
+      <view class="info-line"><text class="info-label">创建时间</text><text>{{order.created_text}}</text></view>
+      <view class="info-line"><text class="info-label">商品金额</text><text>¥{{order.total_amount}}</text></view>
+      <view class="info-line"><text class="info-label">{{order.payment_label}}</text><strong>¥{{order.total_amount}}</strong></view>
+      <view class="info-line"><text class="info-label">结算状态</text><text>{{order.settlement_text}}</text></view>
+      <view wx:if="{{order.paid_text}}" class="info-line"><text class="info-label">支付时间</text><text>{{order.paid_text}}</text></view>
+    </view>
+
+    <text class="section-title">订单进度</text>
     <view class="timeline card">
       <view wx:for="{{steps}}" wx:key="text" class="step {{item.done ? 'done' : ''}}">{{item.text}}</view>
     </view>

@@ -1,6 +1,7 @@
-const catalog = require('../../services/catalog');
+﻿const catalog = require('../../services/catalog');
 const cartService = require('../../services/cart');
 const tableService = require('../../services/table-session');
+const auth = require('../../services/auth');
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -29,6 +30,11 @@ Page({
     selectedQuantity: 0,
     navTop: 28,
     navHeight: 32,
+    showPhoneAuth: false,
+    customerType: '',
+    memberLevel: '',
+    memberLevelNo: '',
+    identityInitial: '\u505c',
   },
   onLoad(options = {}) {
     this.setNavigationMetrics();
@@ -47,6 +53,49 @@ Page({
     } catch (error) {}
     this.setData({ navTop, navHeight });
   },
+  decodeText(value) {
+    let text = String(value || '');
+    for (let index = 0; index < 2; index += 1) {
+      try {
+        const decoded = decodeURIComponent(text);
+        if (decoded === text) break;
+        text = decoded;
+      } catch (error) {
+        break;
+      }
+    }
+    return text;
+  },
+  extractTableScene(scanResult = {}) {
+    const candidates = [scanResult.path, scanResult.result, scanResult.rawData]
+      .filter(Boolean)
+      .map((item) => this.decodeText(item));
+    for (const value of candidates) {
+      const sceneMatch = /(?:^|[?&])scene=([^&]+)/.exec(value);
+      const scene = sceneMatch ? this.decodeText(sceneMatch[1]) : value;
+      if (/(?:^|&)t=[^&]+/.test(scene) && /(?:^|&)k=[^&]+/.test(scene)) return scene;
+    }
+    return '';
+  },
+  async scanTableCode() {
+    try {
+      const user = await auth.getCurrentUser();
+      this.setData({
+        pendingTableCode: 'TEST_TABLE:A01',
+        session: null,
+        sessionLabel: '',
+        showPhoneAuth: !user.mobile,
+        showPeoplePicker: Boolean(user.mobile),
+        peopleCount: 2,
+        customerType: user.customer_type || 'guest',
+        memberLevel: user.member_level || '',
+        memberLevelNo: user.member_level_no || '',
+        identityInitial: this.formatIdentityInitial(user.customer_type || 'guest', user),
+      });
+    } catch (error) {
+      this.toast(error.message || '进入 A01 桌失败');
+    }
+  },
   async handleQrScene(options = {}) {
     const rawScene = options.scene ? decodeURIComponent(options.scene) : '';
     const tableMatch = /(?:^|&)t=([^&]+)/.exec(rawScene);
@@ -55,13 +104,51 @@ Page({
     try {
       const tableId = decodeURIComponent(tableMatch[1]);
       const qrToken = decodeURIComponent(tokenMatch[1]);
-      this.setData({
-        pendingTableCode: `t=${tableId}&k=${qrToken}`,
-        session: null,
-        sessionLabel: '',
-        showPeoplePicker: true,
-        peopleCount: 2,
-      });
+      const pendingTableCode = `t=${tableId}&k=${qrToken}`;
+      const activeSession = await tableService.getCurrentTableSessionByCode({ code: pendingTableCode });
+      if (activeSession) {
+        this.setData({
+          pendingTableCode: '',
+          session: activeSession,
+          sessionLabel: this.formatSessionLabel(activeSession),
+          showPeoplePicker: false,
+          peopleCount: activeSession.people_count || 2,
+          customerType: activeSession.customer_type || 'guest',
+          memberLevel: activeSession.member_level || '',
+          memberLevelNo: activeSession.member_level_no || '',
+          identityInitial: this.formatIdentityInitial(activeSession.customer_type || 'guest', activeSession),
+        });
+        return;
+      }
+      const user = await auth.getCurrentUser();
+      if (user.mobile) {
+        // 宸叉湁鎵嬫満鍙凤紝鐩存帴寮逛汉鏁伴€夋嫨
+        this.setData({
+          pendingTableCode,
+          session: null,
+          sessionLabel: '',
+          showPeoplePicker: true,
+          peopleCount: 2,
+          customerType: user.customer_type || 'guest',
+          memberLevel: user.member_level || '',
+          memberLevelNo: user.member_level_no || '',
+          identityInitial: this.formatIdentityInitial(user.customer_type || 'guest', user),
+        });
+      } else {
+        // 鏈巿鏉冩墜鏈哄彿锛屽厛寮规巿鏉冨脊绐?
+        this.setData({
+          pendingTableCode,
+          session: null,
+          sessionLabel: '',
+          showPhoneAuth: true,
+          showPeoplePicker: false,
+          peopleCount: 2,
+          customerType: 'guest',
+          memberLevel: '',
+          memberLevelNo: '',
+          identityInitial: '\u505c',
+        });
+      }
     } catch (error) {
       this.toast(error.message || '桌台码识别失败');
     }
@@ -91,8 +178,18 @@ Page({
   },
   formatSessionLabel(session) {
     if (!session) return '';
-    const area = session.table_area ? `${session.table_area} · ` : '';
-    return `${area}${session.table_name || '桌台'}`;
+    const area = session.table_area ? session.table_area + ' · ' : '';
+    const people = session.people_count ? ' · ' + session.people_count + ' 位' : '';
+    return area + this.formatTableNo(session) + people;
+  },
+  formatTableNo(session) {
+    if (!session) return '';
+    return session.table_id || String(session.table_name || '').replace(/\s*妗?/, '') || '妗屽彴';
+  },
+  formatIdentityInitial(type, source = {}) {
+    if (type !== 'member') return '\u505c';
+    const name = source.customer_name || source.nickname || source.member_name || '';
+    return String(name).trim().charAt(0) || '\u4f1a';
   },
   increasePeople() {
     this.setData({ peopleCount: Math.min(20, this.data.peopleCount + 1) });
@@ -107,20 +204,59 @@ Page({
   cancelPeoplePicker() {
     this.setData({ showPeoplePicker: false, pendingTableCode: '' });
   },
+  cancelPhoneAuth() {
+    // 璺宠繃鎺堟潈锛屼互璁垮韬唤缁х画
+    this.setData({ showPhoneAuth: false, customerType: 'guest', identityInitial: '\u505c' });
+    // 鐩存帴寮逛汉鏁伴€夋嫨
+    this.setData({ showPeoplePicker: true });
+  },
+  async onGetPhoneNumber(event) {
+    const detail = event.detail;
+    if (!detail.code) {
+      this.toast('未完成手机号授权');
+      return;
+    }
+    try {
+      wx.showLoading({ title: '身份识别中' });
+      const user = await auth.bindMobile({ phoneCode: detail.code });
+      wx.hideLoading();
+      this.setData({
+        showPhoneAuth: false,
+        customerType: user.customer_type || 'guest',
+        memberLevel: user.member_level || '',
+        memberLevelNo: user.member_level_no || '',
+        identityInitial: this.formatIdentityInitial(user.customer_type || 'guest', user),
+      });
+      if (user.customer_type === 'member') {
+        this.toast('会员识别成功 · ' + (user.member_level || ''), 'success');
+      } else {
+        this.toast('暂未匹配到会员，以访客身份继续');
+      }
+      // 鎺堟潈瀹屾垚鍚庡脊浜烘暟閫夋嫨
+      this.setData({ showPeoplePicker: true });
+    } catch (error) {
+      wx.hideLoading();
+      this.toast(error.message || '手机号授权失败');
+    }
+  },
   async confirmPeopleCount() {
     if (!this.data.pendingTableCode) return this.toast('请先扫描桌上的二维码');
     try {
-      const session = await tableService.startTableSession({
-        code: this.data.pendingTableCode,
-        people_count: this.data.peopleCount,
-      });
+      const input = { people_count: this.data.peopleCount };
+      const session = this.data.pendingTableCode === 'TEST_TABLE:A01'
+        ? await tableService.startTableSessionForTest(Object.assign({}, input, { table_id: 'A01' }))
+        : await tableService.startTableSession(Object.assign({}, input, { code: this.data.pendingTableCode }));
       this.setData({
         session,
         sessionLabel: this.formatSessionLabel(session),
         pendingTableCode: '',
         showPeoplePicker: false,
+        customerType: session.customer_type || this.data.customerType,
+        memberLevel: session.member_level || this.data.memberLevel,
+        memberLevelNo: session.member_level_no || this.data.memberLevelNo,
+        identityInitial: this.formatIdentityInitial(session.customer_type || this.data.customerType, session),
       });
-      this.toast(`已识别 ${this.formatSessionLabel(session)}`, 'success');
+      this.toast('已识别 ' + this.formatSessionLabel(session), 'success');
     } catch (error) {
       this.toast(error.message || '桌台码识别失败');
     }
@@ -192,13 +328,6 @@ Page({
     })).filter((category) => category.items.length);
   },
   stop() {},
-  simulateScan() {
-    wx.showModal({
-      title: '请扫描桌码',
-      content: '真实点餐只接受后台生成的新桌码。请在后台“桌台”里生成小程序码后扫码测试。',
-      showCancel: false,
-    });
-  },
   checkout() {
     if (!this.data.count) return this.toast('请先选择菜品');
     if (this.data.showPeoplePicker || this.data.pendingTableCode) return this.toast('请先确认用餐人数');

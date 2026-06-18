@@ -61,6 +61,10 @@
   </view>
 
   <text class="section-title">联系信息</text>
+  <view wx:if="{{hasSavedContact}}" class="manager-line">
+    <text>上次联系人：{{savedContactName}} {{savedContactMobile}}</text>
+    <text class="manager-link" bindtap="useSavedContact">使用</text>
+  </view>
   <view class="inputs card">
     <input value="{{contact}}" bindinput="contact" placeholder="联系人"/>
     <input value="{{mobile}}" bindinput="mobile" type="number" placeholder="手机号"/>

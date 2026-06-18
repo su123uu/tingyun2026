@@ -1,5 +1,6 @@
 const catalog = require('../../services/catalog');
 const reservations = require('../../services/reservation');
+const auth = require('../../services/auth');
 const notification = require('../../services/notification');
 const assets = require('../../config/assets').assets;
 
@@ -53,8 +54,13 @@ Page({
     selectedStandardDishes: [],
     contact: '山里人',
     mobile: '13800136688',
+    hasSavedContact: false,
+    savedContactName: '',
+    savedContactMobile: '',
     remark: '',
     amount: 240,
+    customerType: 'guest',
+    submitting: false,
     navTop: 28,
     navHeight: 32,
     heroHeight: 218,
@@ -68,10 +74,34 @@ Page({
   },
   async onLoad() {
     this.setNavigationMetrics();
+    const user = await auth.getCurrentUser().catch(() => ({}));
+    this.setData({
+      customerType: user.customer_type || 'guest',
+      contact: user.nickname || user.customer_name || this.data.contact,
+      mobile: user.mobile || this.data.mobile,
+    });
+    await this.loadContactProfile();
     const standards = await catalog.listDiningStandards();
-    this.setData({ standards: asArray(standards).map((standard) => Object.assign({}, standard, { image: standard.image || standard.image_url || STANDARD_IMAGE })) });
+    this.setData({ standards: asArray(standards).map((standard) => {
+      const img = standard.image || standard.image_url || STANDARD_IMAGE;
+      const hasImage = !!(standard.image || standard.image_url);
+      return Object.assign({}, standard, {
+        image: img,
+        hasImage,
+        initial: (standard.name || '').charAt(0),
+      });
+    }) });
     await this.refreshRooms();
     this.recalculate();
+  },
+  async loadContactProfile() {
+    const profile = await reservations.getContactProfile();
+    if (!profile || !profile.has_contact) return;
+    this.setData({
+      hasSavedContact: true,
+      savedContactName: profile.contact_name || '',
+      savedContactMobile: profile.mobile || '',
+    });
   },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -159,7 +189,7 @@ Page({
     }));
     if (requestId !== this.roomsRequestId) return;
     const selectableIds = rooms.filter((room) => room.is_selectable).map((room) => room.room_id);
-    const maxSelectableRooms = reservations.getDiningRoomSelectionLimit(people);
+    const maxSelectableRooms = await reservations.getDiningRoomSelectionLimit(people);
     let selectedRooms = this.data.selectedRooms.filter((id) => selectableIds.includes(id));
     if (selectedRooms.length > maxSelectableRooms) selectedRooms = selectedRooms.slice(0, maxSelectableRooms);
     this.allRooms = rooms.map((room) => Object.assign({}, room, { image: room.image || room.image_url || ROOM_IMAGE }));
@@ -215,16 +245,24 @@ Page({
   stop() {},
   contact(event) { this.setData({ contact: event.detail.value }); },
   mobile(event) { this.setData({ mobile: event.detail.value }); },
+  useSavedContact() {
+    this.setData({
+      contact: this.data.savedContactName || this.data.contact,
+      mobile: this.data.savedContactMobile || this.data.mobile,
+    });
+  },
   remark(event) { this.setData({ remark: event.detail.value }); },
   recalculate() {
     const standard = this.data.standards.find((item) => item.meal_standard_id === this.data.standardId);
     this.setData({ amount: standard ? this.data.people * standard.price_per_person : 0 });
   },
   submit() {
+    if (this.data.submitting) return;
     if (!this.data.date) return this.toast('请选择用餐日期');
     if (!this.data.selectedRooms.length) return this.toast('请选择包间');
     if (this.data.selectedCapacity < this.data.people) return this.toast('所选包间总容量不足，可联系店长协调');
     if (!this.data.standardId) return this.toast('请选择餐标');
+    this.setData({ submitting: true });
     this.create();
   },
   callManager() {
@@ -232,7 +270,10 @@ Page({
   },
   async create() {
     try {
-      const subscription = await notification.requestDiningReservationStatus();
+      const subscription = this.data.customerType === 'member'
+        ? await notification.requestDiningReservationWithConsumption()
+        : await notification.requestDiningReservationStatus();
+      wx.showLoading({ title: '提交中...', mask: true });
       let order = await reservations.createDiningReservation({
         date: this.data.date,
         time_slot: this.data.slot,
@@ -244,12 +285,16 @@ Page({
         remark: this.data.remark,
         notification_subscriptions: subscription,
       });
+      wx.hideLoading();
       if (order.customer_type === 'guest') {
         await this.payReservation(order.order_no || order.order_id);
       }
       wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_no || order.order_id}` });
     } catch (error) {
-      this.toast(error.message);
+      wx.hideLoading();
+      this.toast(error.message || '提交失败');
+    } finally {
+      this.setData({ submitting: false });
     }
   },
   async payReservation(orderNo) {

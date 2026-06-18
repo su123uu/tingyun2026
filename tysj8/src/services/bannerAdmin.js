@@ -22,7 +22,7 @@ export function clearToken() {
   window.sessionStorage.removeItem(cloudbaseConfig.tokenStorageKey);
 }
 
-async function getApp() {
+export async function getApp() {
   if (!appInstance) {
     appInstance = cloudbase.init({
       env: cloudbaseConfig.envId,
@@ -109,7 +109,7 @@ export function fileToBase64(file) {
       const value = String(reader.result || '');
       resolve(value.split(',')[1] || '');
     };
-    reader.onerror = () => reject(new Error('读取图片失败。'));
+    reader.onerror = () => reject(new Error('读取文件失败。'));
     reader.readAsDataURL(file);
   });
 }

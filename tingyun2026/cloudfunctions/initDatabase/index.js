@@ -31,6 +31,7 @@ const collections = [
   'operation_logs',
   'notification_subscriptions',
   'notification_logs',
+  'system_settings',
 ];
 
 const now = () => new Date();
@@ -237,9 +238,9 @@ const seedData = {
   meal_tables: {
     key: 'table_id',
     rows: [
-      { table_id: 'A01', table_name: 'A01 桌', table_area: '大厅', capacity: 4, sort_order: 10, table_status: 'enabled', qr_token: 'seed_a01', qr_version: 1, qr_scene: 't=A01&v=1&k=seed_a01', qr_image_file_id: '', current_session_id: '' },
-      { table_id: 'A02', table_name: 'A02 桌', table_area: '大厅', capacity: 4, sort_order: 20, table_status: 'enabled', qr_token: 'seed_a02', qr_version: 1, qr_scene: 't=A02&v=1&k=seed_a02', qr_image_file_id: '', current_session_id: '' },
-      { table_id: 'B01', table_name: 'B01 桌', table_area: '露台', capacity: 6, sort_order: 30, table_status: 'enabled', qr_token: 'seed_b01', qr_version: 1, qr_scene: 't=B01&v=1&k=seed_b01', qr_image_file_id: '', current_session_id: '' },
+      { table_id: 'A01', table_name: 'A01', table_area: '前露台', capacity: 4, sort_order: 10, table_status: 'enabled', qr_token: 'seed_a01', qr_version: 1, qr_scene: 't=A01&v=1&k=seed_a01', qr_image_file_id: '', current_session_id: '' },
+      { table_id: 'A02', table_name: 'A02', table_area: '前露台', capacity: 4, sort_order: 20, table_status: 'enabled', qr_token: 'seed_a02', qr_version: 1, qr_scene: 't=A02&v=1&k=seed_a02', qr_image_file_id: '', current_session_id: '' },
+      { table_id: 'B01', table_name: 'B01', table_area: '露台', capacity: 6, sort_order: 30, table_status: 'enabled', qr_token: 'seed_b01', qr_version: 1, qr_scene: 't=B01&v=1&k=seed_b01', qr_image_file_id: '', current_session_id: '' },
     ],
   },
   dining_rooms: {
@@ -254,13 +255,13 @@ const seedData = {
   accommodation_rooms: {
     key: 'room_id',
     rows: [
-      { room_id: 'chunyue', name: '春悦', category: '亲子房', min_capacity: 2, max_capacity: 3, regular_price: 600, member_price: 360, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 10 },
-      { room_id: 'xiashe', name: '夏舍', category: '大床房', min_capacity: 2, max_capacity: 2, regular_price: 500, member_price: 300, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 20 },
-      { room_id: 'qiude', name: '秋得', category: '标准间', min_capacity: 2, max_capacity: 2, regular_price: 500, member_price: 300, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 30 },
-      { room_id: 'dongyu', name: '冬裕', category: '榻榻米房', min_capacity: 3, max_capacity: 5, regular_price: 600, member_price: 360, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 40 },
-      { room_id: 'gengyan', name: '耕烟', category: '套房', min_capacity: 2, max_capacity: 4, regular_price: 600, member_price: 360, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 50 },
-      { room_id: 'cangmiao', name: '苍妙', category: '榻榻米房', min_capacity: 3, max_capacity: 5, regular_price: 600, member_price: 360, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 60 },
-      { room_id: 'chancha', name: '禅茶四人房', category: '禅茶房', min_capacity: 4, max_capacity: 4, regular_price: 500, member_price: 300, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 70 },
+      { room_id: 'chunyue', name: '春悦', category: '亲子房', bed_type: '1.5m + 1.2m', min_capacity: 2, max_capacity: 3, regular_price: 600, member_price: 360, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 10 },
+      { room_id: 'xiashe', name: '夏舍', category: '大床房', bed_type: '1.5m', min_capacity: 2, max_capacity: 2, regular_price: 500, member_price: 300, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 20 },
+      { room_id: 'qiude', name: '秋得', category: '标准间', bed_type: '1.2m + 1.2m', min_capacity: 2, max_capacity: 2, regular_price: 500, member_price: 300, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 30 },
+      { room_id: 'dongyu', name: '冬裕', category: '榻榻米房', bed_type: '5m 榻榻米', min_capacity: 3, max_capacity: 5, regular_price: 600, member_price: 360, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 40 },
+      { room_id: 'gengyan', name: '耕烟', category: '套房', bed_type: '1.5m', min_capacity: 2, max_capacity: 4, regular_price: 600, member_price: 360, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 50 },
+      { room_id: 'cangmiao', name: '苍妙', category: '榻榻米房', bed_type: '5m 榻榻米', min_capacity: 3, max_capacity: 5, regular_price: 600, member_price: 360, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 60 },
+      { room_id: 'chancha', name: '禅茶四人房', category: '禅茶房', bed_type: '5m 榻榻米', min_capacity: 4, max_capacity: 4, regular_price: 500, member_price: 300, image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/rooms/春悦.jpg', is_available: true, sort_order: 70 },
     ],
   },
   dining_standards: {
@@ -288,9 +289,9 @@ const seedData = {
   activity_items: {
     key: 'activity_id',
     rows: [
-      { activity_id: 'meditation', title: '禅修冥想体验课', description: '专业导师带领，在山间安静半日。适合首次体验禅修的会员。', list_description: '专业导师带领，在山间安静半日。适合首次体验禅修的会员。', detail_summary: '在一呼一吸之间，感受山林与内心的安静。', intro: ['由专业导师带领，从基础呼吸练习开始，逐步进入适合初学者的静坐体验。', '课程中会安排舒展与自由交流时间，建议穿着宽松舒适的衣物。'], notice: '仅权益有效期内会员可报名，每位会员默认最多报名 2 人。超过人数请联系客服沟通。', image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/activities/meditation-activity.jpg', date: '2026-06-15', time: '14:00-17:00', location: '停云山居 · 禅修室', start_at: new Date('2026-06-15T14:00:00+08:00'), end_at: new Date('2026-06-15T17:00:00+08:00'), signup_deadline: new Date('2026-06-13T18:00:00+08:00'), signup_scope: 'members_only', fee_type: 'free', guest_price: 0, member_price: 0, capacity: 12, reserved_count: 6, status: 'open', status_tone: 'green', sort_order: 10 },
-      { activity_id: 'tea', title: '山间茶艺品鉴会', description: '品茶、听山、会友。循茶香辨风味，也在席间认识同好。', list_description: '品茶、听山、会友。循茶香辨风味，也在席间认识同好。', detail_summary: '循香识茶，也在一盏茶的时间里慢下来。', intro: ['本次茶席以崂山春茶为引，带领会员认识不同茶汤的香气、温度与回甘。', '活动将保留自由交流时间，可携 1 位同行者参与。'], notice: '仅权益有效期内会员可报名，每位会员默认最多报名 2 人。超过人数请联系客服沟通。', image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/activities/tea-activity.jpg', date: '2026-06-20', time: '16:00-18:00', location: '停云山居 · 茶空间', start_at: new Date('2026-06-20T16:00:00+08:00'), end_at: new Date('2026-06-20T18:00:00+08:00'), signup_deadline: new Date('2026-06-18T18:00:00+08:00'), signup_scope: 'members_only', fee_type: 'paid', guest_price: 198, member_price: 128, capacity: 12, reserved_count: 8, status: 'open', status_tone: 'gold', sort_order: 20 },
-      { activity_id: 'music', title: '夏至山居音乐会', description: '夜色与虫鸣之间，听一场山居限定的专题音乐会。', list_description: '夜色与虫鸣之间，听一场山居限定的专题音乐会。', detail_summary: '夏夜松风作伴，听一场只属于山居的音乐会。', intro: ['以夏至为题，邀请音乐人与山居来客共度一个有风、有茶、有旋律的夜晚。', '现场座位有限，请按报名人数入场。'], notice: '本场活动已满员。如需候补或咨询后续活动安排，请联系客服。', image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/activities/music-activity.jpg', date: '2026-06-28', time: '19:00-21:00', location: '停云山居 · 山景露台', start_at: new Date('2026-06-28T19:00:00+08:00'), end_at: new Date('2026-06-28T21:00:00+08:00'), signup_deadline: new Date('2026-06-26T18:00:00+08:00'), signup_scope: 'members_only', fee_type: 'paid', guest_price: 0, member_price: 168, capacity: 16, reserved_count: 16, status: 'full', status_tone: 'disabled', sort_order: 30 },
+      { activity_id: 'meditation', title: '禅修冥想体验课', subtitle: '专业导师带领，在山间安静半日。适合首次体验禅修的会员。', intro_text: '由专业导师带领，从基础呼吸练习开始，逐步进入适合初学者的静坐体验。\n\n课程中会安排舒展与自由交流时间，建议穿着宽松舒适的衣物。', intro_images: [], highlight_images: [], notice: '仅权益有效期内会员可报名，每位会员默认最多报名 2 人。超过人数请联系客服沟通。', image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/activities/meditation-activity.jpg', video_url: '', date: '2026-06-15', time: '14:00-17:00', location: '停云山居 · 禅修室', start_at: new Date('2026-06-15T14:00:00+08:00'), end_at: new Date('2026-06-15T17:00:00+08:00'), signup_deadline: new Date('2026-06-13T18:00:00+08:00'), signup_scope: 'members_only', fee_type: 'free', member_fee_required: false, guest_price: 0, member_price: 0, capacity: 12, reserved_count: 6, status: 'open', status_tone: 'green', success_notice_remark: '报名已确认，请按时到场。', sort_order: 10 },
+      { activity_id: 'tea', title: '山间茶艺品鉴会', subtitle: '品茶、听山、会友。循茶香辨风味，也在席间认识同好。', intro_text: '本次茶席以崂山春茶为引，带领会员认识不同茶汤的香气、温度与回甘。\n\n活动将保留自由交流时间，可携 1 位同行者参与。', intro_images: [], highlight_images: [], notice: '仅权益有效期内会员可报名，每位会员默认最多报名 2 人。超过人数请联系客服沟通。', image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/activities/tea-activity.jpg', video_url: '', date: '2026-06-20', time: '16:00-18:00', location: '停云山居 · 茶空间', start_at: new Date('2026-06-20T16:00:00+08:00'), end_at: new Date('2026-06-20T18:00:00+08:00'), signup_deadline: new Date('2026-06-18T18:00:00+08:00'), signup_scope: 'members_only', fee_type: 'paid', member_fee_required: true, guest_price: 198, member_price: 128, capacity: 12, reserved_count: 8, status: 'open', status_tone: 'gold', success_notice_remark: '茶席名额已确认。', sort_order: 20 },
+      { activity_id: 'music', title: '夏至山居音乐会', subtitle: '夜色与虫鸣之间，听一场山居限定的专题音乐会。', intro_text: '以夏至为题，邀请音乐人与山居来客共度一个有风、有茶、有旋律的夜晚。\n\n现场座位有限，请按报名人数入场。', intro_images: [], highlight_images: [], notice: '本场活动已满员。如需候补或咨询后续活动安排，请联系客服。', image_url: 'cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/activities/music-activity.jpg', video_url: '', date: '2026-06-28', time: '19:00-21:00', location: '停云山居 · 山景露台', start_at: new Date('2026-06-28T19:00:00+08:00'), end_at: new Date('2026-06-28T21:00:00+08:00'), signup_deadline: new Date('2026-06-26T18:00:00+08:00'), signup_scope: 'members_only', fee_type: 'paid', member_fee_required: true, guest_price: 0, member_price: 168, capacity: 16, reserved_count: 16, status: 'full', status_tone: 'disabled', success_notice_remark: '音乐会报名已确认。', sort_order: 30 },
     ],
   },
   member_levels: {
@@ -304,6 +305,31 @@ const seedData = {
   member_benefit_accounts: {
     key: 'benefit_account_id',
     rows: [],
+  },
+  system_settings: {
+    key: 'setting_key',
+    rows: [
+      {
+        setting_key: 'meal_order_status_flow',
+        setting_name: '点餐订单状态流程',
+        setting_type: 'meal_order',
+        value: {
+          order_statuses: ['pending_payment', 'preparing', 'completed'],
+          guest_unpaid_order_status: 'pending_payment',
+          paid_order_status: 'preparing',
+          member_settlement_status: 'pending_offline_points',
+          member_payment_status: 'pending_offline',
+          active_statuses: ['preparing'],
+          terminal_statuses: ['completed'],
+          table_actions: ['move_table', 'complete_and_clear_table'],
+          deprecated_fields: ['kitchen_status'],
+          legacy_statuses: ['pending_notice', 'kitchen_notified'],
+        },
+        description: '点餐主状态使用 order_status：未支付、制作中、已完成；会员核算仅记录在 settlement_status/payment_status；kitchen_status 仅兼容旧数据。',
+        is_enabled: true,
+        sort_order: 10,
+      },
+    ],
   },
 };
 

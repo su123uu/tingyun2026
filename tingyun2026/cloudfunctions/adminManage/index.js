@@ -12,12 +12,18 @@ const DEFAULT_STORAGE_BUCKET = '636c-cloud1-d6gzs6wuu4b4e902e-1437151055';
 const DEFAULT_WX_APPID = 'wxb8d9824edccbdfd1';
 const RESERVATION_COLLECTIONS = ['dining_reservations', 'accommodation_reservations'];
 const ADMIN_RESERVATION_STATUSES = ['confirmed', 'rejected', 'cancelled'];
-const ADMIN_KITCHEN_STATUSES = ['kitchen_notified', 'preparing', 'completed'];
+const ADMIN_ACTIVITY_SIGNUP_STATUSES = ['confirmed', 'cancelled', 'completed'];
+const ADMIN_MEAL_ORDER_STATUSES = ['preparing', 'completed'];
 const IMAGE_TYPES = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif',
+};
+const VIDEO_TYPES = {
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
 };
 
 const MODULES = {
@@ -59,7 +65,7 @@ const MODULES = {
   meal_table_sessions: {
     key: 'session_id',
     sort: 'created_at',
-    fields: ['session_id', 'table_id', 'table_name', 'table_area', 'people_count', 'session_status', 'has_order', 'expires_at', 'ordered_at', 'closed_at', 'closed_reason'],
+    fields: ['session_id', 'table_id', 'table_name', 'table_area', 'people_count', 'customer_type', 'customer_name', 'member_id', 'session_status', 'has_order', 'expires_at', 'ordered_at', 'closed_at', 'closed_reason'],
   },
   dining_rooms: {
     key: 'room_id',
@@ -77,7 +83,7 @@ const MODULES = {
     key: 'room_id',
     sort: 'sort_order',
     imageFields: { image_url: 'rooms', image_urls: 'rooms' },
-    fields: ['room_id', 'name', 'category', 'min_capacity', 'max_capacity', 'regular_price', 'member_price', 'image_url', 'image_urls', 'is_available', 'sort_order'],
+    fields: ['room_id', 'name', 'category', 'bed_type', 'min_capacity', 'max_capacity', 'regular_price', 'member_price', 'image_url', 'image_urls', 'is_available', 'sort_order'],
   },
   activity_banners: {
     key: 'banner_id',
@@ -87,9 +93,15 @@ const MODULES = {
   },
   activity_items: {
     key: 'activity_id',
-    sort: 'sort_order',
-    imageFields: { image_url: 'activities' },
-    fields: ['activity_id', 'title', 'description', 'list_description', 'detail_summary', 'intro', 'notice', 'image_url', 'video_url', 'date', 'time', 'location', 'start_at', 'end_at', 'signup_deadline', 'signup_scope', 'fee_type', 'guest_price', 'member_price', 'capacity', 'reserved_count', 'status', 'status_tone', 'sort_order'],
+    sort: 'start_at',
+    imageFields: { image_url: 'activities', intro_images: 'activities', highlight_images: 'activities', qr_image_file_id: 'activities/qrcodes' },
+    videoFields: { video_url: 'activities' },
+      fields: ['activity_id', 'title', 'subtitle', 'intro_text', 'notice', 'image_url', 'video_url', 'intro_images', 'highlight_images', 'location', 'start_at', 'end_at', 'signup_deadline', 'signup_scope', 'is_pinned', 'guest_price', 'member_price', 'capacity', 'reserved_count', 'status', 'success_notice_remark', 'qr_scene', 'qr_version', 'qr_image_file_id'],
+  },
+  users: {
+    key: 'user_id',
+    sort: 'last_login_at',
+    fields: ['user_id', 'openid', 'mobile', 'nickname', 'avatar_url', 'member_id', 'customer_type', 'last_contact_name', 'last_contact_mobile', 'last_login_at', 'created_at', 'updated_at', 'is_deleted'],
   },
   members: {
     key: 'member_id',
@@ -114,22 +126,27 @@ const MODULES = {
   dining_reservations: {
     key: 'reservation_id',
     sort: 'created_at',
-    fields: ['reservation_id', 'order_no', 'customer_name', 'customer_mobile', 'reservation_date', 'reservation_time', 'guest_count', 'room_id', 'room_name', 'meal_standard_id', 'meal_standard_name', 'reservation_status', 'remark', 'admin_remark'],
+    fields: ['reservation_id', 'order_no', 'customer_type', 'member_id', 'customer_name', 'customer_mobile', 'reservation_date', 'reservation_time', 'guest_count', 'room_id', 'room_name', 'meal_standard_id', 'meal_standard_name', 'reservation_status', 'payment_status', 'settlement_status', 'remark', 'admin_remark'],
   },
   accommodation_reservations: {
     key: 'reservation_id',
     sort: 'created_at',
-    fields: ['reservation_id', 'order_no', 'customer_name', 'customer_mobile', 'checkin_date', 'checkout_date', 'guest_count', 'room_id', 'room_name', 'reservation_status', 'remark', 'admin_remark'],
+    fields: ['reservation_id', 'order_no', 'customer_type', 'member_id', 'customer_name', 'customer_mobile', 'checkin_date', 'checkout_date', 'guest_count', 'room_id', 'room_name', 'reservation_status', 'payment_status', 'settlement_status', 'remark', 'admin_remark'],
   },
   activity_signups: {
     key: 'signup_id',
     sort: 'created_at',
-    fields: ['signup_id', 'order_no', 'activity_id', 'activity_title', 'contact_name', 'contact_mobile', 'participant_count', 'signup_status', 'remark', 'admin_remark'],
+    fields: ['signup_id', 'order_no', 'activity_id', 'activity_title', 'date', 'time', 'location', 'contact_name', 'contact_mobile', 'participant_count', 'customer_type', 'member_id', 'amount', 'signup_status', 'payment_status', 'settlement_status', 'success_notice_remark', 'created_by_openid', 'remark', 'admin_remark'],
   },
   meal_orders: {
     key: 'order_id',
     sort: 'created_at',
-    fields: ['order_id', 'order_no', 'table_id', 'table_name', 'customer_name', 'customer_mobile', 'items', 'total_amount', 'pay_amount', 'order_status', 'payment_status', 'remark', 'admin_remark'],
+    fields: ['order_id', 'order_no', 'table_id', 'table_name', 'customer_type', 'customer_name', 'customer_mobile', 'items', 'total_amount', 'pay_amount', 'order_status', 'payment_status', 'remark', 'admin_remark'],
+  },
+  system_settings: {
+    key: 'setting_key',
+    sort: 'sort_order',
+    fields: ['setting_key', 'setting_name', 'setting_type', 'value', 'description', 'is_enabled', 'sort_order'],
   },
 };
 
@@ -209,7 +226,7 @@ async function notifyReservationStatus(collectionName, row, status, adminRemark)
     status,
     admin_remark: adminRemark,
   });
-  if (businessType && businessNo && openid) {
+  if (businessType && businessNo && openid && status === 'confirmed') {
     await safeCallNotification({
       action: 'sendSubscribeNotification',
       business_type: businessType,
@@ -217,6 +234,16 @@ async function notifyReservationStatus(collectionName, row, status, adminRemark)
       openid,
       status,
       admin_remark: adminRemark,
+      payload,
+    });
+  }
+  if (businessType && businessNo && openid && status === 'settled' && row.customer_type === 'member') {
+    await safeCallNotification({
+      action: 'sendSubscribeNotification',
+      business_type: businessType,
+      business_no: businessNo,
+      openid,
+      template_key: 'memberConsumption',
       payload,
     });
   }
@@ -235,11 +262,10 @@ async function notifyMealOrderStatus(row, status, adminRemark) {
   const openid = cleanText(row.created_by_openid, 120);
   const payload = Object.assign({}, row, {
     order_status: status,
-    kitchen_status: status,
     status,
     admin_remark: adminRemark,
   });
-  if (businessNo && openid) {
+  if (businessNo && openid && !(status === 'settled' && row.customer_type === 'member')) {
     await safeCallNotification({
       action: 'sendSubscribeNotification',
       business_type: 'meal_order',
@@ -247,6 +273,16 @@ async function notifyMealOrderStatus(row, status, adminRemark) {
       openid,
       status,
       admin_remark: adminRemark,
+      payload,
+    });
+  }
+  if (businessNo && openid && status === 'settled' && row.customer_type === 'member') {
+    await safeCallNotification({
+      action: 'sendSubscribeNotification',
+      business_type: 'meal_order',
+      business_no: businessNo,
+      openid,
+      template_key: 'memberConsumption',
       payload,
     });
   }
@@ -260,11 +296,80 @@ async function notifyMealOrderStatus(row, status, adminRemark) {
   });
 }
 
+async function notifyActivitySignupStatus(row, status, adminRemark) {
+  const businessNo = cleanText(row.order_no || row.signup_id, 120);
+  const openid = cleanText(row.created_by_openid, 120);
+  const payload = Object.assign({}, row, {
+    signup_status: status,
+    status,
+    admin_remark: adminRemark,
+    success_notice_remark: row.success_notice_remark || adminRemark || '报名已确认',
+  });
+  if (businessNo && openid && status === 'confirmed') {
+    await safeCallNotification({
+      action: 'sendSubscribeNotification',
+      business_type: 'activity_signup',
+      business_no: businessNo,
+      openid,
+      template_key: 'activitySignupSuccess',
+      status,
+      admin_remark: adminRemark,
+      payload,
+    });
+  }
+  if (businessNo && openid && status === 'completed' && row.customer_type === 'member') {
+    await safeCallNotification({
+      action: 'sendSubscribeNotification',
+      business_type: 'activity_signup',
+      business_no: businessNo,
+      openid,
+      template_key: 'memberConsumption',
+      payload: Object.assign({}, payload, { business_type: 'activity_signup' }),
+    });
+  }
+  await safeCallNotification({
+    action: 'sendStaffNotification',
+    business_type: 'activity_signup',
+    business_no: businessNo,
+    title: '活动报名状态更新',
+    status,
+    payload,
+  });
+}
+
 function cleanValue(value) {
   if (value === undefined) return undefined;
   if (value === '') return '';
   if (typeof value === 'string') return cleanText(value, 5000);
   return value;
+}
+
+function padDatePart(value) {
+  return String(value).padStart(2, '0');
+}
+
+function formatActivityDate(value) {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function formatActivityClock(value) {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+function syncActivityDisplayTime(data, input = {}, existing = {}) {
+  const startAt = Object.prototype.hasOwnProperty.call(input, 'start_at') ? data.start_at : existing.start_at;
+  const endAt = Object.prototype.hasOwnProperty.call(input, 'end_at') ? data.end_at : existing.end_at;
+  const dateText = formatActivityDate(startAt);
+  const startText = formatActivityClock(startAt);
+  const endText = formatActivityClock(endAt);
+  data.date = dateText;
+  data.time = startText && endText ? `${startText}-${endText}` : startText || endText || '';
 }
 
 function normalizePageId(value, fallbackPrefix = 'intro') {
@@ -285,17 +390,72 @@ function buildData(moduleConfig, input, existing = {}) {
   });
 
   const key = moduleConfig.key;
-  if (key && !data[key] && !existing[key]) {
-    data[key] = `${key.replace(/_id$/, '')}_${Date.now()}`;
-  }
-  data.updated_at = now();
+    if (key && !data[key] && !existing[key]) {
+      data[key] = `${key.replace(/_id$/, '')}_${Date.now()}`;
+    }
+    if (moduleConfig.key === 'activity_id') syncActivityDisplayTime(data, input, existing);
+    data.updated_at = now();
   data.is_deleted = false;
   return data;
+}
+
+async function validateMemberMobileUnique(data, current = {}) {
+  const mobile = cleanText(data.mobile || current.mobile, 20);
+  if (!mobile) return null;
+  const result = await db.collection('members')
+    .where({ mobile, is_deleted: _.neq(true) })
+    .limit(20)
+    .get();
+  const conflict = (result.data || []).find((row) => (
+    row._id !== current._id
+    && row.member_id !== current.member_id
+  ));
+  if (!conflict) return null;
+  return fail('该手机号已登记为其他会员，请先修改或合并原会员档案。', 'MEMBER_MOBILE_CONFLICT');
+}
+
+async function syncUsersForMember(member = {}) {
+  const mobile = cleanText(member.mobile, 20);
+  const memberId = cleanText(member.member_id, 120);
+  if (!mobile || !memberId || member.member_status !== 'active') return;
+  await db.collection('users')
+    .where({ mobile, is_deleted: _.neq(true) })
+    .update({
+      data: {
+        member_id: memberId,
+        customer_type: 'member',
+        nickname: cleanText(member.member_name, 80),
+        updated_at: now(),
+      },
+    });
 }
 
 function toNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function toSortTime(value) {
+  if (!value) return Number.MAX_SAFE_INTEGER;
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
+}
+
+function sortActivityRows(rows) {
+  return (Array.isArray(rows) ? rows : []).slice().sort((left, right) => {
+    const leftPinned = left.is_pinned === true ? 1 : 0;
+    const rightPinned = right.is_pinned === true ? 1 : 0;
+    if (leftPinned !== rightPinned) return rightPinned - leftPinned;
+    const startDiff = toSortTime(left.start_at) - toSortTime(right.start_at);
+    if (startDiff !== 0) return startDiff;
+    return String(left.title || '').localeCompare(String(right.title || ''), 'zh-Hans-CN');
+  });
+}
+
+function sortAdminRows(rows, moduleConfig) {
+  if (moduleConfig && moduleConfig.key === 'activity_id') return sortActivityRows(rows);
+  return rows;
 }
 
 function isCloudFile(value) {
@@ -448,6 +608,23 @@ function getPreviewFileID(value, folder) {
   return buildCloudFileID(`${folder}/${fileName}`);
 }
 
+function safeActivityFolderName(value, fallback = 'activity') {
+  return cleanText(value, 100)
+    .replace(/[\\/:*?"<>|#%&{}$!@+=`]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || fallback;
+}
+
+function uploadFolder(moduleConfig, event, field) {
+  const baseFolder = (moduleConfig.imageFields && moduleConfig.imageFields[field])
+    || (moduleConfig.videoFields && moduleConfig.videoFields[field])
+    || '';
+  if (moduleConfig.key !== 'activity_id' || baseFolder !== 'activities') return baseFolder;
+  const title = safeActivityFolderName(event.record_title || event.activity_title || event.title || event.activity_id, cleanText(event.activity_id, 80) || 'activity');
+  return `${baseFolder}/${title}`;
+}
+
 function collectContentImageFileIDs(value, fileIDs = []) {
   if (!value || typeof value !== 'object') return fileIDs;
   if (Array.isArray(value)) {
@@ -532,7 +709,7 @@ async function list(event) {
     }
     throw error;
   }
-  const rows = await attachPreviewUrls(result.data, moduleConfig);
+  const rows = await attachPreviewUrls(sortAdminRows(result.data || [], moduleConfig), moduleConfig);
   return ok({ rows, module: event.collection });
 }
 
@@ -543,7 +720,12 @@ async function create(event) {
   await ensureCollection(event.collection);
   const input = event.data || {};
   const data = Object.assign(buildData(moduleConfig, input), { created_at: now() });
+  if (event.collection === 'members') {
+    const conflict = await validateMemberMobileUnique(data);
+    if (conflict) return conflict;
+  }
   const result = await db.collection(event.collection).add({ data });
+  if (event.collection === 'members') await syncUsersForMember(data);
   return ok({ _id: result._id });
 }
 
@@ -557,12 +739,17 @@ async function update(event) {
   if (!current.data || current.data.is_deleted === true) return fail('记录不存在或已删除。', 'NOT_FOUND');
 
   const data = buildData(moduleConfig, event.data || {}, current.data);
+  if (event.collection === 'members') {
+    const conflict = await validateMemberMobileUnique(data, current.data);
+    if (conflict) return conflict;
+  }
   if (event.collection === 'content_pages' && data.is_active === true) {
     data.page_status = 'published';
     data.activated_at = now();
     data.activated_by = cleanText(event.admin_user || event.username || 'admin', 80);
   }
   await db.collection(event.collection).doc(id).update({ data });
+  if (event.collection === 'members') await syncUsersForMember(Object.assign({}, current.data, data));
   if (event.collection === 'content_pages' && data.is_active === true) {
     await deactivateOtherIntroPages(id);
   }
@@ -575,8 +762,14 @@ async function update(event) {
   if (event.collection === 'meal_orders'
     && Object.prototype.hasOwnProperty.call(data, 'order_status')
     && data.order_status !== current.data.order_status
-    && ADMIN_KITCHEN_STATUSES.includes(data.order_status)) {
+    && ADMIN_MEAL_ORDER_STATUSES.includes(data.order_status)) {
     await notifyMealOrderStatus(Object.assign({}, current.data, data), data.order_status, data.admin_remark || '');
+  }
+  if (event.collection === 'activity_signups'
+    && Object.prototype.hasOwnProperty.call(data, 'signup_status')
+    && data.signup_status !== current.data.signup_status
+    && ADMIN_ACTIVITY_SIGNUP_STATUSES.includes(data.signup_status)) {
+    await notifyActivitySignupStatus(Object.assign({}, current.data, data), data.signup_status, data.admin_remark || '');
   }
   return ok({ _id: id });
 }
@@ -796,21 +989,30 @@ async function releaseAccommodationBenefit(row) {
 
 async function reservationStatusUpdate(event) {
   const status = cleanText(event.reservation_status || event.status, 40);
-  if (!ADMIN_RESERVATION_STATUSES.includes(status)) {
+  const settle = event.settle === true || cleanText(event.settlement_status || event.payment_status, 40) === 'settled';
+  if (status && !ADMIN_RESERVATION_STATUSES.includes(status)) {
     return fail('预约状态仅支持 confirmed、rejected、cancelled。', 'INVALID_RESERVATION_STATUS');
   }
+  if (!status && !settle) return fail('EMPTY_UPDATE', 'EMPTY_UPDATE');
 
   const found = await findReservationRecord(event);
   if (!found) return fail('预约记录不存在或已删除。', 'NOT_FOUND');
 
   const data = {
-    reservation_status: status,
     admin_remark: cleanText(event.admin_remark || event.remark, 500),
     updated_at: now(),
   };
-  if (status === 'confirmed') data.confirmed_at = now();
-  if (status === 'rejected') data.rejected_at = now();
-  if (status === 'cancelled') data.cancelled_at = now();
+  if (status) {
+    data.reservation_status = status;
+    if (status === 'confirmed') data.confirmed_at = now();
+    if (status === 'rejected') data.rejected_at = now();
+    if (status === 'cancelled') data.cancelled_at = now();
+  }
+  if (settle) {
+    data.settlement_status = 'settled';
+    data.payment_status = 'settled';
+    data.settled_at = now();
+  }
   if (status === 'rejected' || status === 'cancelled') {
     data.lock_expires_at = null;
     if (found.collectionName === 'accommodation_reservations') {
@@ -819,8 +1021,13 @@ async function reservationStatusUpdate(event) {
   }
 
   await db.collection(found.collectionName).doc(found.id).update({ data });
-  await notifyReservationStatus(found.collectionName, Object.assign({}, found.row, data), status, data.admin_remark || '');
-  return ok({ _id: found.id, collection: found.collectionName, reservation_status: status });
+  await notifyReservationStatus(found.collectionName, Object.assign({}, found.row, data), status || 'settled', data.admin_remark || '');
+  return ok({
+    _id: found.id,
+    collection: found.collectionName,
+    reservation_status: data.reservation_status,
+    settlement_status: data.settlement_status,
+  });
 }
 
 async function findMealOrderRecord(event) {
@@ -850,15 +1057,14 @@ async function mealOrderStatusUpdate(event) {
     admin_remark: cleanText(event.admin_remark || event.remark, 500),
     updated_at: now(),
   };
-  const kitchenStatus = cleanText(event.kitchen_status || event.order_status, 40);
-  if (kitchenStatus) {
-    if (!ADMIN_KITCHEN_STATUSES.includes(kitchenStatus)) {
-      return fail('厨房状态仅支持 kitchen_notified、preparing、completed。', 'INVALID_KITCHEN_STATUS');
+  const orderStatus = cleanText(event.order_status || event.kitchen_status, 40);
+  if (orderStatus) {
+    if (!ADMIN_MEAL_ORDER_STATUSES.includes(orderStatus)) {
+      return fail('点餐订单状态仅支持 preparing、completed。', 'INVALID_ORDER_STATUS');
     }
-    data.kitchen_status = kitchenStatus;
-    data.order_status = kitchenStatus;
-    if (kitchenStatus === 'preparing') data.preparing_at = now();
-    if (kitchenStatus === 'completed') data.completed_at = now();
+    data.order_status = orderStatus;
+    if (orderStatus === 'preparing') data.preparing_at = now();
+    if (orderStatus === 'completed') data.completed_at = now();
   }
 
   const settle = event.settle === true || cleanText(event.settlement_status || event.payment_status, 40) === 'settled';
@@ -868,11 +1074,62 @@ async function mealOrderStatusUpdate(event) {
     data.settled_at = now();
   }
 
-  if (!kitchenStatus && !settle) return fail('请提供要更新的厨房状态或结算状态。', 'EMPTY_UPDATE');
+  if (!orderStatus && !settle) return fail('请提供要更新的订单状态或结算状态。', 'EMPTY_UPDATE');
 
   await db.collection('meal_orders').doc(found.id).update({ data });
-  await notifyMealOrderStatus(Object.assign({}, found.row, data), kitchenStatus || 'settled', data.admin_remark || '');
-  return ok({ _id: found.id, kitchen_status: data.kitchen_status, settlement_status: data.settlement_status });
+  await notifyMealOrderStatus(Object.assign({}, found.row, data), orderStatus || 'settled', data.admin_remark || '');
+  return ok({ _id: found.id, order_status: data.order_status, settlement_status: data.settlement_status });
+}
+
+async function findActivitySignupRecord(event) {
+  const id = cleanText(event._id, 120);
+  const orderNo = cleanText(event.order_no || event.signup_id, 120);
+  if (id) {
+    try {
+      const result = await db.collection('activity_signups').doc(id).get();
+      if (result.data && result.data.is_deleted !== true) return { id, row: result.data };
+    } catch (error) {}
+  }
+  if (orderNo) {
+    const result = await db.collection('activity_signups')
+      .where({ order_no: orderNo, is_deleted: _.neq(true) })
+      .limit(1)
+      .get();
+    if (result.data && result.data.length) return { id: result.data[0]._id, row: result.data[0] };
+  }
+  return null;
+}
+
+async function activitySignupStatusUpdate(event) {
+  const status = cleanText(event.signup_status || event.status, 40);
+  const settle = event.settle === true || cleanText(event.settlement_status || event.payment_status, 40) === 'settled';
+  if (status && !ADMIN_ACTIVITY_SIGNUP_STATUSES.includes(status)) {
+    return fail('活动报名状态仅支持 confirmed、cancelled、completed。', 'INVALID_ACTIVITY_SIGNUP_STATUS');
+  }
+  if (!status && !settle) return fail('请提供要更新的报名状态或核销状态。', 'EMPTY_UPDATE');
+
+  const found = await findActivitySignupRecord(event);
+  if (!found) return fail('活动报名记录不存在或已删除。', 'NOT_FOUND');
+
+  const data = {
+    admin_remark: cleanText(event.admin_remark || event.remark, 500),
+    updated_at: now(),
+  };
+  if (status) {
+    data.signup_status = status;
+    if (status === 'confirmed') data.confirmed_at = now();
+    if (status === 'cancelled') data.cancelled_at = now();
+    if (status === 'completed') data.completed_at = now();
+  }
+  if (settle || status === 'completed') {
+    data.settlement_status = 'settled';
+    data.payment_status = 'settled';
+    data.settled_at = now();
+  }
+
+  await db.collection('activity_signups').doc(found.id).update({ data });
+  await notifyActivitySignupStatus(Object.assign({}, found.row, data), status || 'completed', data.admin_remark || '');
+  return ok({ _id: found.id, signup_status: data.signup_status, settlement_status: data.settlement_status });
 }
 
 async function uploadImage(event) {
@@ -880,7 +1137,7 @@ async function uploadImage(event) {
   if (!moduleConfig) return fail('不支持的管理集合。', 'UNKNOWN_COLLECTION');
 
   const field = cleanText(event.field, 80);
-  const folder = moduleConfig.imageFields && moduleConfig.imageFields[field];
+  const folder = uploadFolder(moduleConfig, event, field);
   if (!folder) return fail('该字段不支持图片上传。', 'UNSUPPORTED_IMAGE_FIELD');
 
   const fileName = cleanText(event.file_name, 120) || `image-${Date.now()}.png`;
@@ -901,6 +1158,67 @@ async function uploadImage(event) {
     .slice(0, 60) || 'image';
   const cloudPath = `${folder}/${Date.now()}-${safeName}.${extension}`;
   const result = await cloud.uploadFile({ cloudPath, fileContent: buffer });
+
+  // 记录到 cloud_files 集合，供云存储选择器查询
+  try {
+    await db.collection('cloud_files').add({
+      data: {
+        fileID: result.fileID,
+        cloudPath,
+        folder,
+        fileName: safeName,
+        extension,
+        contentType,
+        size: buffer.length,
+        uploadedAt: Date.now(),
+      },
+    });
+  } catch (_) { /* 集合可能尚未创建，静默忽略 */ }
+
+  return ok({ fileID: result.fileID, cloudPath });
+}
+
+async function uploadMedia(event) {
+  const moduleConfig = getModule(event.collection);
+  if (!moduleConfig) return fail('不支持的管理集合。', 'UNKNOWN_COLLECTION');
+
+  const field = cleanText(event.field, 80);
+  const folder = uploadFolder(moduleConfig, event, field);
+  if (!folder || !(moduleConfig.videoFields && moduleConfig.videoFields[field])) {
+    return fail('该字段不支持视频上传。', 'UNSUPPORTED_MEDIA_FIELD');
+  }
+
+  const fileName = cleanText(event.file_name, 120) || `video-${Date.now()}.mp4`;
+  const contentType = cleanText(event.content_type, 80);
+  const base64 = cleanText(event.base64, 70 * 1024 * 1024);
+  const extension = VIDEO_TYPES[contentType] || 'mp4';
+  if (!VIDEO_TYPES[contentType]) return fail('仅支持 MP4、MOV 或 WebM 视频。', 'UNSUPPORTED_VIDEO_TYPE');
+  if (!base64) return fail('缺少视频内容。');
+
+  const buffer = Buffer.from(base64, 'base64');
+  if (!buffer.length) return fail('视频内容无效。');
+  if (buffer.length > 50 * 1024 * 1024) return fail('视频不能超过 50MB。', 'VIDEO_TOO_LARGE');
+
+  const safeName = safeCloudFileName(fileName.replace(/\.[^.]+$/, ''), 'video');
+  const cloudPath = `${folder}/${Date.now()}-${safeName}.${extension}`;
+  const result = await cloud.uploadFile({ cloudPath, fileContent: buffer });
+
+  // 记录到 cloud_files 集合
+  try {
+    await db.collection('cloud_files').add({
+      data: {
+        fileID: result.fileID,
+        cloudPath,
+        folder,
+        fileName: safeName,
+        extension,
+        contentType,
+        size: buffer.length,
+        uploadedAt: Date.now(),
+      },
+    });
+  } catch (_) { /* 集合可能尚未创建 */ }
+
   return ok({ fileID: result.fileID, cloudPath });
 }
 
@@ -943,7 +1261,7 @@ async function generateTableQrCode(event) {
   const buffer = await getTableWxacodeBuffer(scene, page);
   if (!buffer || !buffer.length) return fail('小程序码生成失败。', 'WXACODE_FAILED');
 
-  const cloudPath = `meal-tables/${safeCloudFileName(tableName, tableId)}.png`;
+  const cloudPath = `meal-tables/${safeCloudFileName(tableName, tableId)}-v${version}-${token.slice(0, 8)}.png`;
   const uploadResult = await cloud.uploadFile({ cloudPath, fileContent: buffer });
   const qrImageFileId = uploadResult.fileID;
 
@@ -969,6 +1287,125 @@ async function generateTableQrCode(event) {
   return ok({ fileID: qrImageFileId, cloudPath, tempFileURL, qr_scene: scene, qr_version: version });
 }
 
+async function generateActivityQrCode(event) {
+  const id = cleanText(event._id, 120);
+  if (!id) return fail('缺少活动记录 _id。', 'MISSING_ID');
+
+  const current = await db.collection('activity_items').doc(id).get();
+  if (!current.data || current.data.is_deleted === true) return fail('活动不存在或已删除。', 'NOT_FOUND');
+
+  const activity = current.data;
+  const activityId = cleanText(activity.activity_id, 80);
+  const activityTitle = cleanText(activity.title, 100) || activityId;
+  if (!activityId) return fail('请先保存活动 ID。', 'MISSING_ACTIVITY_ID');
+
+  const version = (Number(activity.qr_version) || 0) + 1;
+  const scene = `a=${activityId}&v=${version}`;
+  const page = 'pages/activity/activity';
+
+  const buffer = await getTableWxacodeBuffer(scene, page);
+  if (!buffer || !buffer.length) return fail('活动小程序码生成失败。', 'WXACODE_FAILED');
+
+  const cloudPath = `activities/qrcodes/${safeCloudFileName(activityTitle, activityId)}.png`;
+  const uploadResult = await cloud.uploadFile({ cloudPath, fileContent: buffer });
+  const qrImageFileId = uploadResult.fileID;
+
+  await db.collection('activity_items').doc(id).update({
+    data: {
+      qr_version: version,
+      qr_scene: scene,
+      qr_image_file_id: qrImageFileId,
+      updated_at: now(),
+    },
+  });
+
+  let tempFileURL = '';
+  try {
+    const tempResult = await cloud.getTempFileURL({ fileList: [qrImageFileId] });
+    const file = tempResult.fileList && tempResult.fileList[0];
+    if (file && file.status === 0) tempFileURL = file.tempFileURL || '';
+  } catch (error) {
+    console.warn('resolve activity qr temp url failed', error);
+  }
+
+  return ok({ fileID: qrImageFileId, cloudPath, tempFileURL, qr_scene: scene, qr_version: version });
+}
+
+async function syncCloudFiles(event) {
+  if (!Array.isArray(event.items) || !event.items.length) {
+    return fail('items 必须是非空数组', 'INVALID_PARAM');
+  }
+  const coll = db.collection('cloud_files');
+  const results = { total: event.items.length, created: 0, skipped: 0, errors: 0 };
+  for (const item of event.items) {
+    try {
+      const fileID = cleanText(item.fileID, 512);
+      const cloudPath = cleanText(item.cloudPath, 512);
+      if (!fileID || !cloudPath) { results.errors++; continue; }
+      // 检查是否已存在
+      const exist = await coll.where({ fileID }).limit(1).get();
+      if (exist.data && exist.data.length) { results.skipped++; continue; }
+      const fileName = cloudPath.split('/').pop() || '';
+      await coll.add({
+        fileID,
+        cloudPath,
+        fileName,
+        folder: cleanText(item.folder, 200) || cloudPath.replace(`/${fileName}`, '').split('/').pop() || '',
+        extension: (fileName.split('.').pop() || '').toLowerCase(),
+        contentType: item.contentType || (/\.(mp4|mov|webm)$/i.test(fileName) ? 'video' : 'image'),
+        size: Number(item.size) || 0,
+        uploadedAt: new Date(item.uploadedAt || Date.now()),
+        createdAt: new Date(),
+      });
+      results.created++;
+    } catch (_) { results.errors++; }
+  }
+  return ok(results);
+}
+
+async function listCloudFiles(event) {
+  const folder = cleanText(event.folder, 200) || '';
+  const limit = Math.min(Number(event.limit) || 60, 200);
+
+  try {
+    let query = db.collection('cloud_files');
+    if (folder) {
+      query = query.where({ folder });
+    }
+    const result = await query.orderBy('uploadedAt', 'desc').limit(limit).get();
+    const files = (result.data || []).map((f) => ({
+      fileID: f.fileID,
+      cloudPath: f.cloudPath,
+      fileName: f.fileName,
+      extension: f.extension,
+      contentType: f.contentType,
+      size: f.size,
+      folder: f.folder,
+      uploadedAt: f.uploadedAt,
+    }));
+
+    // 批量获取预览临时链接
+    if (files.length) {
+      const fileIDs = files.map((f) => f.fileID).filter(Boolean);
+      try {
+        const tempResult = await cloud.getTempFileURL({ fileList: Array.from(new Set(fileIDs)) });
+        const urlMap = {};
+        (tempResult.fileList || []).forEach((f) => {
+          if (f.status === 0 && f.tempFileURL) urlMap[f.fileID] = f.tempFileURL;
+        });
+        files.forEach((f) => {
+          f.previewUrl = urlMap[f.fileID] || '';
+        });
+      } catch (_) { /* 预览链接获取失败不影响列表 */ }
+    }
+
+    return ok({ files, total: files.length });
+  } catch (_) {
+    // 集合不存在时返回空列表
+    return ok({ files: [], total: 0 });
+  }
+}
+
 exports.main = async (event = {}) => {
   if (event.action === 'login') return login(event);
 
@@ -981,13 +1418,18 @@ exports.main = async (event = {}) => {
     if (event.action === 'update') return await update(event);
     if (event.action === 'delete') return await remove(event);
     if (event.action === 'uploadImage') return await uploadImage(event);
+    if (event.action === 'uploadMedia') return await uploadMedia(event);
     if (event.action === 'previewImage') return await previewImage(event);
     if (event.action === 'duplicateContentPage') return await duplicateContentPage(event);
     if (event.action === 'activateContentPage') return await activateContentPage(event);
     if (event.action === 'generateTableQrCode') return await generateTableQrCode(event);
+    if (event.action === 'generateActivityQrCode') return await generateActivityQrCode(event);
     if (event.action === 'reservationStatusUpdate') return await reservationStatusUpdate(event);
     if (event.action === 'mealOrderStatusUpdate') return await mealOrderStatusUpdate(event);
+    if (event.action === 'activitySignupStatusUpdate') return await activitySignupStatusUpdate(event);
     if (event.action === 'updateMemberBenefits') return await updateMemberBenefits(event);
+    if (event.action === 'syncCloudFiles') return await syncCloudFiles(event);
+    if (event.action === 'listCloudFiles') return await listCloudFiles(event);
     if (event.action === 'modules') return ok({ modules: Object.keys(MODULES) });
     return fail('不支持的操作。', 'UNKNOWN_ACTION');
   } catch (error) {

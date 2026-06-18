@@ -65,7 +65,10 @@
   <text class="section-title">选择餐标</text>
   <view class="standard-list">
     <view wx:for="{{standards}}" wx:key="meal_standard_id" class="standard card {{standardId===item.meal_standard_id?'selected':''}}" data-id="{{item.meal_standard_id}}" bindtap="openStandardDetail">
-      <image class="standard-image" src="{{item.image}}" mode="aspectFill"/>
+      <view class="standard-thumb">
+        <image wx:if="{{item.hasImage}}" class="standard-image" src="{{item.image}}" mode="aspectFill"/>
+        <view wx:else class="standard-initial"><text>{{item.initial}}</text></view>
+      </view>
       <view class="standard-info">
         <strong>{{item.name}}</strong>
         <text>{{item.summary}}</text>
@@ -79,6 +82,10 @@
   </view>
 
   <text class="section-title">联系信息</text>
+  <view wx:if="{{hasSavedContact}}" class="manager-line">
+    <text>上次联系人：{{savedContactName}} {{savedContactMobile}}</text>
+    <text class="manager-link" bindtap="useSavedContact">使用</text>
+  </view>
   <view class="inputs card">
     <input value="{{contact}}" bindinput="contact" placeholder="联系人"/>
     <input value="{{mobile}}" bindinput="mobile" type="number" placeholder="手机号"/>
@@ -95,7 +102,7 @@
       <strong>¥{{amount}}</strong>
       <text class="footer-manager" bindtap="callManager">包间不足或特殊需求？联系店长</text>
     </view>
-    <button class="pay-button" bindtap="submit">提交预订</button>
+    <button class="pay-button" disabled="{{submitting}}" bindtap="submit">{{submitting ? '提交中...' : '提交预订'}}</button>
   </view>
 </view>
 
@@ -115,7 +122,10 @@
 <view wx:if="{{showStandardDetail}}" class="standard-mask" bindtap="hideStandardDetail"></view>
 <view wx:if="{{showStandardDetail}}" class="standard-dialog" catchtap="stop">
   <view class="standard-summary">
-    <image class="standard-detail-image" src="{{selectedStandard.image}}" mode="aspectFill"/>
+    <view class="standard-detail-thumb">
+      <image wx:if="{{selectedStandard.hasImage}}" class="standard-detail-image" src="{{selectedStandard.image}}" mode="aspectFill"/>
+      <view wx:else class="standard-detail-initial"><text>{{selectedStandard.initial}}</text></view>
+    </view>
     <view class="standard-detail-body">
       <view class="standard-detail-head">
         <text class="standard-detail-name">{{selectedStandard.name}}餐标</text>

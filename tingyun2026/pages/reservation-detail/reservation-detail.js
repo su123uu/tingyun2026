@@ -124,7 +124,7 @@ Page({
     if (!orderNo) return;
     const ok = await new Promise((resolve) => wx.showModal({
       title: '删除订单',
-      content: '删除后该订单仅在用户侧隐藏，后台仍会保留记录。',
+      content: '是否删除，删除后无法恢复',
       confirmText: '删除',
       confirmColor: '#8B3A2F',
       success: (result) => resolve(result.confirm),

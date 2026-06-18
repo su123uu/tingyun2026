@@ -1,31 +1,48 @@
 <view class="page activity-page">
-  <view class="hero">
-    <image src="{{heroImage}}" mode="aspectFill" />
-    <view class="hero-mask"></view>
-    <view class="back" style="top: {{navTop}}px; width: {{navHeight}}px; height: {{navHeight}}px;" bindtap="goBack">
-      <view class="back-arrow"></view>
+  <view class="sticky-header">
+    <view class="hero">
+      <!-- 有 banner 时显示轮播 -->
+      <block wx:if="{{hasBanners}}">
+        <swiper class="hero-swiper" current="{{currentBanner}}" bindchange="onBannerChange" autoplay circular indicator-dots indicator-color="rgba(255,255,255,.35)" indicator-active-color="#FFFFFF">
+          <swiper-item wx:for="{{banners}}" wx:key="index">
+            <image src="{{item.image_url}}" mode="aspectFill" />
+          </swiper-item>
+        </swiper>
+      </block>
+      <!-- 无 banner 时显示默认图片 -->
+      <block wx:else>
+        <image src="{{heroImage}}" mode="aspectFill" />
+      </block>
+      <view class="hero-mask"></view>
+      <view class="back" style="top: {{navTop}}px; width: {{navHeight}}px; height: {{navHeight}}px;" bindtap="goBack">
+        <view class="back-arrow"></view>
+      </view>
+      <view class="hero-copy">
+        <text>{{hasBanners ? banners[currentBanner].kicker || 'TINGYUN ACTIVITIES' : heroKicker}}</text>
+        <text class="hero-title">{{hasBanners ? banners[currentBanner].title || '山中有会，茶席相逢' : heroTitle}}</text>
+      </view>
     </view>
-    <view class="hero-copy">
-      <text>{{heroKicker}}</text>
-      <text class="hero-title">{{heroTitle}}</text>
+
+    <view class="section-head">
+      <text class="section-title">近期活动</text>
+      <text class="section-note">山中相聚，席间相识</text>
     </view>
   </view>
 
   <view class="content">
     <view class="section">
-      <view class="section-head">
-        <text class="section-title">近期活动</text>
-        <text class="section-note">会员权益有效期内可报名</text>
-      </view>
       <view class="stack">
         <view wx:for="{{activities}}" wx:key="activity_id" class="activity card">
           <image src="{{item.image_url}}" mode="aspectFill" />
           <view class="activity-body">
             <text class="date">{{item.date}} {{item.time}}</text>
             <text class="activity-title">{{item.title}}</text>
-            <text class="activity-copy">{{item.list_description}}</text>
+            <text wx:if="{{item.subtitle}}" class="activity-copy">{{item.subtitle}}</text>
             <view class="activity-foot">
-              <text class="tag {{item.status_tone}}">{{item.status_text}}</text>
+              <view class="tag-group">
+                <text class="tag {{item.status_tone}}">{{item.status_text}}</text>
+                <text wx:if="{{item.is_members_only}}" class="tag member-only">会员专属</text>
+              </view>
               <button class="detail-button {{item.status_tone === 'disabled' ? 'secondary' : ''}}" data-id="{{item.activity_id}}" bindtap="detail">查看详情</button>
             </view>
           </view>

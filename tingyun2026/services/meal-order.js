@@ -25,7 +25,7 @@ async function callMealCloud(action, data = {}) {
   });
   const body = result && result.result ? result.result : result;
   if (!body || body.ok !== true) {
-    const error = new Error((body && body.message) || '点餐云函数调用失败');
+    const error = new Error((body && body.message) || 'MEAL_CLOUD_FAILED');
     error.code = (body && body.code) || 'CLOUD_FUNCTION_FAILED';
     error.fromCloudResult = true;
     throw error;
@@ -33,95 +33,205 @@ async function callMealCloud(action, data = {}) {
   return body.data;
 }
 
-function appendOrdersFor(order, orders) {
-  return orders.filter((entry) => (entry.parent_order_no || entry.parent_order_id) === (order.order_no || order.order_id));
+function activeBatches(batches = []) {
+  return batches.filter((batch) => !['cancelled', 'canceled'].includes(batch.payment_status || batch.settlement_status));
 }
 
-function hydrateOrder(order, orders) {
-  const append_orders = appendOrdersFor(order, orders);
-  const batches = [order].concat(append_orders).map((entry, index) => Object.assign({}, entry, {
-    batch_title: index === 0 ? '首单' : `追加菜 ${index}`,
-  }));
-  const total_amount = batches.reduce((sum, entry) => sum + (entry.amount || entry.total_amount || 0), 0);
+function batchTitle(batchNo) {
+  return batchNo === 1 ? '首单' : `加菜第 ${batchNo - 1} 次`;
+}
+
+function paymentNoFor(orderNo, batchNo) {
+  return `${orderNo}B${batchNo}`;
+}
+
+function totalAmount(batches = []) {
+  return activeBatches(batches).reduce((sum, batch) => sum + (Number(batch.amount) || 0), 0);
+}
+
+function aggregateItems(batches = []) {
+  const map = {};
+  activeBatches(batches).forEach((batch) => {
+    (batch.items || []).forEach((item) => {
+      if (!item.item_id) return;
+      if (!map[item.item_id]) map[item.item_id] = Object.assign({}, item, { quantity: 0, amount: 0 });
+      map[item.item_id].quantity += Number(item.quantity) || 0;
+      map[item.item_id].amount += Number(item.amount) || (Number(item.price) || 0) * (Number(item.quantity) || 0);
+    });
+  });
+  return Object.keys(map).map((itemId) => map[itemId]);
+}
+
+function normalizeOrder(order) {
+  const batches = (order.batches || []).map((batch, index) => {
+    const batchNo = Number(batch.batch_no) || index + 1;
+    return Object.assign({}, batch, {
+      batch_no: batchNo,
+      batch_type: batch.batch_type || (batchNo === 1 ? 'primary' : 'append'),
+      batch_title: batch.batch_title || batchTitle(batchNo),
+      payment_no: batch.payment_no || paymentNoFor(order.order_no || order.order_id, batchNo),
+    });
+  });
+  const amount = totalAmount(batches);
+  const visibleBatches = activeBatches(batches);
   return Object.assign({}, order, {
-    append_orders,
-    batches,
-    all_items: batches.reduce((items, entry) => items.concat(entry.items || []), []),
-    total_amount,
-    amount: total_amount,
-    pay_amount: total_amount,
+    order_id: order.order_id || order.order_no,
+    order_no: order.order_no || order.order_id,
+    batches: visibleBatches,
+    all_items: visibleBatches.reduce((items, batch) => items.concat(batch.items || []), []),
+    items: aggregateItems(batches),
+    total_amount: amount,
+    amount,
+    pay_amount: amount,
   });
 }
 
-function findPrimaryOrder(sessionId, orders) {
-  return orders.find((entry) => entry.session_id === sessionId && !entry.parent_order_no && !entry.parent_order_id);
+function findActiveOrder(sessionId, orders) {
+  return orders.find((order) => (
+    order.session_id === sessionId
+    && !order.user_deleted_at
+    && !['completed', 'cancelled', 'canceled', 'closed', 'refunded'].includes(order.order_status)
+  ));
 }
 
 async function localCreateMealOrder(input = {}) {
   const session = await table.getCurrentTableSession();
   const currentCart = await cart.getCart();
-  const user = await auth.getCurrentUser();
-  assert(session, 'TABLE_SESSION_REQUIRED', '请先扫描桌上的二维码');
-  assert(currentCart.items.length, 'EMPTY_CART', '购物车为空');
+  assert(session, 'TABLE_SESSION_REQUIRED', 'TABLE_SESSION_REQUIRED');
+  assert(currentCart.items.length, 'EMPTY_CART', 'EMPTY_CART');
+
   const orders = getOrders();
-  const primaryOrder = findPrimaryOrder(session.session_id, orders);
-  const appendCount = primaryOrder ? appendOrdersFor(primaryOrder, orders).length : 0;
-  const orderNo = createBusinessId('TYMEAL');
-  const primaryOrderNo = primaryOrder ? (primaryOrder.order_no || primaryOrder.order_id) : '';
-  const order = {
+  const primary = findActiveOrder(session.session_id, orders);
+  const orderNo = primary ? primary.order_no : createBusinessId('TYMEAL');
+  const customerType = session.customer_type === 'member' ? 'member' : 'guest';
+  const needsPay = customerType !== 'member';
+  const batches = primary ? (primary.batches || []) : [];
+  const batchNo = batches.length + 1;
+  const amount = currentCart.total_amount;
+  const batch = {
+    batch_no: batchNo,
+    batch_type: batchNo === 1 ? 'primary' : 'append',
+    batch_title: batchTitle(batchNo),
     order_no: orderNo,
-    order_id: orderNo,
-    session_id: session.session_id,
-    parent_order_no: primaryOrderNo,
-    parent_order_id: primaryOrderNo,
-    order_type: primaryOrder ? 'append' : 'primary',
-    batch_no: primaryOrder ? appendCount + 2 : 1,
-    detail_order_no: primaryOrderNo,
-    detail_order_id: primaryOrderNo,
-    table_id: session.table_id,
-    table_name: session.table_name || session.table_id,
-    people_count: session.people_count,
-    customer_type: user.customer_type,
+    payment_no: paymentNoFor(orderNo, batchNo),
     items: currentCart.items,
-    amount: currentCart.total_amount,
-    total_amount: currentCart.total_amount,
-    pay_amount: currentCart.total_amount,
+    amount,
+    total_amount: amount,
+    pay_amount: amount,
+    wechat_pay_amount: needsPay ? amount : 0,
     remark: input.remark || '',
     quick_remarks: input.quick_remarks || [],
-    kitchen_status: 'kitchen_notified',
-    settlement_status: 'pending_offline_points',
-    order_status: 'kitchen_notified',
-    payment_status: 'pending_offline',
+    settlement_status: needsPay ? 'pending_wechat_pay' : 'pending_offline_points',
+    payment_status: needsPay ? 'pending_wechat_pay' : 'pending_offline',
+    order_status: needsPay ? 'pending_payment' : 'preparing',
     created_at: new Date().toISOString(),
   };
-  orders.push(order);
+
+  let order;
+  if (primary) {
+    primary.batches = batches.concat(batch);
+    primary.items = aggregateItems(primary.batches);
+    primary.amount = totalAmount(primary.batches);
+    primary.total_amount = primary.amount;
+    primary.pay_amount = primary.amount;
+    primary.payment_status = needsPay ? 'pending_wechat_pay' : primary.payment_status;
+    primary.settlement_status = needsPay ? 'pending_wechat_pay' : primary.settlement_status;
+    primary.order_status = 'preparing';
+    primary.updated_at = new Date().toISOString();
+    order = primary;
+  } else {
+    order = {
+      order_id: orderNo,
+      order_no: orderNo,
+      session_id: session.session_id,
+      table_id: session.table_id,
+      table_name: session.table_name || session.table_id,
+      table_area: session.table_area || '',
+      people_count: session.people_count || 1,
+      customer_type: customerType,
+      member_id: session.member_id || '',
+      customer_name: session.customer_name || '',
+      customer_mobile: session.customer_mobile || '',
+      batches: [batch],
+      items: currentCart.items,
+      amount,
+      total_amount: amount,
+      pay_amount: amount,
+      wechat_pay_amount: needsPay ? amount : 0,
+      remark: input.remark || '',
+      quick_remarks: input.quick_remarks || [],
+      settlement_status: batch.settlement_status,
+      payment_status: batch.payment_status,
+      order_status: batch.order_status,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    orders.push(order);
+  }
+
   save(orders);
+  if (!needsPay) await table.markCurrentTableOrdered();
   if (input.keep_cart !== true) await cart.clearCart();
-  return order;
+  return Object.assign(normalizeOrder(order), {
+    batch_no: batchNo,
+    batch_type: batch.batch_type,
+    payment_no: batch.payment_no,
+    current_batch_amount: amount,
+  });
 }
 
 async function createMealOrder(input = {}) {
   const session = await table.getCurrentTableSession();
   const currentCart = await cart.getCart();
   const user = await auth.getCurrentUser();
-  assert(session, 'TABLE_SESSION_REQUIRED', '请先扫描桌上的二维码');
-  assert(currentCart.items.length, 'EMPTY_CART', '购物车为空');
+  assert(session, 'TABLE_SESSION_REQUIRED', 'TABLE_SESSION_REQUIRED');
+  assert(currentCart.items.length, 'EMPTY_CART', 'EMPTY_CART');
   try {
     const order = await callMealCloud('createMealOrder', {
       session_id: session.session_id,
       items: currentCart.items.map((item) => ({ item_id: item.item_id, quantity: item.quantity })),
       remark: input.remark || '',
       quick_remarks: input.quick_remarks || [],
-      mobile: user.mobile || '',
-      customer_name: user.nickname || '',
+      mobile: input.customer_mobile || user.mobile || '',
+      customer_mobile: input.customer_mobile || user.mobile || '',
+      customer_name: input.customer_name || user.nickname || '',
+      member_id: input.member_id || user.member_id || '',
       notification_subscriptions: input.notification_subscriptions || {},
     });
+    if (order.customer_type === 'member' || order.payment_status === 'pending_offline') {
+      await table.markCurrentTableOrdered();
+    }
     if (input.keep_cart !== true) await cart.clearCart();
     return order;
   } catch (error) {
-    if (error.fromCloudResult) throw error;
+    if (error.code !== 'CLOUD_UNAVAILABLE') throw error;
     console.warn('mealOrderManage createMealOrder fallback to local', error);
     return localCreateMealOrder(input);
+  }
+}
+
+async function createMealOrderAndPayment(input = {}) {
+  const session = await table.getCurrentTableSession();
+  const currentCart = await cart.getCart();
+  const user = await auth.getCurrentUser();
+  assert(session, 'TABLE_SESSION_REQUIRED', 'TABLE_SESSION_REQUIRED');
+  assert(currentCart.items.length, 'EMPTY_CART', 'EMPTY_CART');
+  try {
+    return await callMealCloud('createMealOrderAndPayment', {
+      session_id: session.session_id,
+      items: currentCart.items.map((item) => ({ item_id: item.item_id, quantity: item.quantity })),
+      remark: input.remark || '',
+      quick_remarks: input.quick_remarks || [],
+      mobile: input.customer_mobile || user.mobile || '',
+      customer_mobile: input.customer_mobile || user.mobile || '',
+      customer_name: input.customer_name || user.nickname || '',
+      member_id: input.member_id || user.member_id || '',
+      notification_subscriptions: input.notification_subscriptions || {},
+    });
+  } catch (error) {
+    if (error.code !== 'CLOUD_UNAVAILABLE') throw error;
+    console.warn('mealOrderManage createMealOrderAndPayment fallback to local order only', error);
+    return { order: await localCreateMealOrder(input) };
   }
 }
 
@@ -129,36 +239,12 @@ async function createMealPayment(input = {}) {
   return callMealCloud('createMealPayment', input);
 }
 
-async function simulateWechatPay(input) {
-  try {
-    return await callMealCloud('simulateWechatPay', input);
-  } catch (error) {
-    if (error.fromCloudResult) throw error;
-    console.warn('mealOrderManage simulateWechatPay fallback to local', error);
-  }
-  const order_no = input.order_no || input.order_id;
-  const orders = getOrders();
-  const order = orders.find((entry) => (entry.order_no || entry.order_id) === order_no);
-  assert(order, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  order.settlement_status = 'settled';
-  order.payment_status = 'settled';
-  order.kitchen_status = 'kitchen_notified';
-  order.order_status = 'kitchen_notified';
-  order.paid_at = new Date().toISOString();
-  order.settled_at = order.paid_at;
-  save(orders);
-  return order;
-}
-
 async function listMealOrders() {
   try {
     return await callMealCloud('listMealOrders');
   } catch (error) {
     console.warn('mealOrderManage listMealOrders fallback to local', error);
-    const orders = getOrders();
-    return orders
-      .filter((entry) => !entry.user_deleted_at && !entry.parent_order_no && !entry.parent_order_id)
-      .map((order) => hydrateOrder(order, orders));
+    return getOrders().filter((order) => !order.user_deleted_at).map(normalizeOrder);
   }
 }
 
@@ -166,19 +252,13 @@ async function getMealOrderDetail(input) {
   try {
     return await callMealCloud('getMealOrderDetail', input);
   } catch (error) {
+    if (error.fromCloudResult) throw error;
     console.warn('mealOrderManage getMealOrderDetail fallback to local', error);
   }
-  const order_no = input.order_no || input.order_id;
-  const orders = getOrders();
-  const found = orders.find((entry) => (entry.order_no || entry.order_id) === order_no);
-  assert(found, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  const parentOrderNo = found && (found.parent_order_no || found.parent_order_id);
-  const order = found && parentOrderNo
-    ? orders.find((entry) => (entry.order_no || entry.order_id) === parentOrderNo)
-    : found;
-  assert(order, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  assert(!order.user_deleted_at, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  return hydrateOrder(order, orders);
+  const orderNo = input.order_no || input.order_id;
+  const found = getOrders().find((order) => (order.order_no || order.order_id) === orderNo && !order.user_deleted_at);
+  assert(found, 'MEAL_ORDER_NOT_FOUND', 'MEAL_ORDER_NOT_FOUND');
+  return normalizeOrder(found);
 }
 
 async function deleteMealOrder(input = {}) {
@@ -188,20 +268,49 @@ async function deleteMealOrder(input = {}) {
     if (error.fromCloudResult) throw error;
     console.warn('mealOrderManage deleteMealOrder fallback to local', error);
   }
-  const order_no = input.order_no || input.order_id;
+  const orderNo = input.order_no || input.order_id;
   const orders = getOrders();
-  const found = orders.find((entry) => (entry.order_no || entry.order_id) === order_no);
-  const parentOrderNo = found && (found.parent_order_no || found.parent_order_id);
-  const primaryOrderNo = parentOrderNo || order_no;
+  const order = orders.find((entry) => (entry.order_no || entry.order_id) === orderNo);
   const deletedAt = new Date().toISOString();
-  orders.forEach((entry) => {
-    const entryOrderNo = entry.order_no || entry.order_id;
-    if (entryOrderNo === primaryOrderNo || (entry.parent_order_no || entry.parent_order_id) === primaryOrderNo) {
-      entry.user_deleted_at = deletedAt;
-    }
-  });
+  if (order) order.user_deleted_at = deletedAt;
   save(orders);
-  return { order_no: primaryOrderNo, user_deleted_at: deletedAt };
+  return { order_no: orderNo, user_deleted_at: deletedAt };
 }
 
-module.exports = { createMealOrder, createMealPayment, simulateWechatPay, listMealOrders, getMealOrderDetail, deleteMealOrder };
+async function cancelMealOrder(input = {}) {
+  try {
+    return await callMealCloud('cancelMealOrder', input);
+  } catch (error) {
+    if (error.fromCloudResult) throw error;
+    console.warn('mealOrderManage cancelMealOrder fallback to local', error);
+  }
+  const orderNo = input.order_no || input.order_id;
+  const orders = getOrders();
+  const order = orders.find((entry) => (entry.order_no || entry.order_id) === orderNo);
+  if (!order) return { order_no: orderNo, order_status: 'cancelled' };
+  const paymentNo = input.payment_no;
+  const batchNo = Number(input.batch_no);
+  order.batches = (order.batches || []).map((batch) => {
+    const match = paymentNo ? batch.payment_no === paymentNo : Number(batch.batch_no) === batchNo;
+    return match ? Object.assign({}, batch, {
+      order_status: 'cancelled',
+      payment_status: 'cancelled',
+      settlement_status: 'cancelled',
+      cancelled_reason: input.reason || 'payment_cancelled',
+      cancelled_at: new Date().toISOString(),
+    }) : batch;
+  });
+  order.items = aggregateItems(order.batches);
+  order.amount = totalAmount(order.batches);
+  order.total_amount = order.amount;
+  order.pay_amount = order.amount;
+  if (!activeBatches(order.batches).length) {
+    order.order_status = 'cancelled';
+    order.payment_status = 'cancelled';
+    order.settlement_status = 'cancelled';
+  }
+  save(orders);
+  return { order_no: orderNo, order_status: order.order_status };
+}
+
+module.exports = { createMealOrder, createMealOrderAndPayment, createMealPayment, listMealOrders, getMealOrderDetail, deleteMealOrder, cancelMealOrder };

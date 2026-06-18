@@ -30,6 +30,8 @@
 .dish-copy strong { overflow:hidden; font-size:26rpx; text-overflow:ellipsis; white-space:nowrap; }
 .dish-copy text { margin-top:12rpx; color:#7C8A8C; font-size:23rpx; }
 .dish-price { align-self:flex-start; flex:none; padding-top:4rpx; font-size:26rpx; }
+.add-meal-button { display:flex; min-height:84rpx; align-items:center; justify-content:center; margin:22rpx 0 0; border:0; border-radius:20rpx; color:#FFFFFF; background:#4F6F52; font-size:28rpx; font-weight:700; letter-spacing:2rpx; line-height:84rpx; }
+.add-meal-button::after { border:0; }
 .timeline { padding:26rpx 26rpx 8rpx; }
 .step { position:relative; padding:0 0 34rpx 44rpx; color:#7C8A8C; font-size:24rpx; line-height:1.45; }
 .step::before { position:absolute; top:6rpx; left:4rpx; width:16rpx; height:16rpx; border:4rpx solid #CBD0CB; border-radius:50%; background:#FFFFFF; content:""; }

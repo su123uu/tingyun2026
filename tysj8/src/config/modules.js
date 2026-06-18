@@ -1,5 +1,14 @@
 const option = (value, label = value) => ({ value, label });
 const statusOption = (value, label) => ({ value, label });
+const activityScopeOptions = [
+  option('public', '公开报名'),
+  option('members_only', '会员专属'),
+];
+const activityStatusOptions = [
+  option('open', '开放报名'),
+  option('full', '名额已满'),
+  option('closed', '关闭'),
+];
 
 export const mealCategories = [
   { key: 'all', name: '全部', sort_order: 0 },
@@ -14,7 +23,7 @@ export const modules = [
   {
     key: 'home_banners',
     name: '首页轮播',
-    group: '首页配置',
+    group: '页面内容',
     idField: 'banner_id',
     titleField: 'title',
     imageFields: { image_url: 'home/banners' },
@@ -37,7 +46,7 @@ export const modules = [
   {
     key: 'home_quick_entries',
     name: '快捷入口',
-    group: '首页配置',
+    group: '页面内容',
     idField: 'entry_id',
     titleField: 'title',
     columns: ['title', 'icon', 'action', 'sort_order', 'is_enabled'],
@@ -56,7 +65,7 @@ export const modules = [
   {
     key: 'home_feature_cards',
     name: '首页卡片',
-    group: '首页配置',
+    group: '页面内容',
     idField: 'card_id',
     titleField: 'title',
     imageFields: { image_url: 'home/cards' },
@@ -75,8 +84,8 @@ export const modules = [
   },
   {
     key: 'content_pages',
-    name: '图文页面',
-    group: '内容管理',
+    name: '山居介绍',
+    group: '页面内容',
     idField: 'page_id',
     titleField: 'title',
     imageFields: { cover_image_url: 'intro', content_image_url: 'intro' },
@@ -189,11 +198,12 @@ export const modules = [
     idField: 'room_id',
     titleField: 'name',
     imageFields: { image_url: 'rooms', image_urls: 'rooms' },
-    columns: ['image_url', 'name', 'category', 'regular_price', 'is_available'],
+    columns: ['image_url', 'name', 'category', 'bed_type', 'regular_price', 'is_available'],
     fields: [
       { key: 'room_id', label: '客房 ID', required: true, hidden: true },
       { key: 'name', label: '客房名称', required: true },
       { key: 'category', label: '房型' },
+      { key: 'bed_type', label: '床型参数' },
       { key: 'min_capacity', label: '最少人数', type: 'number' },
       { key: 'max_capacity', label: '最多人数', type: 'number' },
       { key: 'regular_price', label: '门市价', type: 'number' },
@@ -206,8 +216,8 @@ export const modules = [
   },
   {
     key: 'activity_banners',
-    name: '活动 Banner',
-    group: '活动管理',
+    name: '活动轮播',
+    group: '页面内容',
     idField: 'banner_id',
     titleField: 'title',
     imageFields: { image_url: 'activities/banners' },
@@ -226,35 +236,62 @@ export const modules = [
     key: 'activity_items',
     name: '活动',
     group: '活动管理',
+    hiddenInNav: true,
     idField: 'activity_id',
     titleField: 'title',
-    imageFields: { image_url: 'activities' },
-    columns: ['image_url', 'title', 'date', 'status', 'reserved_count'],
+    imageFields: { image_url: 'activities', intro_images: 'activities', highlight_images: 'activities', qr_image_file_id: 'activities/qrcodes' },
+    imageRatios: { qr_image_file_id: '1 / 1' },
+    videoFields: { video_url: 'activities' },
+    columns: ['image_url', 'title', 'subtitle', 'is_pinned', 'date', 'status'],
     fields: [
       { key: 'activity_id', label: '活动 ID', required: true, hidden: true },
       { key: 'title', label: '标题', required: true },
-      { key: 'description', label: '描述', type: 'textarea' },
-      { key: 'list_description', label: '列表描述', type: 'textarea' },
-      { key: 'detail_summary', label: '详情摘要', type: 'textarea' },
-      { key: 'intro', label: '介绍 JSON', type: 'json' },
-      { key: 'notice', label: '须知', type: 'textarea' },
+      { key: 'subtitle', label: '副标题' },
       { key: 'image_url', label: '活动图', type: 'image' },
-      { key: 'video_url', label: '详情视频地址（cloud:// 或 https://）' },
-      { key: 'date', label: '日期' },
-      { key: 'time', label: '时间' },
+      { key: 'intro_text', label: '活动介绍文字', type: 'textarea' },
+      { key: 'video_url', label: '活动介绍视频', type: 'video' },
+      { key: 'intro_images', label: '活动介绍图片', type: 'images' },
+      { key: 'highlight_images', label: '精彩瞬间', type: 'images' },
+      { key: 'notice', label: '须知', type: 'textarea' },
       { key: 'location', label: '地点' },
       { key: 'start_at', label: '开始时间', type: 'datetime' },
       { key: 'end_at', label: '结束时间', type: 'datetime' },
       { key: 'signup_deadline', label: '报名截止', type: 'datetime' },
-      { key: 'signup_scope', label: '报名范围', type: 'select', options: ['public', 'members_only'].map((v) => option(v)) },
-      { key: 'fee_type', label: '费用类型', type: 'select', options: ['free', 'paid'].map((v) => option(v)) },
+      { key: 'signup_scope', label: '报名范围', type: 'select', options: activityScopeOptions },
+      { key: 'is_pinned', label: '是否置顶', type: 'boolean' },
       { key: 'guest_price', label: '散客价', type: 'number' },
       { key: 'member_price', label: '会员价', type: 'number' },
       { key: 'capacity', label: '容量', type: 'number' },
       { key: 'reserved_count', label: '已报名', type: 'number' },
-      { key: 'status', label: '状态', type: 'select', options: ['open', 'full', 'closed'].map((v) => option(v)) },
-      { key: 'status_tone', label: '状态样式' },
-      { key: 'sort_order', label: '排序', type: 'number' },
+      { key: 'status', label: '状态', type: 'select', options: activityStatusOptions },
+      { key: 'success_notice_remark', label: '报名成功通知备注', type: 'textarea' },
+      { key: 'qr_scene', label: '二维码场景', hidden: true },
+      { key: 'qr_version', label: '二维码版本', type: 'number', hidden: true },
+      { key: 'qr_image_file_id', label: '二维码图片', type: 'image', hidden: true },
+    ],
+  },
+  {
+    key: 'users',
+    name: '用户档案',
+    group: '会员管理',
+    idField: 'user_id',
+    titleField: 'nickname',
+    columns: ['nickname', 'mobile', 'customer_type', 'member_id', 'last_login_at'],
+    fields: [
+      { key: 'user_id', label: '用户 ID', required: true },
+      { key: 'openid', label: 'OpenID' },
+      { key: 'mobile', label: '手机号' },
+      { key: 'nickname', label: '昵称' },
+      { key: 'avatar_url', label: '头像地址' },
+      { key: 'member_id', label: '绑定会员 ID' },
+      { key: 'customer_type', label: '用户类型', type: 'select', options: [
+        statusOption('guest', '散客'),
+        statusOption('member', '会员'),
+      ] },
+      { key: 'last_login_at', label: '最近访问', type: 'datetime' },
+      { key: 'created_at', label: '创建时间', type: 'datetime' },
+      { key: 'updated_at', label: '更新时间', type: 'datetime' },
+      { key: 'is_deleted', label: '软删除', type: 'boolean' },
     ],
   },
   {
@@ -411,48 +448,103 @@ export const modules = [
     group: '订单预约',
     idField: 'signup_id',
     titleField: 'order_no',
-    columns: ['order_no', 'activity_title', 'contact_name', 'participant_count', 'signup_status'],
+    columns: ['order_no', 'activity_title', 'contact_name', 'participant_count', 'customer_type', 'unit_price', 'amount', 'signup_status'],
     fields: [
       { key: 'signup_id', label: '报名 ID', hidden: true },
       { key: 'order_no', label: '订单号' },
       { key: 'activity_id', label: '活动 ID' },
       { key: 'activity_title', label: '活动标题' },
+      { key: 'date', label: '活动日期' },
+      { key: 'time', label: '活动时间' },
+      { key: 'location', label: '活动地点' },
       { key: 'contact_name', label: '联系人' },
       { key: 'contact_mobile', label: '手机号' },
       { key: 'participant_count', label: '人数', type: 'number' },
-      { key: 'signup_status', label: '状态' },
-      { key: 'remark', label: '备注', type: 'textarea' },
-      { key: 'admin_remark', label: '后台备注', type: 'textarea' },
-    ],
-  },
-  {
-    key: 'meal_orders',
-    name: '点餐订单',
-    group: '订单预约',
-    idField: 'order_id',
-    titleField: 'order_no',
-    columns: ['order_no', 'table_name', 'total_amount', 'order_status', 'payment_status'],
-    fields: [
-      { key: 'order_id', label: '订单 ID', hidden: true },
-      { key: 'order_no', label: '订单号' },
-      { key: 'table_id', label: '桌台 ID' },
-      { key: 'table_name', label: '桌台名称' },
-      { key: 'customer_name', label: '联系人' },
-      { key: 'customer_mobile', label: '手机号' },
-      { key: 'items', label: '菜品 JSON', type: 'json' },
-      { key: 'total_amount', label: '总金额', type: 'number' },
-      { key: 'pay_amount', label: '实付金额', type: 'number' },
-      { key: 'order_status', label: '订单状态' },
+      { key: 'customer_type', label: '客户类型', type: 'select', options: [{ value: 'guest', label: '散客' }, { value: 'member', label: '会员' }] },
+      { key: 'member_id', label: '会员 ID' },
+      { key: 'unit_price', label: '活动单价', type: 'number' },
+      { key: 'amount', label: '金额', type: 'number' },
+      { key: 'signup_status', label: '状态', type: 'select', options: [
+        statusOption('pending_confirmation', '待确认'),
+        statusOption('confirmed', '已确认'),
+        statusOption('completed', '已核销'),
+        statusOption('cancelled', '已取消'),
+      ] },
       { key: 'payment_status', label: '支付状态' },
+      { key: 'settlement_status', label: '核销状态' },
+      { key: 'success_notice_remark', label: '通知备注', type: 'textarea' },
       { key: 'remark', label: '备注', type: 'textarea' },
       { key: 'admin_remark', label: '后台备注', type: 'textarea' },
+      { key: 'created_by_openid', label: 'OpenID', hidden: true },
     ],
   },
+{
+  key: 'meal_orders',
+  name: '点餐订单',
+  group: '订单预约',
+  idField: 'order_id',
+  titleField: 'order_no',
+  columns: ['order_no', 'table_name', 'customer_type', 'total_amount', 'order_status', 'payment_status'],
+  fields: [
+    { key: 'order_id', label: '订单 ID', hidden: true },
+    { key: 'order_no', label: '订单号' },
+    { key: 'table_id', label: '桌台 ID' },
+    { key: 'table_name', label: '桌台名称' },
+    { key: 'customer_type', label: '客户类型', type: 'select', options: [{ value: 'guest', label: '散客' }, { value: 'member', label: '会员' }] },
+    { key: 'customer_name', label: '联系人' },
+    { key: 'customer_mobile', label: '手机号' },
+    { key: 'items', label: '菜品 JSON', type: 'json' },
+    { key: 'total_amount', label: '总金额', type: 'number' },
+    { key: 'pay_amount', label: '实付金额', type: 'number' },
+    { key: 'order_status', label: '订单状态' },
+    { key: 'payment_status', label: '支付状态' },
+    { key: 'remark', label: '备注', type: 'textarea' },
+    { key: 'admin_remark', label: '后台备注', type: 'textarea' },
+  ],
+},
+{
+  key: 'system_settings',
+  name: '系统设置',
+  group: '系统',
+  hiddenInNav: true,
+  idField: 'setting_key',
+  titleField: 'setting_name',
+  columns: ['setting_key', 'setting_name', 'setting_type', 'is_enabled'],
+  fields: [
+    { key: 'setting_key', label: '设置键' },
+    { key: 'setting_name', label: '设置名称' },
+    { key: 'setting_type', label: '设置类型' },
+    { key: 'value', label: '设置 JSON', type: 'json' },
+    { key: 'description', label: '说明', type: 'textarea' },
+    { key: 'is_enabled', label: '启用', type: 'boolean' },
+    { key: 'sort_order', label: '排序', type: 'number' },
+  ],
+},
 ];
+
+const groupOrder = ['餐饮管理', '住宿管理', '会员管理', '订单预约', '页面内容'];
+const itemOrder = {
+  页面内容: ['home_banners', 'home_quick_entries', 'home_feature_cards', 'activity_banners', 'content_pages'],
+};
 
 export const groupedModules = modules.filter((item) => !item.hiddenInNav).reduce((groups, item) => {
   const group = groups.find((entry) => entry.name === item.group);
   if (group) group.items.push(item);
   else groups.push({ name: item.group, items: [item] });
   return groups;
-}, []);
+}, []).sort((left, right) => {
+  const leftIndex = groupOrder.indexOf(left.name);
+  const rightIndex = groupOrder.indexOf(right.name);
+  return (leftIndex === -1 ? 999 : leftIndex) - (rightIndex === -1 ? 999 : rightIndex);
+}).map((group) => {
+  const order = itemOrder[group.name] || [];
+  if (!order.length) return group;
+  return {
+    ...group,
+    items: group.items.slice().sort((left, right) => {
+      const leftIndex = order.indexOf(left.key);
+      const rightIndex = order.indexOf(right.key);
+      return (leftIndex === -1 ? 999 : leftIndex) - (rightIndex === -1 ? 999 : rightIndex);
+    }),
+  };
+});

@@ -113,6 +113,21 @@ async function safeCallNotification(data) {
   }
 }
 
+async function safePrintReservationOrder(orderNo) {
+  try {
+    return await cloud.callFunction({
+      name: 'payCallback',
+      data: {
+        action: 'printReservationOrder',
+        order_no: orderNo,
+      },
+    });
+  } catch (error) {
+    console.warn('payCallback printReservationOrder skipped', orderNo, error);
+    return null;
+  }
+}
+
 function diningRoomSelectionLimit(peopleCount, roomCount) {
   if (peopleCount <= 12) return 1;
   if (peopleCount <= 22) return 2;
@@ -205,6 +220,16 @@ async function findActiveMember(mobile) {
   return result.data && result.data[0] ? result.data[0] : null;
 }
 
+async function findActiveMemberById(memberId) {
+  const cleanMemberId = cleanText(memberId, 120);
+  if (!cleanMemberId) return null;
+  const result = await db.collection('members')
+    .where({ member_id: cleanMemberId, member_status: 'active', is_deleted: _.neq(true) })
+    .limit(1)
+    .get();
+  return result.data && result.data[0] ? result.data[0] : null;
+}
+
 function userUpdateData(existing = {}, profile = {}) {
   const timestamp = now();
   const data = {
@@ -217,10 +242,14 @@ function userUpdateData(existing = {}, profile = {}) {
   const avatarUrl = cleanText(profile.avatar_url, 300);
   const memberId = cleanText(profile.member_id, 120);
   const customerType = cleanText(profile.customer_type, 20);
+  const lastContactName = cleanText(profile.last_contact_name, 80);
+  const lastContactMobile = cleanText(profile.last_contact_mobile, 20);
 
   if (mobile) data.mobile = mobile;
   if (nickname) data.nickname = nickname;
   if (avatarUrl) data.avatar_url = avatarUrl;
+  if (lastContactName) data.last_contact_name = lastContactName;
+  if (lastContactMobile) data.last_contact_mobile = lastContactMobile;
   if (customerType === 'member') {
     data.customer_type = 'member';
     data.member_id = memberId;
@@ -262,8 +291,19 @@ async function ensureUser(wxContext = {}, profile = {}) {
   return created;
 }
 
-async function getCustomer(input) {
-  const member = await findActiveMember(input.mobile || input.customer_mobile || input.contact_mobile);
+async function getUserByOpenid(wxContext = {}) {
+  const openid = cleanText(wxContext.OPENID, 120);
+  if (!openid) return null;
+  const result = await db.collection('users')
+    .where({ openid, is_deleted: _.neq(true) })
+    .limit(1)
+    .get();
+  return result.data && result.data[0] ? result.data[0] : null;
+}
+
+async function getCustomer(input = {}, wxContext = {}) {
+  const user = await getUserByOpenid(wxContext);
+  const member = await findActiveMemberById(user && user.member_id) || await findActiveMember(user && user.mobile);
   return member
     ? {
       customer_type: 'member',
@@ -275,8 +315,26 @@ async function getCustomer(input) {
       customer_type: 'guest',
       member_id: '',
       member_name: '',
-      mobile: cleanText(input.mobile || input.customer_mobile || input.contact_mobile, 20),
+      mobile: '',
     };
+}
+
+async function getContactProfile(wxContext = {}) {
+  const user = await getUserByOpenid(wxContext);
+  if (!user) {
+    return {
+      contact_name: '',
+      mobile: '',
+      has_contact: false,
+    };
+  }
+  const contactName = cleanText(user.last_contact_name, 80);
+  const contactMobile = cleanText(user.last_contact_mobile, 20);
+  return {
+    contact_name: contactName,
+    mobile: contactMobile,
+    has_contact: Boolean(contactName || contactMobile),
+  };
 }
 
 function statusFields(customerType) {
@@ -412,8 +470,8 @@ async function listAvailableDiningRooms(input = {}) {
   return rooms.filter((room) => room.is_selectable);
 }
 
-async function listAvailableBenefits(input = {}) {
-  const customer = await getCustomer(input);
+async function listAvailableBenefits(input = {}, wxContext = {}) {
+  const customer = await getCustomer(input, wxContext);
   if (customer.customer_type !== 'member') return [];
   const rows = await listCollection('member_benefit_accounts', {
     member_id: customer.member_id,
@@ -432,7 +490,7 @@ async function listAvailableBenefits(input = {}) {
     }));
 }
 
-async function listAccommodationRooms(input = {}) {
+async function listAccommodationRooms(input = {}, wxContext = {}) {
   const checkInDate = cleanText(input.check_in_date || input.checkin_date, 20);
   const checkOutDate = cleanText(input.check_out_date || input.checkout_date, 20);
   if (checkInDate || checkOutDate) getNights(checkInDate, checkOutDate);
@@ -440,7 +498,7 @@ async function listAccommodationRooms(input = {}) {
   const [rooms, activeReservations, availableBenefits] = await Promise.all([
     listCollection('accommodation_rooms', {}, [['sort_order', 'asc']]),
     activeAccommodationReservations(),
-    listAvailableBenefits(input),
+    listAvailableBenefits(input, wxContext),
   ]);
   const roomList = rooms.map((room) => {
     const normalized = normalizeBaseRoom(room);
@@ -482,7 +540,7 @@ async function createDiningReservation(input = {}, wxContext = {}) {
   const [roomStates, standards, customer] = await Promise.all([
     listDiningRooms({ date, time_slot: timeSlot, people_count: peopleCount }),
     listCollection('dining_standards', { is_enabled: true }, [['sort_order', 'asc']]),
-    getCustomer({ mobile }),
+    getCustomer({}, wxContext),
   ]);
   const selectedRooms = roomStates.filter((room) => selectedIds.includes(room.room_id));
   const standard = standards.find((entry) => entry.meal_standard_id === mealStandardId);
@@ -498,8 +556,9 @@ async function createDiningReservation(input = {}, wxContext = {}) {
     customer_type: customer.customer_type,
     member_id: customer.member_id,
     member_name: customer.member_name,
-    contact_name: contactName,
-    mobile,
+    mobile: customer.mobile,
+    last_contact_name: contactName,
+    last_contact_mobile: mobile,
     clear_member: customer.customer_type === 'guest',
   });
 
@@ -542,7 +601,9 @@ async function createDiningReservation(input = {}, wxContext = {}) {
     business_type: 'dining_reservation',
     business_no: orderNo,
     openid: wxContext.OPENID || '',
-    template_keys: ['mealOrderStatus'],
+    template_keys: customer.customer_type === 'member'
+      ? ['diningReservationStatus', 'memberConsumption']
+      : ['diningReservationStatus'],
     accepted_template_ids: input.notification_subscriptions && input.notification_subscriptions.accepted_template_ids,
     page: `pages/reservation-detail/reservation-detail?id=${orderNo}`,
   });
@@ -553,6 +614,9 @@ async function createDiningReservation(input = {}, wxContext = {}) {
     title: '新用餐预订',
     payload: data,
   });
+  if (data.payment_status === 'pending_offline') {
+    await safePrintReservationOrder(orderNo);
+  }
   return reservationPublicShape(data, 'dining');
 }
 
@@ -616,8 +680,8 @@ async function createAccommodationReservation(input = {}, wxContext = {}) {
   assertMobile(mobile);
   const nights = getNights(checkInDate, checkOutDate);
 
-  const customer = await getCustomer({ mobile });
-  const availability = await listAccommodationRooms({ check_in_date: checkInDate, check_out_date: checkOutDate, mobile });
+  const customer = await getCustomer({}, wxContext);
+  const availability = await listAccommodationRooms({ check_in_date: checkInDate, check_out_date: checkOutDate, mobile }, wxContext);
   const selectedRooms = availability.rooms.filter((room) => selectedIds.includes(room.room_id));
   requireRoomSelection(selectedIds, selectedRooms, '房间');
 
@@ -625,8 +689,9 @@ async function createAccommodationReservation(input = {}, wxContext = {}) {
     customer_type: customer.customer_type,
     member_id: customer.member_id,
     member_name: customer.member_name,
-    contact_name: contactName,
-    mobile,
+    mobile: customer.mobile,
+    last_contact_name: contactName,
+    last_contact_mobile: mobile,
     clear_member: customer.customer_type === 'guest',
   });
 
@@ -674,7 +739,9 @@ async function createAccommodationReservation(input = {}, wxContext = {}) {
     business_type: 'accommodation_reservation',
     business_no: orderNo,
     openid: wxContext.OPENID || '',
-    template_keys: ['reservationStatus'],
+    template_keys: customer.customer_type === 'member'
+      ? ['reservationStatus', 'memberConsumption']
+      : ['reservationStatus'],
     accepted_template_ids: input.notification_subscriptions && input.notification_subscriptions.accepted_template_ids,
     page: `pages/reservation-detail/reservation-detail?id=${orderNo}`,
   });
@@ -685,6 +752,9 @@ async function createAccommodationReservation(input = {}, wxContext = {}) {
     title: '新住宿预订',
     payload: data,
   });
+  if (data.payment_status === 'pending_offline') {
+    await safePrintReservationOrder(orderNo);
+  }
   return reservationPublicShape(data, 'accommodation');
 }
 
@@ -838,8 +908,9 @@ exports.main = async (event = {}) => {
     }
     if (action === 'listDiningRooms') return ok(await listDiningRooms(event));
     if (action === 'listAvailableDiningRooms') return ok(await listAvailableDiningRooms(event));
-    if (action === 'listAccommodationRooms') return ok(await listAccommodationRooms(event));
-    if (action === 'listAvailableAccommodationRooms') return ok(await listAccommodationRooms(event));
+    if (action === 'getContactProfile') return ok(await getContactProfile(wxContext));
+    if (action === 'listAccommodationRooms') return ok(await listAccommodationRooms(event, wxContext));
+    if (action === 'listAvailableAccommodationRooms') return ok(await listAccommodationRooms(event, wxContext));
     if (action === 'createDiningReservation') return ok(await createDiningReservation(event, wxContext));
     if (action === 'createAccommodationReservation') return ok(await createAccommodationReservation(event, wxContext));
     if (action === 'createReservationPayment') return ok(await createReservationPayment(event, wxContext));

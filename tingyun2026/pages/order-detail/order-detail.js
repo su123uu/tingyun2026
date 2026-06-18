@@ -1,10 +1,12 @@
 const orders = require('../../services/meal-order');
+const table = require('../../services/table-session');
 
-const kitchen = {
-  pending_notice: { text: '正在通知厨房', desc: '订单已提交，正在通知厨房，请稍候。' },
-  kitchen_notified: { text: '厨房已接单', desc: '厨房已接单，正在为您准备餐品。' },
-  preparing: { text: '制作中', desc: '厨房正在制作餐品，请耐心等候。' },
-  completed: { text: '已完成', desc: '餐品已完成，请留意上菜。' },
+const orderStatus = {
+  pending_payment: { text: '未支付', desc: '订单尚未完成支付，请先完成支付。' },
+  pending_notice: { text: '订单已提交', desc: '订单已提交，请耐心等候。' },
+  kitchen_notified: { text: '订单已提交', desc: '订单已提交，请耐心等候。' },
+  preparing: { text: '制作中', desc: '订单已提交，正在制作餐品，请耐心等候。' },
+  completed: { text: '已完成', desc: '餐品已完成，请享用。' },
 };
 
 const settlement = {
@@ -13,11 +15,12 @@ const settlement = {
   settled: '已结清',
 };
 
-const kitchenProgress = {
+const orderProgress = {
+  pending_payment: 0,
   pending_notice: 1,
-  kitchen_notified: 2,
-  preparing: 3,
-  completed: 4,
+  kitchen_notified: 1,
+  preparing: 2,
+  completed: 3,
 };
 
 function formatTime(value) {
@@ -31,13 +34,52 @@ function remarkText(order) {
   return [order.remark].concat(order.quick_remarks || []).filter(Boolean).join('，') || '无';
 }
 
+function effectiveOrderStatus(order) {
+  const status = order.order_status || order.kitchen_status || '';
+  if (
+    ['pending_notice', 'kitchen_notified'].includes(status)
+    && ['settled', 'pending_offline'].includes(order.payment_status)
+  ) {
+    return 'preparing';
+  }
+  return status;
+}
+
+function canAddMeal(order) {
+  const status = effectiveOrderStatus(order);
+  return Boolean(
+    order
+    && order.session_id
+    && order.table_id
+    && !['completed', 'cancelled', 'canceled', 'closed', 'refunded'].includes(status)
+  );
+}
+
+function tableSessionFromOrder(order) {
+  return {
+    session_id: order.session_id,
+    table_id: order.table_id,
+    table_name: order.table_name || order.table_id,
+    table_area: order.table_area || '',
+    people_count: order.people_count || 1,
+    customer_type: order.customer_type || 'guest',
+    member_id: order.member_id || '',
+    member_level: order.member_level || '',
+    member_level_no: order.member_level_no || '',
+    customer_name: order.customer_name || '',
+    customer_mobile: order.customer_mobile || '',
+    has_order: true,
+    created_at: order.created_at || '',
+    expires_at: order.expires_at || '',
+  };
+}
+
 function buildSteps(order) {
-  const progress = kitchenProgress[order.kitchen_status] || 0;
+  const progress = orderProgress[effectiveOrderStatus(order)] || 0;
   return [
-    { text: order.customer_type === 'member' ? '订单已提交，待线下会员账户核对' : '支付成功，正在通知厨房', done: progress >= 1 },
-    { text: '已通知厨房', done: progress >= 2 },
-    { text: '制作中', done: progress >= 3 },
-    { text: '已完成', done: progress >= 4 },
+    { text: '订单已提交', done: progress >= 1 },
+    { text: '制作中', done: progress >= 2 },
+    { text: '已完成', done: progress >= 3 },
   ];
 }
 
@@ -45,12 +87,25 @@ Page({
   data: { order: null, steps: [], navTop: 28, navHeight: 32 },
   async onLoad(options) {
     this.setNavigationMetrics();
-    const order = await orders.getMealOrderDetail({ order_no: options.id });
-    const status = kitchen[order.kitchen_status] || { text: order.kitchen_status, desc: '' };
+    const orderNo = options && options.id;
+    if (!orderNo) {
+      this.showMissingOrder();
+      return;
+    }
+    let order;
+    try {
+      order = await orders.getMealOrderDetail({ order_no: orderNo });
+    } catch (error) {
+      this.showMissingOrder(error && error.message);
+      return;
+    }
+    const statusKey = effectiveOrderStatus(order);
+    const status = orderStatus[statusKey] || { text: statusKey, desc: '' };
     this.setData({
       order: Object.assign({}, order, {
         order_no: order.order_no || order.order_id,
         can_pay: order.customer_type !== 'member' && order.settlement_status === 'pending_wechat_pay' && order.payment_status !== 'settled',
+        can_add_meal: canAddMeal(order),
         can_delete: true,
         kitchen_text: status.text,
         kitchen_desc: status.desc,
@@ -76,6 +131,24 @@ Page({
     } catch (error) {}
     this.setData({ navTop, navHeight });
   },
+  showMissingOrder(message) {
+    wx.showToast({ title: message || '未找到订单', icon: 'none' });
+    setTimeout(() => {
+      wx.redirectTo({ url: '/pages/orders/orders' });
+    }, 800);
+  },
+  async addMeal() {
+    const order = this.data.order;
+    if (!order || !order.can_add_meal) {
+      wx.showToast({ title: '该桌台已清台，暂不能加餐', icon: 'none' });
+      return;
+    }
+    await table.setCurrentTableSession(tableSessionFromOrder(order));
+    wx.switchTab({
+      url: '/pages/menu/menu',
+      fail: () => wx.navigateTo({ url: '/pages/menu/menu' }),
+    });
+  },
   goBack() { wx.navigateBack({ delta: 1, fail: () => wx.navigateTo({ url: '/pages/orders/orders' }) }); },
   contact() { wx.showToast({ title: '客服联系方式将在正式上线前补充', icon: 'none' }); },
   async pay() {
@@ -84,17 +157,27 @@ Page({
     try {
       const paymentResult = await orders.createMealPayment({ order_no: orderNo });
       const payment = paymentResult.payment || paymentResult.raw_payment || paymentResult;
-      await new Promise((resolve, reject) => {
-        wx.requestPayment(Object.assign({}, payment, {
-          success: resolve,
-          fail: (error) => {
-            const message = error && error.errMsg && error.errMsg.includes('cancel')
-              ? '支付已取消'
-              : ((error && error.errMsg) || '微信支付失败');
-            reject(new Error(message));
-          },
-        }));
-      });
+      const paymentNo = paymentResult.payment_no || '';
+      const batchNo = paymentResult.batch_no || 0;
+      try {
+        await new Promise((resolve, reject) => {
+          wx.requestPayment(Object.assign({}, payment, {
+            success: resolve,
+            fail: (error) => {
+              const message = error && error.errMsg && error.errMsg.includes('cancel')
+                ? '支付已取消'
+                : ((error && error.errMsg) || '微信支付失败');
+              reject(new Error(message));
+            },
+          }));
+        });
+      } catch (payError) {
+        const isCancel = payError && payError.message && payError.message.includes('取消');
+        if (isCancel) {
+          try { await orders.cancelMealOrder({ order_no: orderNo, payment_no: paymentNo, batch_no: batchNo, reason: 'payment_cancelled' }); } catch (e) { console.warn('cancelMealOrder failed', e); }
+        }
+        throw payError;
+      }
       wx.showToast({ title: '支付完成' });
       this.onLoad({ id: orderNo });
     } catch (error) {
@@ -106,7 +189,7 @@ Page({
     if (!orderNo) return;
     const ok = await new Promise((resolve) => wx.showModal({
       title: '删除订单',
-      content: '删除后该订单仅在用户侧隐藏，后台仍会保留记录。',
+      content: '是否删除，删除后无法恢复',
       confirmText: '删除',
       confirmColor: '#8B3A2F',
       success: (result) => resolve(result.confirm),

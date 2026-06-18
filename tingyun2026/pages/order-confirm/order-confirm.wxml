@@ -10,9 +10,31 @@
   </view>
   <view class="content">
     <view class="dining card">
-      <view><text>桌台</text><strong>{{sessionLabel}}</strong></view>
-      <view><text>类型</text><strong>堂食</strong></view>
-      <view><text>用餐人数</text><strong>{{session.people_count}} 位</strong></view>
+      <view class="dining-left">
+        <view class="dining-cell"><text>区域</text><strong>{{tableArea || '-'}}</strong></view>
+        <view class="dining-cell"><text>桌号</text><strong>{{tableNo}}</strong></view>
+        <view class="dining-cell"><text>用餐人数</text><strong>{{session.people_count}} 位</strong></view>
+      </view>
+      <view class="dining-right">
+        <block wx:if="{{effectiveCustomerType === 'member'}}">
+          <view class="identity-badge member-badge">
+            <view class="badge-icon member-icon">{{identityInitial}}</view>
+            <view class="badge-info">
+              <text class="badge-tag member-tag">会员</text>
+              <text class="badge-level">{{memberLevel || '会员'}}</text>
+            </view>
+          </view>
+        </block>
+        <block wx:else>
+          <view class="identity-badge guest-badge">
+            <view class="badge-icon guest-icon">{{identityInitial}}</view>
+            <view class="badge-info">
+              <text class="badge-tag guest-tag">访客</text>
+              <text class="badge-level">散客</text>
+            </view>
+          </view>
+        </block>
+      </view>
     </view>
 
     <view class="section-head">
@@ -38,8 +60,8 @@
     <text class="section-title">金额汇总</text>
     <view class="amount-summary card">
       <view><text>商品金额</text><strong>¥{{cart.total_amount}}</strong></view>
-      <view class="amount-total"><text>{{user.customer_type === 'member' ? '线下会员账户核对' : '微信支付'}}</text><strong>¥{{cart.total_amount}}</strong></view>
+      <view class="amount-total"><text>{{effectiveCustomerType === 'member' ? '线下会员账户核对' : '微信支付'}}</text><strong>¥{{cart.total_amount}}</strong></view>
     </view>
   </view>
-  <view class="footer"><view class="pay-copy"><text>应付金额</text><strong>¥{{cart.total_amount}}</strong></view><button class="pay-button" bindtap="submit">{{user.customer_type === 'member' ? '提交订单' : '微信支付'}}</button></view>
+  <view class="footer"><view class="pay-copy"><text>应付金额</text><strong>¥{{cart.total_amount}}</strong></view><button class="pay-button" bindtap="submit">{{effectiveCustomerType === 'member' ? '提交订单' : '微信支付'}}</button></view>
 </view>

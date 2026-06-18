@@ -1,1 +1,68 @@
-.signup{padding:38rpx 28rpx}.title,.subtitle{display:block}.info{display:flex;flex-direction:column;gap:12rpx;margin-top:24rpx;padding:22rpx;color:#7C8A8C;font-size:24rpx}.people{display:flex;align-items:center;justify-content:center;gap:26rpx;padding:18rpx}.people strong{font-size:34rpx}.inputs{padding:0 20rpx}.inputs input{padding:22rpx 0;border-bottom:1rpx solid rgba(26,26,26,.06);font-size:25rpx}.submit{width:100%;margin-top:34rpx}
+.inner { padding-bottom: calc(176rpx + env(safe-area-inset-bottom)); }
+
+/* 顶部导航 — 与确认订单页一致 */
+.topbar { position: sticky; z-index: 20; top: 0; border-bottom: 1rpx solid rgba(26, 26, 26, .045); background: rgba(248, 246, 241, .95); backdrop-filter: blur(24rpx); }
+.head { display: flex; flex-direction: column; padding: 0 188rpx 18rpx 20rpx; }
+.nav-row { display: flex; align-items: center; gap: 4rpx; }
+.back { display: flex; width: 48rpx; height: 100%; flex: none; align-items: center; justify-content: center; }
+.back-arrow { width: 18rpx; height: 18rpx; border-bottom: 3rpx solid #4A554F; border-left: 3rpx solid #4A554F; transform: rotate(45deg); }
+.title, .subtitle { display: block; }
+.title { font-size: 40rpx; font-weight: 700; letter-spacing: 4rpx; }
+.subtitle { margin: 12rpx 0 0 8rpx; color: #7C8A8C; font-size: 22rpx; }
+
+.content { padding: 0 28rpx; }
+
+/* 活动卡片 — 沿用活动列表视觉 */
+.activity { overflow: hidden; margin-top: 24rpx; border: 1rpx solid rgba(26, 26, 26, .035); }
+.activity > image { display: block; width: 100%; height: 296rpx; background: #E8E4DC; }
+.activity-body { padding: 28rpx; }
+.date, .activity-copy { display: block; }
+.date { color: #8B7355; font-size: 22rpx; }
+.activity-title { display: block; margin-top: 12rpx; font-size: 32rpx; font-weight: 700; }
+.activity-copy { margin-top: 12rpx; color: #7C8A8C; font-size: 24rpx; line-height: 1.55; }
+.activity-foot { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-top: 22rpx; }
+.tag { display: inline-flex; min-height: 48rpx; align-items: center; padding: 8rpx 18rpx; border-radius: 24rpx; color: #4F6F52; background: #EEF4EE; box-sizing: border-box; font-size: 22rpx; }
+
+/* 身份徽章 — 与确认订单页一致 */
+.identity-badge { display: flex; align-items: center; gap: 12rpx; }
+.badge-icon { width: 56rpx; height: 56rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22rpx; font-weight: 700; flex: none; }
+.member-icon { background: #1A1A1A; color: #B89750; }
+.guest-icon { background: #EAF3DE; color: #27500A; }
+.badge-info { display: flex; flex-direction: column; align-items: flex-end; }
+.badge-tag { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 16rpx; font-weight: 600; }
+.member-tag { background: #1A1A1A; color: #B89750; }
+.guest-tag { background: #EAF3DE; color: #27500A; }
+.badge-level { font-size: 18rpx; color: #999; margin-top: 4rpx; }
+
+/* 分区标题 */
+.section-title { display: flex; align-items: center; gap: 18rpx; margin: 34rpx 0 16rpx; font-size: 30rpx; font-weight: 700; letter-spacing: 3rpx; }
+.section-title::before { width: 5rpx; height: 34rpx; border-radius: 3rpx; background: #C9A962; content: ""; }
+
+/* 人数选择器 */
+.people { display: flex; align-items: center; justify-content: center; gap: 26rpx; padding: 18rpx; }
+.people strong { font-size: 34rpx; }
+.people-hint { display: block; margin: 12rpx 8rpx 0; color: #A38E74; font-size: 22rpx; text-align: right; }
+
+/* 费用汇总 — 与确认订单页一致 */
+.amount-summary { padding: 0 22rpx; }
+.amount-summary view { display: flex; align-items: center; justify-content: space-between; padding: 22rpx 0; border-bottom: 1rpx solid rgba(26, 26, 26, .06); font-size: 25rpx; }
+.amount-summary view:last-child { border-bottom: 0; }
+.amount-summary text { color: #7C8A8C; }
+.amount-summary strong { font-size: 27rpx; }
+.amount-summary .amount-total { padding-top: 26rpx; font-size: 28rpx; }
+.amount-summary .amount-total text { color: #1A1A1A; }
+.amount-summary .amount-total strong { color: #8B7355; font-size: 38rpx; }
+
+/* 联系信息 */
+.inputs { padding: 0 20rpx; }
+.inputs input { padding: 22rpx 0; border-bottom: 1rpx solid rgba(26, 26, 26, .06); font-size: 25rpx; }
+.inputs textarea { box-sizing: border-box; width: 100%; min-height: 128rpx; padding: 22rpx 0; font-size: 25rpx; line-height: 1.6; }
+
+/* 底部固定栏 — 与确认订单页一致 */
+.footer { position: fixed; z-index: 22; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 24rpx; padding: 18rpx 28rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid rgba(26, 26, 26, .06); background: rgba(255, 255, 255, .97); box-shadow: 0 -8rpx 24rpx rgba(26, 26, 26, .045); }
+.pay-copy { min-width: 0; flex: 1; }
+.pay-copy text, .pay-copy strong { display: block; }
+.pay-copy text { color: #7C8A8C; font-size: 21rpx; }
+.pay-copy strong { margin-top: 6rpx; color: #8B7355; font-size: 36rpx; }
+.pay-button { display: flex; min-height: 84rpx; flex: 1; align-items: center; justify-content: center; margin: 0; padding: 0 28rpx; border-radius: 20rpx; color: #FFFFFF; background: #4F6F52; font-size: 27rpx; font-weight: 700; letter-spacing: 2rpx; line-height: 84rpx; }
+.pay-button[disabled] { color: rgba(255, 255, 255, .72); background: #9AA99B; }

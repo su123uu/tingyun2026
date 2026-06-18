@@ -53,6 +53,24 @@ function buildMealCategories(items) {
   return Object.keys(map).map((key) => map[key]).sort((a, b) => a.sort_order - b.sort_order);
 }
 
+function toSortTime(value) {
+  if (!value) return Number.MAX_SAFE_INTEGER;
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
+}
+
+function sortActivities(rows) {
+  return asArray(rows).slice().sort((left, right) => {
+    const leftPinned = left.is_pinned === true ? 1 : 0;
+    const rightPinned = right.is_pinned === true ? 1 : 0;
+    if (leftPinned !== rightPinned) return rightPinned - leftPinned;
+    const startDiff = toSortTime(left.start_at) - toSortTime(right.start_at);
+    if (startDiff !== 0) return startDiff;
+    return String(left.title || '').localeCompare(String(right.title || ''), 'zh-Hans-CN');
+  });
+}
+
 async function resolveCloudImages(groups, fields) {
   const normalizedGroups = asArray(groups).map((items) => asArray(items));
   if (!wx.cloud.getTempFileURL) return normalizedGroups;
@@ -140,7 +158,7 @@ async function getDatabaseCatalog() {
     list('accommodation_rooms', { is_available: true }, [['sort_order', 'asc']]),
     list('dining_standards', { is_enabled: true }, [['sort_order', 'asc']]),
     optionalList('activity_banners', { is_enabled: true }, [['sort_order', 'asc']]),
-    list('activity_items', { status: _.neq('closed') }, [['start_at', 'asc']]),
+    list('activity_items', { status: _.neq('closed') }, [['start_at', 'asc']]).then(sortActivities),
     list('member_levels', { is_enabled: true }, [['sort_order', 'asc']]),
     list('member_level_benefits', { is_enabled: true }, [['sort_order', 'asc']]),
   ]);
@@ -159,7 +177,7 @@ async function getDatabaseCatalog() {
     rawDiningStandards,
     rawActivityBanners,
     rawActivityItems,
-  ], ['image_url', 'image_urls', 'video_url']);
+  ], ['image_url', 'image_urls', 'intro_images', 'highlight_images', 'video_url']);
 
   return {
     meal_categories: buildMealCategories(mealItems),
@@ -218,7 +236,7 @@ async function listDiningStandards() {
 }
 async function listActivityItems() {
   const catalog = await getCloudCatalog();
-  return catalog ? normalizeItems(catalog.activity_items || []) : [];
+  return catalog ? sortActivities(normalizeItems(catalog.activity_items || [])) : [];
 }
 async function listActivityBanners() {
   const catalog = await getCloudCatalog();

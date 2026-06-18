@@ -1,0 +1,17 @@
+{
+  "envId": "cloud1-d6gzs6wuu4b4e902e",
+  "functionRoot": "./tingyun2026/cloudfunctions",
+  "functions": [
+    {
+      "name": "initDatabase",
+      "handler": "index.main",
+      "timeout": 20,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256,
+      "envVariables": {
+        "ADMIN_API_TOKEN": "tingyun2026bannerAdmin",
+        "bannerAdmin": "tingyun2026bannerAdmin"
+      }
+    }
+  ]
+}

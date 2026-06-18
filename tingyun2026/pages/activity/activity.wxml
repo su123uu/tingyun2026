@@ -4,7 +4,7 @@
       <view class="back" bindtap="goBack"><view class="back-arrow"></view></view>
       <view class="heading">
         <text class="title">活动详情</text>
-        <text class="subtitle">停云会员专属活动</text>
+        <text class="subtitle">停云山居活动</text>
       </view>
     </view>
   </view>
@@ -13,33 +13,47 @@
   <view class="detail-title">
     <text class="tag {{activity.status_tone}}">{{activity.status_text}}</text>
     <text class="activity-title">{{activity.title}}</text>
-    <text class="summary">{{activity.detail_summary}}</text>
+    <text wx:if="{{activity.subtitle}}" class="summary">{{activity.subtitle}}</text>
   </view>
 
   <view class="content">
-    <view wx:if="{{activity.video_url}}" class="section">
-      <text class="section-title">活动视频</text>
-      <video class="activity-video" src="{{activity.video_url}}" poster="{{activity.image_url}}" controls></video>
-    </view>
-
     <view class="section">
       <text class="section-title">活动信息</text>
       <view class="detail-card card">
         <view class="info-line"><text class="info-label">活动时间</text><text>{{activity.date}} {{activity.time}}</text></view>
         <view class="info-line"><text class="info-label">活动地点</text><text>{{activity.location}}</text></view>
+        <view class="info-line"><text class="info-label">活动费用</text><text>{{activity.fee_text}}</text></view>
         <view class="info-line"><text class="info-label">人数上限</text><text>{{activity.capacity}} 人</text></view>
-        <view class="info-line"><text class="info-label">报名截止</text><text>{{activity.signup_deadline}}</text></view>
+        <view class="info-line"><text class="info-label">报名截止</text><text>{{activity.signup_deadline_text}}</text></view>
       </view>
     </view>
 
     <view class="section">
       <text class="section-title">活动介绍</text>
-      <view class="copy card">
-        <text wx:for="{{activity.intro}}" wx:key="*this">{{item}}</text>
+      <view wx:if="{{activity.intro_text}}" class="copy card"><text>{{activity.intro_text}}</text></view>
+      <video wx:if="{{activity.video_url}}" class="activity-video intro-video" src="{{activity.video_url}}" poster="{{activity.image_url}}" controls></video>
+      <view wx:if="{{activity.intro_images.length}}" class="intro-images">
+        <image wx:for="{{activity.intro_images}}" wx:key="*this" class="intro-image" src="{{item}}" mode="widthFix" />
       </view>
     </view>
 
-    <view class="section">
+    <view wx:if="{{activity.show_highlights}}" class="section">
+      <text class="section-title">精彩瞬间</text>
+      <view class="moments">
+        <view class="moment-track forward">
+          <view class="moment-strip">
+            <image wx:for="{{activity.highlight_top_loop}}" wx:key="key" src="{{item.url}}" mode="aspectFill" />
+          </view>
+        </view>
+        <view class="moment-track reverse">
+          <view class="moment-strip">
+            <image wx:for="{{activity.highlight_bottom_loop}}" wx:key="key" src="{{item.url}}" mode="aspectFill" />
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{activity.notice}}" class="section">
       <text class="section-title">活动须知</text>
       <view class="copy card"><text>{{activity.notice}}</text></view>
     </view>
@@ -47,6 +61,6 @@
 
   <view class="fixed-action">
     <button class="action-button secondary" bindtap="contact">联系客服</button>
-    <button class="action-button" disabled="{{!activity.can_signup}}" bindtap="signup">{{activity.can_signup ? '立即报名' : '活动已满员'}}</button>
+    <button class="action-button" disabled="{{!activity.can_signup}}" bindtap="signup">{{activity.button_text}}</button>
   </view>
 </view>
