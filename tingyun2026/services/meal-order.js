@@ -104,7 +104,7 @@ async function localCreateMealOrder(input = {}) {
   const primary = findActiveOrder(session.session_id, orders);
   const orderNo = primary ? primary.order_no : createBusinessId('TYMEAL');
   const customerType = session.customer_type === 'member' ? 'member' : 'guest';
-  const needsPay = customerType !== 'member';
+  const needsPay = false;
   const batches = primary ? (primary.batches || []) : [];
   const batchNo = batches.length + 1;
   const amount = currentCart.total_amount;
@@ -121,9 +121,9 @@ async function localCreateMealOrder(input = {}) {
     wechat_pay_amount: needsPay ? amount : 0,
     remark: input.remark || '',
     quick_remarks: input.quick_remarks || [],
-    settlement_status: needsPay ? 'pending_wechat_pay' : 'pending_offline_points',
-    payment_status: needsPay ? 'pending_wechat_pay' : 'pending_offline',
-    order_status: needsPay ? 'pending_payment' : 'preparing',
+    settlement_status: 'pending_checkout',
+    payment_status: 'pending_checkout',
+    order_status: 'preparing',
     created_at: new Date().toISOString(),
   };
 
@@ -134,8 +134,8 @@ async function localCreateMealOrder(input = {}) {
     primary.amount = totalAmount(primary.batches);
     primary.total_amount = primary.amount;
     primary.pay_amount = primary.amount;
-    primary.payment_status = needsPay ? 'pending_wechat_pay' : primary.payment_status;
-    primary.settlement_status = needsPay ? 'pending_wechat_pay' : primary.settlement_status;
+    primary.payment_status = 'pending_checkout';
+    primary.settlement_status = 'pending_checkout';
     primary.order_status = 'preparing';
     primary.updated_at = new Date().toISOString();
     order = primary;
@@ -160,8 +160,8 @@ async function localCreateMealOrder(input = {}) {
       wechat_pay_amount: needsPay ? amount : 0,
       remark: input.remark || '',
       quick_remarks: input.quick_remarks || [],
-      settlement_status: batch.settlement_status,
-      payment_status: batch.payment_status,
+      settlement_status: 'pending_checkout',
+      payment_status: 'pending_checkout',
       order_status: batch.order_status,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -239,6 +239,16 @@ async function createMealPayment(input = {}) {
   return callMealCloud('createMealPayment', input);
 }
 
+async function checkoutMealOrder(input = {}) {
+  const user = await auth.getCurrentUser();
+  return callMealCloud('checkoutMealOrder', Object.assign({}, input, {
+    mobile: input.customer_mobile || user.mobile || '',
+    customer_mobile: input.customer_mobile || user.mobile || '',
+    customer_name: input.customer_name || user.nickname || '',
+    member_id: input.member_id || user.member_id || '',
+  }));
+}
+
 async function listMealOrders() {
   try {
     return await callMealCloud('listMealOrders');
@@ -250,7 +260,10 @@ async function listMealOrders() {
 
 async function getMealOrderDetail(input) {
   try {
-    return await callMealCloud('getMealOrderDetail', input);
+    const session = await table.getCurrentTableSession();
+    return await callMealCloud('getMealOrderDetail', Object.assign({}, input, {
+      session_id: input.session_id || (session && session.session_id) || '',
+    }));
   } catch (error) {
     if (error.fromCloudResult) throw error;
     console.warn('mealOrderManage getMealOrderDetail fallback to local', error);
@@ -313,4 +326,4 @@ async function cancelMealOrder(input = {}) {
   return { order_no: orderNo, order_status: order.order_status };
 }
 
-module.exports = { createMealOrder, createMealOrderAndPayment, createMealPayment, listMealOrders, getMealOrderDetail, deleteMealOrder, cancelMealOrder };
+module.exports = { createMealOrder, createMealOrderAndPayment, createMealPayment, checkoutMealOrder, listMealOrders, getMealOrderDetail, deleteMealOrder, cancelMealOrder };

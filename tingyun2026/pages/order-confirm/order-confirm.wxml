@@ -63,5 +63,5 @@
       <view class="amount-total"><text>{{effectiveCustomerType === 'member' ? '线下会员账户核对' : '微信支付'}}</text><strong>¥{{cart.total_amount}}</strong></view>
     </view>
   </view>
-  <view class="footer"><view class="pay-copy"><text>应付金额</text><strong>¥{{cart.total_amount}}</strong></view><button class="pay-button" bindtap="submit">{{effectiveCustomerType === 'member' ? '提交订单' : '微信支付'}}</button></view>
+  <view class="footer"><view class="pay-copy"><text>本次菜品金额</text><strong>¥{{cart.total_amount}}</strong></view><button class="pay-button" bindtap="submit">提交菜品</button></view>
 </view>

@@ -39,6 +39,16 @@ async function findMealOrder(orderNo) {
   return result.data && result.data[0] ? result.data[0] : null;
 }
 
+async function findMealOrderByPaymentTradeNo(tradeNo) {
+  const cleanTradeNo = cleanText(tradeNo, 160);
+  if (!cleanTradeNo) return null;
+  const result = await db.collection('meal_orders')
+    .where({ payment_trade_no: cleanTradeNo, is_deleted: _.neq(true) })
+    .limit(1)
+    .get();
+  return result.data && result.data[0] ? result.data[0] : null;
+}
+
 function cleanText(value, maxLength = 500) {
   if (value === undefined || value === null) return '';
   return String(value).trim().slice(0, maxLength);
@@ -135,6 +145,13 @@ function hasPendingWechatBatch(batches = []) {
 async function findMealOrderByTradeNo(tradeNo) {
   const direct = await findMealOrder(tradeNo);
   if (direct) return { order: direct, payment_no: tradeNo };
+  const checkout = await findMealOrderByPaymentTradeNo(tradeNo);
+  if (checkout) return { order: checkout, payment_no: tradeNo, is_checkout_payment: true };
+  const checkoutMatch = /^(.*)C[A-Z0-9]{3}$/.exec(cleanText(tradeNo, 160));
+  if (checkoutMatch) {
+    const order = await findMealOrder(checkoutMatch[1]);
+    if (order) return { order, payment_no: tradeNo, is_checkout_payment: true };
+  }
   const match = /^(.*)B(\d+)$/.exec(cleanText(tradeNo, 160));
   if (!match) return { order: null, payment_no: tradeNo };
   const order = await findMealOrder(match[1]);
@@ -174,6 +191,35 @@ async function markMealSessionOrdered(order) {
       updated_at: now(),
     },
   });
+}
+
+async function closeMealSession(order, reason = 'checkout_settled') {
+  if (!order || !order.session_id) return;
+  const result = await db.collection('meal_table_sessions')
+    .where({ session_id: order.session_id, is_deleted: _.neq(true) })
+    .limit(1)
+    .get();
+  const session = result.data && result.data[0];
+  if (!session || !session._id) return;
+  const closedAt = now();
+  await db.collection('meal_table_sessions').doc(session._id).update({
+    data: {
+      session_status: 'closed',
+      closed_reason: reason,
+      closed_at: closedAt,
+      updated_at: closedAt,
+    },
+  });
+  const tableResult = await db.collection('meal_tables')
+    .where({ table_id: session.table_id, current_session_id: session.session_id, is_deleted: _.neq(true) })
+    .limit(1)
+    .get();
+  const table = tableResult.data && tableResult.data[0];
+  if (table && table._id) {
+    await db.collection('meal_tables').doc(table._id).update({
+      data: { current_session_id: '', updated_at: closedAt },
+    });
+  }
 }
 
 async function findReservation(orderNo) {
@@ -422,6 +468,81 @@ async function settleMealPayment(tradeNo, transactionId, eventTotalFee) {
   if (!order || !order._id) return null;
 
   const batches = normalizeBatches(order);
+  if (found.is_checkout_payment || order.payment_trade_no === tradeNo) {
+    if (order.payment_status === 'settled') {
+      await closeMealSession(order, 'wechat_checkout_paid');
+      return { errcode: 0, errmsg: 'already settled' };
+    }
+    const settledAt = now();
+    const totalFee = eventTotalFee || order.payment_total_fee || 0;
+    const nextBatches = batches.map((entry) => (
+      activeBatches([entry]).length
+        ? Object.assign({}, entry, {
+          settlement_status: 'settled',
+          payment_status: 'settled',
+          order_status: 'preparing',
+          wechat_transaction_id: transactionId,
+          payment_callback_total_fee: totalFee,
+          payment_callback_at: settledAt,
+          paid_at: settledAt,
+          settled_at: settledAt,
+          updated_at: settledAt,
+        })
+        : entry
+    ));
+    const totalAmount = totalAmountFromBatches(nextBatches);
+    const settledOrder = Object.assign({}, order, {
+      batches: nextBatches,
+      items: aggregateItemsFromBatches(nextBatches),
+      amount: totalAmount,
+      total_amount: totalAmount,
+      pay_amount: totalAmount,
+      settlement_status: 'settled',
+      payment_status: 'settled',
+      order_status: 'preparing',
+      wechat_transaction_id: transactionId,
+      payment_callback_total_fee: totalFee,
+      paid_at: settledAt,
+      settled_at: settledAt,
+    });
+
+    await db.collection('meal_orders').doc(order._id).update({
+      data: {
+        batches: nextBatches,
+        items: settledOrder.items,
+        amount: totalAmount,
+        total_amount: totalAmount,
+        pay_amount: totalAmount,
+        settlement_status: 'settled',
+        payment_status: 'settled',
+        order_status: 'preparing',
+        wechat_transaction_id: transactionId,
+        payment_callback_total_fee: totalFee,
+        payment_callback_at: settledAt,
+        paid_at: settledAt,
+        settled_at: settledAt,
+        updated_at: settledAt,
+      },
+    });
+    await closeMealSession(order, 'wechat_checkout_paid');
+    await safeCallNotification({
+      action: 'sendStaffNotification',
+      business_type: 'meal_order',
+      business_no: order.order_no || order.order_id,
+      title: '点餐订单已结账',
+      payload: settledOrder,
+    });
+    await safeCallNotification({
+      action: 'sendSubscribeNotification',
+      business_type: 'meal_order',
+      business_no: order.order_no || order.order_id,
+      openid: order.created_by_openid || order.user_id,
+      status: 'preparing',
+      payload: settledOrder,
+    });
+    return { errcode: 0, errmsg: 'success' };
+  }
+
   const batch = batchByPaymentNo(order, found.payment_no);
   if (!batch) return { errcode: 0, errmsg: 'meal batch not found ignored' };
   const paymentNo = batch.payment_no || found.payment_no || tradeNo;

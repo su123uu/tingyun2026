@@ -79,21 +79,19 @@ Page({
   },
   async scanTableCode() {
     try {
-      const user = await auth.getCurrentUser();
-      this.setData({
-        pendingTableCode: 'TEST_TABLE:A01',
-        session: null,
-        sessionLabel: '',
-        showPhoneAuth: !user.mobile,
-        showPeoplePicker: Boolean(user.mobile),
-        peopleCount: 2,
-        customerType: user.customer_type || 'guest',
-        memberLevel: user.member_level || '',
-        memberLevelNo: user.member_level_no || '',
-        identityInitial: this.formatIdentityInitial(user.customer_type || 'guest', user),
+      const result = await new Promise((resolve, reject) => {
+        wx.scanCode({
+          onlyFromCamera: true,
+          scanType: ['qrCode'],
+          success: resolve,
+          fail: reject,
+        });
       });
+      const scene = this.extractTableScene(result);
+      if (!scene) return this.toast('请扫描后台生成的桌台二维码');
+      return this.handleQrScene({ scene });
     } catch (error) {
-      this.toast(error.message || '进入 A01 桌失败');
+      this.toast(error.message || '扫码失败，请重试');
     }
   },
   async handleQrScene(options = {}) {
@@ -107,6 +105,9 @@ Page({
       const pendingTableCode = `t=${tableId}&k=${qrToken}`;
       const activeSession = await tableService.getCurrentTableSessionByCode({ code: pendingTableCode });
       if (activeSession) {
+        if (activeSession.active_order_no) {
+          wx.navigateTo({ url: `/pages/order-detail/order-detail?id=${activeSession.active_order_no}` });
+        }
         this.setData({
           pendingTableCode: '',
           session: activeSession,

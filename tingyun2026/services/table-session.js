@@ -137,6 +137,11 @@ async function setCurrentTableSession(session = {}) {
   return storage.set(KEY, session);
 }
 
+async function clearCurrentTableSession() {
+  storage.remove(KEY);
+  return null;
+}
+
 async function markCurrentTableOrdered() {
   return updateCurrentTableSession({ has_order: true });
 }
@@ -149,5 +154,6 @@ module.exports = {
   getCurrentTableSession,
   updateCurrentTableSession,
   setCurrentTableSession,
+  clearCurrentTableSession,
   markCurrentTableOrdered,
 };

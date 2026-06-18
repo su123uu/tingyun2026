@@ -96,6 +96,21 @@ Page({
     if (this.data.submitting) return;
     this.setData({ submitting: true });
     try {
+      const submitSubscription = await notification.requestMealOrderStatus();
+      const submitPayload = {
+        remark: this.data.remark,
+        quick_remarks: this.data.quickRemarks.filter((item) => item.selected).map((item) => item.text),
+        notification_subscriptions: submitSubscription,
+        keep_cart: false,
+        customer_mobile: this.data.user.mobile || '',
+        customer_name: this.data.user.nickname || this.data.user.customer_name || '',
+        member_id: this.data.user.member_id || '',
+      };
+      wx.showLoading({ title: '正在提交菜品...', mask: true });
+      const submittedOrder = await orders.createMealOrder(submitPayload);
+      const submittedOrderNo = submittedOrder.order_no || submittedOrder.order_id;
+      wx.redirectTo({ url:`/pages/order-detail/order-detail?id=${submittedOrderNo}` });
+      return;
       const subscription = pay
         ? await notification.requestMealOrderStatus()
         : await notification.requestMealOrderWithConsumption();

@@ -10,6 +10,7 @@ const orderStatus = {
 };
 
 const settlement = {
+  pending_checkout: '待结账',
   pending_wechat_pay: '待微信支付',
   pending_offline_points: '待线下会员账户核对',
   settled: '已结清',
@@ -51,6 +52,7 @@ function canAddMeal(order) {
     order
     && order.session_id
     && order.table_id
+    && ['pending_checkout', 'pending_wechat_pay'].includes(order.settlement_status)
     && !['completed', 'cancelled', 'canceled', 'closed', 'refunded'].includes(status)
   );
 }
@@ -104,7 +106,7 @@ Page({
     this.setData({
       order: Object.assign({}, order, {
         order_no: order.order_no || order.order_id,
-        can_pay: order.customer_type !== 'member' && order.settlement_status === 'pending_wechat_pay' && order.payment_status !== 'settled',
+        can_pay: ['pending_checkout', 'pending_wechat_pay', 'paying'].includes(order.settlement_status) && order.payment_status !== 'settled',
         can_add_meal: canAddMeal(order),
         can_delete: true,
         kitchen_text: status.text,
@@ -155,6 +157,27 @@ Page({
     const orderNo = this.data.order && this.data.order.order_no;
     if (!orderNo) return;
     try {
+      const checkoutResult = await orders.checkoutMealOrder({ order_no: orderNo });
+      const checkoutPayment = checkoutResult.payment || checkoutResult.raw_payment || null;
+      if (checkoutPayment && checkoutPayment.timeStamp) {
+        await new Promise((resolve, reject) => {
+          wx.requestPayment(Object.assign({}, checkoutPayment, {
+            success: resolve,
+            fail: (error) => {
+              const message = error && error.errMsg && error.errMsg.includes('cancel')
+                ? '支付已取消'
+                : ((error && error.errMsg) || '微信支付失败');
+              reject(new Error(message));
+            },
+          }));
+        });
+        wx.showToast({ title: '支付完成' });
+      } else {
+        wx.showToast({ title: '已提交会员结账' });
+      }
+      await table.clearCurrentTableSession();
+      this.onLoad({ id: orderNo });
+      return;
       const paymentResult = await orders.createMealPayment({ order_no: orderNo });
       const payment = paymentResult.payment || paymentResult.raw_payment || paymentResult;
       const paymentNo = paymentResult.payment_no || '';

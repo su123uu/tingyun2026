@@ -64,8 +64,7 @@ function addPreview(card, count, unit) {
 }
 
 function isMealPayable(order) {
-  return order.customer_type !== 'member'
-    && order.settlement_status === 'pending_wechat_pay'
+  return ['pending_checkout', 'pending_wechat_pay', 'paying'].includes(order.settlement_status)
     && order.payment_status !== 'settled';
 }
 
@@ -198,8 +197,9 @@ Page({
     }
   },
   async payMeal(orderNo){
-    const paymentResult=await meal.createMealPayment({order_no:orderNo});
+    const paymentResult=await meal.checkoutMealOrder({order_no:orderNo});
     const payment=paymentResult.payment||paymentResult.raw_payment||paymentResult;
+    if(!payment||!payment.timeStamp)return;
     const paymentNo=paymentResult.payment_no||'';
     const batchNo=paymentResult.batch_no||0;
     try{

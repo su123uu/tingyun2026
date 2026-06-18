@@ -32,7 +32,7 @@
       <view class="foot">
         <strong>{{item.amount_text}}</strong>
         <view class="order-actions">
-          <button wx:if="{{item.can_pay}}" class="secondary-button" data-id="{{item.order_no}}" data-type="{{item.type}}" bindtap="pay">继续支付</button>
+          <button wx:if="{{item.can_pay}}" class="secondary-button" data-id="{{item.order_no}}" data-type="{{item.type}}" bindtap="pay">结账</button>
           <button class="secondary-button" data-id="{{item.detail_id}}" data-type="{{item.type}}" bindtap="detail">{{item.action_text}}</button>
           <button wx:if="{{item.can_delete}}" class="secondary-button" data-id="{{item.order_no}}" data-type="{{item.type}}" bindtap="remove">删除</button>
         </view>
