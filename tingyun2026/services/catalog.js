@@ -33,8 +33,9 @@ function normalizeStandardDishes(dishes) {
 }
 
 function withDiningStandardDefaults(item) {
-  const dishes = normalizeStandardDishes(item.dishes);
-  return Object.assign(withImageAlias(item), { dishes });
+  const rawDishes = item.dishes;
+  const dishes = normalizeStandardDishes(rawDishes);
+  return Object.assign(withImageAlias(item), { raw_dishes: rawDishes, dishes });
 }
 
 function asArray(items) {
@@ -154,7 +155,6 @@ async function optionalList(collectionName, where, orderFields = []) {
 }
 
 async function getDatabaseCatalog() {
-  const _ = wx.cloud.database().command;
   const [
     rawMealItems,
     rawDiningRooms,
@@ -170,7 +170,9 @@ async function getDatabaseCatalog() {
     list('accommodation_rooms', { is_available: true }, [['sort_order', 'asc']]),
     list('dining_standards', { is_enabled: true }, [['sort_order', 'asc']]),
     optionalList('activity_banners', { is_enabled: true }, [['sort_order', 'asc']]),
-    list('activity_items', { status: _.neq('closed') }, [['start_at', 'asc']]).then(sortActivities),
+    optionalList('activity_items', {}, [['start_at', 'asc']]).then((rows) => (
+      sortActivities(rows.filter((row) => row.status !== 'closed'))
+    )),
     list('member_levels', { is_enabled: true }, [['sort_order', 'asc']]),
     list('member_level_benefits', { is_enabled: true }, [['sort_order', 'asc']]),
   ]);
@@ -202,6 +204,14 @@ async function getDatabaseCatalog() {
     member_levels: memberLevels,
     member_level_benefits: memberLevelBenefits,
   };
+}
+
+async function getDatabaseDiningStandards() {
+  let query = wx.cloud.database().collection('dining_standards').where({ is_enabled: true });
+  query = query.orderBy('sort_order', 'asc');
+  const rawDiningStandards = (await getAll(query)).filter((row) => row.is_deleted !== true);
+  const [diningStandards] = await resolveCloudImages([rawDiningStandards], ['image_url', 'image_urls']);
+  return diningStandards;
 }
 
 async function getCloudCatalog(options = {}) {
@@ -243,6 +253,14 @@ async function listAccommodationRooms() {
   return catalog ? normalizeItems(catalog.accommodation_rooms || []) : [];
 }
 async function listDiningStandards(options = {}) {
+  if (options.forceRefresh) cloudCatalogCache = null;
+  if (canUseCloudDatabase()) {
+    try {
+      return (await getDatabaseDiningStandards()).map(withDiningStandardDefaults);
+    } catch (error) {
+      console.warn('database dining standards fallback to catalog', error);
+    }
+  }
   const catalog = await getCloudCatalog(options);
   const source = catalog ? catalog.dining_standards : [];
   return asArray(source).map(withDiningStandardDefaults);

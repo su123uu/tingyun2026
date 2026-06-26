@@ -3,7 +3,6 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
-const _ = db.command;
 
 function isCloudFile(value) {
   return typeof value === 'string' && value.startsWith('cloud://');
@@ -114,7 +113,9 @@ exports.main = async () => {
     list('accommodation_rooms', { is_available: true }, [['sort_order', 'asc']]),
     list('dining_standards', { is_enabled: true }, [['sort_order', 'asc']]),
     optionalList('activity_banners', { is_enabled: true }, [['sort_order', 'asc']]),
-    list('activity_items', { status: _.neq('closed') }, [['start_at', 'asc']]).then(sortActivities),
+    optionalList('activity_items', {}, [['start_at', 'asc']]).then((rows) => (
+      sortActivities(rows.filter((row) => row.status !== 'closed'))
+    )),
     list('member_levels', { is_enabled: true }, [['sort_order', 'asc']]),
     list('member_level_benefits', { is_enabled: true }, [['sort_order', 'asc']]),
   ]);

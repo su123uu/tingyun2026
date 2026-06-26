@@ -6,6 +6,7 @@
     <text class="eyebrow">TINGYUN MEMBER</text>
     <text class="hero-title">停云会员</text>
     <text class="hero-copy">在山居的四时流转里，留一份属于常客的自在与礼遇。</text>
+    <button class="share-hero-btn" open-type="share">分享</button>
   </view>
 
   <view class="content">

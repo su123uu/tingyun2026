@@ -18,6 +18,10 @@ function now() {
   return new Date();
 }
 
+function userVisibleWhere(where = {}) {
+  return Object.assign({ user_deleted_at: _.exists(false) }, where);
+}
+
 function ok(data) {
   return { ok: true, data };
 }
@@ -376,16 +380,23 @@ function reservationPublicShape(order, type) {
   if (type === 'dining') {
     return Object.assign(common, {
       room_ids: order.room_ids || (order.room_id ? [order.room_id] : []),
+      room_name: order.room_name || '',
+      room_snapshots: order.room_snapshots || [],
       date: order.date || order.reservation_date || '',
       time_slot: order.time_slot || order.reservation_time || '',
       start_at: normalizeCloudDate(order.start_at),
       end_at: normalizeCloudDate(order.end_at),
       meal_standard_id: order.meal_standard_id || '',
       meal_standard_name: order.meal_standard_name || '',
+      meal_standard_snapshot: order.meal_standard_snapshot || {},
+      display_items: order.display_items || [],
     });
   }
   return Object.assign(common, {
     room_ids: order.room_ids || (order.room_id ? [order.room_id] : []),
+    room_name: order.room_name || '',
+    room_snapshots: order.room_snapshots || [],
+    display_items: order.display_items || [],
     check_in_date: order.check_in_date || order.checkin_date || '',
     check_out_date: order.check_out_date || order.checkout_date || '',
     nights: order.nights || 0,
@@ -569,6 +580,14 @@ async function createDiningReservation(input = {}, wxContext = {}) {
     mobile,
     room_ids: selectedIds,
     room_name: selectedRooms.map((room) => room.name).join('、'),
+    room_snapshots: selectedRooms.map((room) => ({
+      room_id: room.room_id,
+      name: room.name,
+      image: room.image || room.image_url || '',
+      image_url: room.image_url || room.image || '',
+      category: room.category || '',
+      capacity: room.max_capacity || 0,
+    })),
     date,
     time_slot: timeSlot,
     start_at: dateTime(date, slotTime[0]),
@@ -576,6 +595,19 @@ async function createDiningReservation(input = {}, wxContext = {}) {
     people_count: peopleCount,
     meal_standard_id: mealStandardId,
     meal_standard_name: standard.name || '',
+    meal_standard_snapshot: {
+      meal_standard_id: standard.meal_standard_id,
+      name: standard.name || '',
+      price_per_person: toNumber(standard.price_per_person, 0),
+      image: standard.image || standard.image_url || '',
+      image_url: standard.image_url || standard.image || '',
+    },
+    display_items: [{
+      id: selectedIds[0] || orderNo,
+      image: (selectedRooms[0] && (selectedRooms[0].image || selectedRooms[0].image_url)) || standard.image || standard.image_url || '',
+      name: selectedRooms.map((room) => room.name).join('、'),
+      meta: `${standard.name || ''} · ${peopleCount} 位`,
+    }],
     amount: peopleCount * toNumber(standard.price_per_person, 0),
     remark: cleanText(input.remark, 200),
     admin_remark: '',
@@ -700,6 +732,19 @@ async function createAccommodationReservation(input = {}, wxContext = {}) {
     mobile,
     room_ids: selectedIds,
     room_name: selectedRooms.map((room) => room.name).join('、'),
+    room_snapshots: selectedRooms.map((room) => ({
+      room_id: room.room_id,
+      name: room.name,
+      image: room.image || room.image_url || '',
+      image_url: room.image_url || room.image || '',
+      category: room.category || '',
+    })),
+    display_items: selectedRooms.map((room) => ({
+      id: room.room_id,
+      image: room.image || room.image_url || '',
+      name: room.name,
+      meta: room.category || '',
+    })),
     check_in_date: checkInDate,
     check_out_date: checkOutDate,
     people_count: peopleCount,
@@ -834,14 +879,13 @@ async function listReservations(input = {}, wxContext = {}) {
   const openid = wxContext.OPENID || '';
   const mobile = cleanText(input.mobile, 20);
   const where = openid ? { created_by_openid: openid } : (mobile ? { mobile } : {});
+  const visibleWhere = userVisibleWhere(where);
   const [diningRows, accommodationRows] = await Promise.all([
-    listCollection('dining_reservations', where, [['created_at', 'desc']]),
-    listCollection('accommodation_reservations', where, [['created_at', 'desc']]),
+    listCollection('dining_reservations', visibleWhere, [['created_at', 'desc']]),
+    listCollection('accommodation_reservations', visibleWhere, [['created_at', 'desc']]),
   ]);
-  const visibleDiningRows = diningRows.filter((row) => !row.user_deleted_at);
-  const visibleAccommodationRows = accommodationRows.filter((row) => !row.user_deleted_at);
-  return visibleDiningRows.map((row) => reservationPublicShape(row, 'dining'))
-    .concat(visibleAccommodationRows.map((row) => reservationPublicShape(row, 'accommodation')))
+  return diningRows.map((row) => reservationPublicShape(row, 'dining'))
+    .concat(accommodationRows.map((row) => reservationPublicShape(row, 'accommodation')))
     .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
 }
 

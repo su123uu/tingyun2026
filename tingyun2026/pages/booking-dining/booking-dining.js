@@ -48,16 +48,6 @@ function buildDateRangeMap(ranges) {
   return map;
 }
 
-function normalizeStandardDishes(dishes) {
-  if (!dishes || Array.isArray(dishes) || typeof dishes !== 'object') return [];
-  return Object.keys(dishes).map((name) => {
-    return {
-      name: String(name || '').trim(),
-      items: asArray(dishes[name]).map((item) => String(item || '').trim()).filter(Boolean),
-    };
-  }).filter((group) => group.name || group.items.length);
-}
-
 const today = startOfDay(new Date());
 const holidayTips = buildDateRangeMap([
   { start: '2026-01-01', end: '2026-01-03', label: '元旦' },
@@ -116,6 +106,10 @@ Page({
     remark: '',
     amount: 240,
     customerType: 'guest',
+    showPhoneAuth: false,
+    memberLevel: '',
+    memberLevelNo: '',
+    identityInitial: '停',
     submitting: false,
     navTop: 28,
     navHeight: 32,
@@ -135,9 +129,16 @@ Page({
       customerType: user.customer_type || 'guest',
       contact: user.nickname || user.customer_name || this.data.contact,
       mobile: user.mobile || this.data.mobile,
+      memberLevel: user.member_level || '',
+      memberLevelNo: user.member_level_no || '',
+      identityInitial: this.formatIdentityInitial(user.customer_type || 'guest', user),
     });
+    if (!user.mobile) {
+      this.setData({ showPhoneAuth: true });
+    }
     await this.loadContactProfile();
     const standards = await catalog.listDiningStandards({ forceRefresh: true });
+    console.info('用餐餐标读取结果', standards);
     this.setData({ standards: asArray(standards).map((standard) => {
       const img = standard.image || standard.image_url || STANDARD_IMAGE;
       const hasImage = !!(standard.image || standard.image_url);
@@ -145,7 +146,7 @@ Page({
         image: img,
         hasImage,
         initial: (standard.name || '').charAt(0),
-        dishes: normalizeStandardDishes(standard.dishes),
+        dishes: asArray(standard.dishes),
       });
     }) });
     await this.refreshRooms();
@@ -202,6 +203,22 @@ Page({
       delta: 1,
       fail: () => wx.switchTab({ url: '/pages/booking/booking' }),
     });
+  },
+  onShow() {
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
+  },
+  onShareAppMessage() {
+    return {
+      title: '停云山居 · 山间的一餐',
+      path: '/pages/booking-dining/booking-dining',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '停云山居 · 山间的一餐',
+    };
   },
   openCalendar() { this.setData({ calendarVisible: true }); },
   closeCalendar() { this.setData({ calendarVisible: false }); },
@@ -285,12 +302,13 @@ Page({
   openStandardDetail(event) {
     const selectedStandard = this.data.standards.find((standard) => standard.meal_standard_id === event.currentTarget.dataset.id);
     if (selectedStandard) {
-      if (!selectedStandard.dishes || Array.isArray(selectedStandard.dishes) || typeof selectedStandard.dishes !== 'object') {
-        console.warn('餐标菜品需使用 dishes: { "凉菜": ["菜名1", "菜名2"] } 结构，当前数据：', selectedStandard.dishes);
+      const rawDishes = selectedStandard.raw_dishes;
+      if (!rawDishes || Array.isArray(rawDishes) || typeof rawDishes !== 'object') {
+        console.warn('餐标菜品需使用 dishes: { "凉菜": ["菜名1", "菜名2"] } 结构，当前数据：', rawDishes);
       }
       this.setData({
         selectedStandard,
-        selectedStandardDishes: normalizeStandardDishes(selectedStandard.dishes),
+        selectedStandardDishes: asArray(selectedStandard.dishes),
         showStandardDetail: true,
       });
     }
@@ -371,6 +389,43 @@ Page({
         },
       }));
     });
+  },
+  formatIdentityInitial(type, source = {}) {
+    if (type !== 'member') return '停';
+    const name = source.nickname || source.customer_name || source.member_name || '';
+    return String(name).trim().charAt(0) || '会';
+  },
+  cancelPhoneAuth() {
+    this.setData({ showPhoneAuth: false, customerType: 'guest', identityInitial: '停' });
+  },
+  async onGetPhoneNumber(event) {
+    const detail = event.detail;
+    if (!detail.code) {
+      this.toast('未完成手机号授权');
+      return;
+    }
+    try {
+      wx.showLoading({ title: '身份识别中' });
+      const user = await auth.bindMobile({ phoneCode: detail.code });
+      wx.hideLoading();
+      this.setData({
+        showPhoneAuth: false,
+        customerType: user.customer_type || 'guest',
+        contact: user.nickname || user.customer_name || this.data.contact,
+        mobile: user.mobile || this.data.mobile,
+        memberLevel: user.member_level || '',
+        memberLevelNo: user.member_level_no || '',
+        identityInitial: this.formatIdentityInitial(user.customer_type || 'guest', user),
+      });
+      if (user.customer_type === 'member') {
+        this.toast('会员识别成功 · ' + (user.member_level || ''), 'success');
+      } else {
+        this.toast('暂未匹配到会员，以访客身份继续');
+      }
+    } catch (error) {
+      wx.hideLoading();
+      this.toast(error.message || '手机号授权失败');
+    }
   },
   toast(title) { wx.showToast({ title, icon: 'none' }); },
 });

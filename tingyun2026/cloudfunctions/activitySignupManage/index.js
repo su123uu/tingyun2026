@@ -14,6 +14,10 @@ function now() {
   return new Date();
 }
 
+function userVisibleWhere(where = {}) {
+  return Object.assign({ user_deleted_at: _.exists(false) }, where);
+}
+
 function ok(data) {
   return { ok: true, data };
 }
@@ -425,6 +429,7 @@ function signupPublicShape(signup, activity) {
     remark: signup.remark || '',
     admin_remark: signup.admin_remark || '',
     unit_price: signup.unit_price || 0,
+    display_items: signup.display_items || [],
     can_cancel: toNumber(signup.amount, 0) <= 0 && signup.signup_status !== 'cancelled',
     created_at: normalizeCloudDate(signup.created_at),
     updated_at: normalizeCloudDate(signup.updated_at),
@@ -497,6 +502,12 @@ async function createSignup(input = {}, wxContext = {}) {
     remark,
     admin_remark: '',
     success_notice_remark: cleanText(activity.success_notice_remark, 200),
+    display_items: [{
+      id: activity.activity_id,
+      image: activity.image_url || '',
+      name: activity.title,
+      meta: `${displayTime.time} · ${activity.location || ''}`,
+    }],
     created_by_openid: wxContext.OPENID || '',
     created_at: now(),
     updated_at: now(),
@@ -644,16 +655,8 @@ async function listSignups(input = {}, wxContext = {}) {
   const openid = wxContext.OPENID || '';
   const mobile = cleanText(input.mobile, 20);
   const where = openid ? { created_by_openid: openid } : (mobile ? { mobile } : {});
-  const rows = (await listCollection('activity_signups', where, [['created_at', 'desc']]))
-    .filter((row) => !row.user_deleted_at);
-  const activityIds = Array.from(new Set(rows.map((row) => row.activity_id).filter(Boolean)));
-  const activityMap = {};
-  await Promise.all(activityIds.map(async (activityId) => {
-    try {
-      activityMap[activityId] = await findActivity(activityId);
-    } catch (error) {}
-  }));
-  return rows.map((row) => signupPublicShape(row, activityMap[row.activity_id]));
+  const rows = await listCollection('activity_signups', userVisibleWhere(where), [['created_at', 'desc']]);
+  return rows.map((row) => signupPublicShape(row));
 }
 
 exports.main = async (event = {}) => {

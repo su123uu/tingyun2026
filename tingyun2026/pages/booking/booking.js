@@ -14,7 +14,23 @@ Page({
     } catch (error) {}
     this.setData({ navTop, navHeight });
   },
-  onShow() { if (this.getTabBar()) this.getTabBar().setData({ selected: 3 }); },
+  onShow() {
+    if (this.getTabBar()) this.getTabBar().setData({ selected: 3 });
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
+  },
+  onShareAppMessage() {
+    return {
+      title: '停云山居 · 提前预约，尊享最佳体验',
+      path: '/pages/booking/booking',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '停云山居 · 提前预约，尊享最佳体验',
+    };
+  },
   goDining() { wx.navigateTo({ url: '/pages/booking-dining/booking-dining' }); },
   goStay() { wx.navigateTo({ url: '/pages/booking-accommodation/booking-accommodation' }); },
   consult(event) {

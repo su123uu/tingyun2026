@@ -9,6 +9,20 @@
   </view>
   <view style="height: {{heroSpacerHeight}}px;"></view>
 
+  <view wx:if="{{showPhoneAuth}}" class="phone-auth-mask" bindtap="cancelPhoneAuth"></view>
+  <view wx:if="{{showPhoneAuth}}" class="phone-auth-dialog" catchtap="stop">
+    <view class="auth-head">
+      <strong>会员身份识别</strong>
+      <text bindtap="cancelPhoneAuth">×</text>
+    </view>
+    <view class="auth-body">
+      <text class="auth-desc">授权手机号，为您匹配停云山居会员身份</text>
+      <text class="auth-note">会员可享专属权益</text>
+    </view>
+    <button class="auth-phone-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">授权手机号 · 使用积分抵扣</button>
+    <view class="auth-skip" bindtap="cancelPhoneAuth">跳过，以访客身份继续</view>
+  </view>
+
   <text class="section-title">选择日期</text>
   <view class="date-card card" bindtap="openCalendar">
     <view class="date-col">

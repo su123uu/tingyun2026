@@ -61,6 +61,7 @@
 
   <view class="fixed-action">
     <button class="action-button secondary" bindtap="contact">联系客服</button>
+    <button class="action-button share-button" open-type="share">分享</button>
     <button class="action-button" disabled="{{!activity.can_signup}}" bindtap="signup">{{activity.button_text}}</button>
   </view>
 </view>

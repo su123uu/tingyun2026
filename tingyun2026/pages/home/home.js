@@ -8,6 +8,9 @@ Page({
   },
   onShow() {
     if (this.getTabBar()) this.getTabBar().setData({ selected: 0 });
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
   },
   changeBanner(event) { this.setData({ activeBanner: this.data.home.banners[event.detail.current] || {} }); },
   goEntry(event) {
@@ -21,4 +24,17 @@ Page({
   goBooking() { wx.switchTab({ url: '/pages/booking/booking' }); },
   goIntro() { wx.switchTab({ url: '/pages/intro/intro' }); },
   goActivities() { wx.navigateTo({ url: '/pages/activity-list/activity-list' }); },
+  onShareAppMessage() {
+    const banner = this.data.activeBanner || {};
+    return {
+      title: banner.title ? `${banner.title} · 停云山居` : '停云山居，山间的一处自在',
+      path: '/pages/home/home',
+    };
+  },
+  onShareTimeline() {
+    const banner = this.data.activeBanner || {};
+    return {
+      title: banner.title ? `${banner.title} · 停云山居` : '停云山居，山间的一处自在',
+    };
+  },
 });

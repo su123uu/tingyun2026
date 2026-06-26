@@ -115,6 +115,7 @@ Page({
     this.setNavigationMetrics();
   },
   async onShow() {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     const [user, signups] = await Promise.all([
       auth.getCurrentUser(),
       activitySignups.listSignups(),
@@ -203,5 +204,17 @@ Page({
         }
       },
     });
+  },
+  onShareAppMessage() {
+    return {
+      title: '停云山居 · 常客的礼遇与自在',
+      path: '/pages/member-center/member-center',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '停云山居 · 常客的礼遇与自在',
+      query: '',
+    };
   },
 });

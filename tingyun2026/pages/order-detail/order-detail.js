@@ -141,6 +141,22 @@ Page({
       wx.redirectTo({ url: '/pages/orders/orders' });
     }, 800);
   },
+  onShow() {
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
+  },
+  onShareAppMessage() {
+    return {
+      title: '停云山居 · 山间的一处自在',
+      path: '/pages/home/home',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '停云山居 · 山间的一处自在',
+    };
+  },
   async addMeal() {
     const order = this.data.order;
     if (!order || !order.can_add_meal) {

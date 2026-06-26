@@ -25,6 +25,9 @@ Page({
   onLoad() {
     this.setNavigationMetrics();
   },
+  onShow() {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+  },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
     let navTop = (windowInfo.statusBarHeight || 20) + 6;
@@ -46,5 +49,17 @@ Page({
   },
   contact() {
     wx.makePhoneCall({ phoneNumber: '15192670475' });
+  },
+  onShareAppMessage() {
+    return {
+      title: '在山居的四时流转里，留一份属于常客的自在与礼遇',
+      path: '/pages/member/member',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '在山居的四时流转里，留一份属于常客的自在与礼遇',
+      query: '',
+    };
   },
 });

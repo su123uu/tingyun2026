@@ -16,6 +16,10 @@ function now() {
   return new Date();
 }
 
+function userVisibleWhere(where = {}) {
+  return Object.assign({ is_deleted: _.neq(true), user_deleted_at: _.exists(false) }, where);
+}
+
 function ok(data) {
   return { ok: true, data };
 }
@@ -462,10 +466,19 @@ async function getMenuItemsByIds(ids) {
 
 async function buildOrderItems(cartItems = []) {
   const merged = {};
+  const submittedSnapshots = {};
   cartItems.forEach((entry) => {
     const itemId = cleanText(entry.item_id, 80);
     const quantity = Math.floor(toNumber(entry.quantity, 0));
-    if (itemId && quantity > 0) merged[itemId] = (merged[itemId] || 0) + quantity;
+    if (itemId && quantity > 0) {
+      merged[itemId] = (merged[itemId] || 0) + quantity;
+      if (!submittedSnapshots[itemId]) {
+        submittedSnapshots[itemId] = {
+          image: cleanText(entry.image || entry.image_url, 500),
+          image_url: cleanText(entry.image_url || entry.image, 500),
+        };
+      }
+    }
   });
   const ids = Object.keys(merged);
   assert(ids.length, 'EMPTY_CART', '购物车为空');
@@ -481,6 +494,9 @@ async function buildOrderItems(cartItems = []) {
       ? regularPrice
       : toNumber(item.member_price, regularPrice);
     const quantity = merged[itemId];
+    const submitted = submittedSnapshots[itemId] || {};
+    const image = cleanText(item.image || item.image_url || submitted.image || submitted.image_url, 500);
+    const imageUrl = cleanText(item.image_url || item.image || submitted.image_url || submitted.image, 500);
     return {
       item_id: itemId,
       category_key: item.category_key || '',
@@ -489,7 +505,8 @@ async function buildOrderItems(cartItems = []) {
       price: regularPrice,
       regular_price: regularPrice,
       member_price: memberPriceValue,
-      image: item.image || item.image_url || '',
+      image,
+      image_url: imageUrl || image,
       quantity,
       amount: regularPrice * quantity,
       regular_amount: regularPrice * quantity,
@@ -902,7 +919,7 @@ async function listMealOrders(input = {}, wxContext = {}) {
   const openid = wxContext.OPENID || '';
   if (!openid) {
     const result = await db.collection('meal_orders')
-      .where({ is_deleted: _.neq(true) })
+      .where(userVisibleWhere())
       .orderBy('created_at', 'desc')
       .limit(100)
       .get();
@@ -912,12 +929,12 @@ async function listMealOrders(input = {}, wxContext = {}) {
 
   const [submitterResult, checkoutResult] = await Promise.all([
     db.collection('meal_orders')
-      .where({ is_deleted: _.neq(true), notification_openid: openid })
+      .where(userVisibleWhere({ notification_openid: openid }))
       .orderBy('created_at', 'desc')
       .limit(100)
       .get(),
     db.collection('meal_orders')
-      .where({ is_deleted: _.neq(true), checkout_openid: openid })
+      .where(userVisibleWhere({ checkout_openid: openid }))
       .orderBy('created_at', 'desc')
       .limit(100)
       .get(),
@@ -934,7 +951,7 @@ async function listMealOrders(input = {}, wxContext = {}) {
   for (let index = 0; index < sessionIds.length; index += 20) {
     const batchIds = sessionIds.slice(index, index + 20);
     const batchResult = await db.collection('meal_orders')
-      .where({ is_deleted: _.neq(true), session_id: _.in(batchIds) })
+      .where(userVisibleWhere({ session_id: _.in(batchIds) }))
       .orderBy('created_at', 'asc')
       .limit(100)
       .get();
@@ -962,7 +979,7 @@ async function getMealOrderDetail(input = {}, wxContext = {}) {
     || canViewBySession
     || orders.some((order) => order.notification_openid === openid || order.checkout_openid === openid);
   assert(canView, 'FORBIDDEN', '无权查看该订单');
-  assert(!primary.user_deleted_at || canView, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
+  assert(!primary.user_deleted_at, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
   return hydrateMealOrder(primary, orders);
 }
 

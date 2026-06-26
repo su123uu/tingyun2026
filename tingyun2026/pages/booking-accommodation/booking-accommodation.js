@@ -108,6 +108,10 @@ Page({
     amount: 0,
     nights: 1,
     customerType: 'guest',
+    showPhoneAuth: false,
+    memberLevel: '',
+    memberLevelNo: '',
+    identityInitial: '停',
     submitting: false,
     navTop: 28,
     navHeight: 32,
@@ -124,10 +128,16 @@ Page({
     this.setNavigationMetrics();
     const user = await auth.getCurrentUser();
     this.setData({
-      customerType: user.customer_type,
+      customerType: user.customer_type || 'guest',
       contact: user.nickname || user.customer_name || this.data.contact,
       mobile: user.mobile || this.data.mobile,
+      memberLevel: user.member_level || '',
+      memberLevelNo: user.member_level_no || '',
+      identityInitial: this.formatIdentityInitial(user.customer_type || 'guest', user),
     });
+    if (!user.mobile) {
+      this.setData({ showPhoneAuth: true });
+    }
     await this.loadContactProfile();
     await this.refreshRooms();
   },
@@ -182,6 +192,22 @@ Page({
       delta: 1,
       fail: () => wx.switchTab({ url: '/pages/booking/booking' }),
     });
+  },
+  onShow() {
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
+  },
+  onShareAppMessage() {
+    return {
+      title: '停云山居 · 山居的一宿',
+      path: '/pages/booking-accommodation/booking-accommodation',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '停云山居 · 山居的一宿',
+    };
   },
   openCalendar() { this.setData({ calendarVisible: true }); },
   closeCalendar() { this.setData({ calendarVisible: false }); },
@@ -336,6 +362,44 @@ Page({
         },
       }));
     });
+  },
+  formatIdentityInitial(type, source = {}) {
+    if (type !== 'member') return '停';
+    const name = source.nickname || source.customer_name || source.member_name || '';
+    return String(name).trim().charAt(0) || '会';
+  },
+  cancelPhoneAuth() {
+    this.setData({ showPhoneAuth: false, customerType: 'guest', identityInitial: '停' });
+  },
+  async onGetPhoneNumber(event) {
+    const detail = event.detail;
+    if (!detail.code) {
+      this.toast('未完成手机号授权');
+      return;
+    }
+    try {
+      wx.showLoading({ title: '身份识别中' });
+      const user = await auth.bindMobile({ phoneCode: detail.code });
+      wx.hideLoading();
+      this.setData({
+        showPhoneAuth: false,
+        customerType: user.customer_type || 'guest',
+        contact: user.nickname || user.customer_name || this.data.contact,
+        mobile: user.mobile || this.data.mobile,
+        memberLevel: user.member_level || '',
+        memberLevelNo: user.member_level_no || '',
+        identityInitial: this.formatIdentityInitial(user.customer_type || 'guest', user),
+      });
+      if (user.customer_type === 'member') {
+        this.toast('会员识别成功 · ' + (user.member_level || ''), 'success');
+        this.total();
+      } else {
+        this.toast('暂未匹配到会员，以访客身份继续');
+      }
+    } catch (error) {
+      wx.hideLoading();
+      this.toast(error.message || '手机号授权失败');
+    }
   },
   toast(title) { wx.showToast({ title, icon: 'none' }); },
 });

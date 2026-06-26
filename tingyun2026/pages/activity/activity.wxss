@@ -38,7 +38,8 @@
 .info-label { flex: none; color: #7C8A8C; }
 .copy { padding: 28rpx; color: #4A4A4A; font-size: 26rpx; line-height: 1.9; }
 .copy text + text { margin-top: 20rpx; }
-.fixed-action { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 24rpx; padding: 24rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid rgba(26, 26, 26, .07); background: rgba(255, 255, 255, .96); backdrop-filter: blur(24rpx); }
+.fixed-action { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 20rpx; padding: 24rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid rgba(26, 26, 26, .07); background: rgba(255, 255, 255, .96); backdrop-filter: blur(24rpx); }
 .action-button { display: flex; min-height: 84rpx; flex: 1; align-items: center; justify-content: center; margin: 0; border-radius: 20rpx; color: #FFFFFF; background: #4F6F52; font-size: 28rpx; font-weight: 700; line-height: 84rpx; }
 .action-button.secondary { border: 1rpx solid rgba(79, 111, 82, .25); color: #4F6F52; background: #FFFFFF; }
+.action-button.share-button { flex: 0 0 160rpx; border: 1rpx solid rgba(79, 111, 82, .25); color: #4F6F52; background: #FFFFFF; }
 .action-button[disabled] { color: #FFFFFF; background: #BBBBBB; }

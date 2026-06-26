@@ -1,5 +1,4 @@
 const reservations = require('../../services/reservation');
-const catalog = require('../../services/catalog');
 
 const statuses = {
   pending_payment: { text: '待支付', desc: '待支付订单不占用房间，支付成功后将提交客服确认。' },
@@ -34,26 +33,21 @@ function formatTime(value) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function roomNames(order, rooms) {
-  return rooms
-    .filter((room) => (order.room_ids || []).includes(room.room_id))
-    .map((room) => `${room.name} · ${room.category}`)
-    .join('、') || '详询客服';
+function roomNames(order) {
+  const snapshots = order.room_snapshots || [];
+  if (snapshots.length) {
+    return snapshots.map((room) => `${room.name} · ${room.category || ''}`).filter(Boolean).join('、');
+  }
+  return order.room_name || '详询客服';
 }
 
 Page({
   data: { order: null, navTop: 28, navHeight: 32 },
   async onLoad(options) {
     this.setNavigationMetrics();
-    const [order, diningRooms, accommodationRooms, standards] = await Promise.all([
-      reservations.getReservationDetail({ order_no: options.id }),
-      catalog.listDiningRooms(),
-      catalog.listAccommodationRooms(),
-      catalog.listDiningStandards(),
-    ]);
-    const rooms = diningRooms.concat(accommodationRooms);
+    const order = await reservations.getReservationDetail({ order_no: options.id });
     const status = statuses[order.reservation_status] || { text: order.reservation_status, desc: '' };
-    const standard = standards.find((item) => item.meal_standard_id === order.meal_standard_id);
+    const standard = order.meal_standard_snapshot || {};
     const isDining = order.reservation_type === 'dining';
     this.setData({
       order: Object.assign({}, order, {
@@ -68,9 +62,9 @@ Page({
         reservation_label: isDining ? '用餐预订' : '住宿预订',
         detail_title: isDining ? '餐厅信息' : '住宿信息',
         room_label: isDining ? '包间' : '房间',
-        room_names: roomNames(order, rooms),
+        room_names: roomNames(order),
         time_slot_text: timeSlots[order.time_slot] || order.time_slot,
-        standard_text: standard ? `${standard.name} · ¥${standard.price_per_person}/位` : '详询客服',
+        standard_text: standard.name ? `${standard.name} · ¥${standard.price_per_person}/位` : (order.meal_standard_name ? `${order.meal_standard_name}` : '详询客服'),
         created_text: formatTime(order.created_at),
         remark_text: order.remark || '无',
       }),
@@ -94,6 +88,50 @@ Page({
       delta: 1,
       fail: () => wx.navigateTo({ url: '/pages/orders/orders' }),
     });
+  },
+  onShow() {
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
+  },
+  onShareAppMessage() {
+    const order = this.data.order;
+    let title = '停云山居·山里请 云上坐';
+    let imageUrl = '';
+    if (order) {
+      const isDining = order.reservation_type === 'dining';
+      const summary = isDining ? '山间的一餐' : '山居的一宿';
+      const statusText = (order.status_text || '').replace(/预订/, '').trim();
+      const roomText = order.room_names ? `，${order.room_names}` : '';
+      title = `我在停云山居预订${summary}${roomText} · ${statusText || '已下单'}`;
+      const firstSnapshot = (order.room_snapshots || [])[0];
+      if (firstSnapshot && firstSnapshot.image_url) {
+        imageUrl = firstSnapshot.image_url;
+      }
+    }
+    return {
+      title: title.length > 30 ? title.slice(0, 30) : title,
+      path: '/pages/home/home',
+      imageUrl,
+    };
+  },
+  onShareTimeline() {
+    const order = this.data.order;
+    let title = '停云山居·山里请 云上坐';
+    let query = '';
+    if (order) {
+      const isDining = order.reservation_type === 'dining';
+      const summary = isDining ? '山间的一餐' : '山居的一宿';
+      const statusText = (order.status_text || '').replace(/预订/, '').trim();
+      title = `我在停云山居预订${summary} · ${statusText || '已下单'}`;
+      if (order.order_no) {
+        query = `id=${order.order_no}`;
+      }
+    }
+    return {
+      title: title.length > 30 ? title.slice(0, 30) : title,
+      query,
+    };
   },
   contact() { wx.makePhoneCall({ phoneNumber: '15192670475' }); },
   async pay() {

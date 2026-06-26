@@ -101,13 +101,16 @@ Page({
   async onLoad(options) {
     this.setNavigationMetrics();
     const scene = parseScene(options.scene);
-    const activityId = options.id || options.activity_id || scene.a || scene.activity_id || '';
+    const activityId = options.id || options.a || options.activity_id || scene.a || scene.activity_id || '';
     const [activity, user, signups] = await Promise.all([
       service.getActivityDetail({ activity_id: activityId }),
       auth.getCurrentUser().catch(() => ({})),
       service.listSignups().catch(() => []),
     ]);
     this.setData({ activity: decorateActivity(activity, user, signups) });
+  },
+  onShow() {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
   },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -135,5 +138,23 @@ Page({
     }
     if (!this.data.activity.can_signup) return;
     wx.navigateTo({ url: `/pages/activity-signup/activity-signup?id=${this.data.activity.activity_id}` });
+  },
+  onShareAppMessage() {
+    const activity = this.data.activity || {};
+    const activityId = activity.activity_id || '';
+    const baseTitle = (activity.title || '停云山居活动').slice(0, 20);
+    return {
+      title: `${baseTitle} · 停云山居`,
+      path: activityId ? `/pages/activity/activity?a=${activityId}` : '/pages/activity/activity',
+    };
+  },
+  onShareTimeline() {
+    const activity = this.data.activity || {};
+    const activityId = activity.activity_id || '';
+    const baseTitle = (activity.title || '停云山居活动').slice(0, 20);
+    return {
+      title: `${baseTitle} · 停云山居`,
+      query: activityId ? `a=${activityId}` : '',
+    };
   },
 });

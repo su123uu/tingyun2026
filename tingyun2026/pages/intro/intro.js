@@ -39,6 +39,22 @@ Page({
 
   onShow() {
     if (this.getTabBar()) this.getTabBar().setData({ selected: 2 });
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
+  },
+
+  onShareAppMessage() {
+    return {
+      title: '停云山居·山里请 云上坐',
+      path: '/pages/intro/intro',
+    };
+  },
+
+  onShareTimeline() {
+    return {
+      title: '停云山居·山里请 云上坐',
+    };
   },
 
   async loadPage() {
@@ -58,7 +74,7 @@ Page({
 
   copyContact() {
     wx.setClipboardData({
-      data: '成龙 18253287888',
+      data: '椿枫 15192670475',
       success: () => wx.showToast({ title: '联系方式已复制', icon: 'success' }),
     });
   },

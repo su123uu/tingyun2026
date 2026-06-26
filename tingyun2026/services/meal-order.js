@@ -62,6 +62,14 @@ function aggregateItems(batches = []) {
   return Object.keys(map).map((itemId) => map[itemId]);
 }
 
+function itemSnapshot(item = {}) {
+  const image = item.image || item.image_url || '';
+  return Object.assign({}, item, {
+    image,
+    image_url: item.image_url || image,
+  });
+}
+
 function normalizeOrder(order) {
   const batches = (order.batches || []).map((batch, index) => {
     const batchNo = Number(batch.batch_no) || index + 1;
@@ -114,7 +122,7 @@ async function localCreateMealOrder(input = {}) {
     batch_type: batchNo === 1 ? 'primary' : 'append',
     batch_title: batchTitle(batchNo),
     order_no: orderNo,
-    items: currentCart.items,
+    items: currentCart.items.map(itemSnapshot),
     amount: regularAmount,
     regular_amount: regularAmount,
     member_amount: memberAmount,
@@ -174,7 +182,12 @@ async function createMealOrder(input = {}) {
   try {
     const order = await callMealCloud('createMealOrder', {
       session_id: session.session_id,
-      items: currentCart.items.map((item) => ({ item_id: item.item_id, quantity: item.quantity })),
+      items: currentCart.items.map((item) => ({
+        item_id: item.item_id,
+        quantity: item.quantity,
+        image: item.image || item.image_url || '',
+        image_url: item.image_url || item.image || '',
+      })),
       remark: input.remark || '',
       quick_remarks: input.quick_remarks || [],
       mobile: input.customer_mobile || user.mobile || '',

@@ -57,6 +57,9 @@ Page({
     this.setNavigationMetrics();
   },
   async onShow() {
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
     const [activities, banners] = await Promise.all([
       service.listActivities(),
       service.listActivityBanners(),
@@ -84,6 +87,17 @@ Page({
       heroKicker: 'TINGYUN ACTIVITIES',
       heroTitle: '山中有会，茶席相逢',
     });
+  },
+  onShareAppMessage() {
+    return {
+      title: '停云山居 · 山中有会，茶席相逢',
+      path: '/pages/activity-list/activity-list',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '停云山居 · 山中有会，茶席相逢',
+    };
   },
   setNavigationMetrics() {
     const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();

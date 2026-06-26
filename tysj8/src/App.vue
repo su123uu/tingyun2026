@@ -122,6 +122,7 @@ const state = reactive({
     rows: [],
     filter: 'all',
   },
+  orderSearchKeyword: '',
   memberManage: {
     levels: [],
     levelBenefits: [],
@@ -212,6 +213,7 @@ const isMemberLevelsModule = computed(() => activeModule.value.key === 'member_l
 const isActivitySignupsModule = computed(() => activeModule.value.key === 'activity_signups');
 const isRoomCatalogModule = computed(() => isDiningRoomsModule.value || isAccommodationRoomsModule.value);
 const isSortableTableModule = computed(() => isBannerModule.value || isMealItemsModule.value || isRoomCatalogModule.value);
+const isAdminSearchableModule = computed(() => [RESERVATIONS_KEY, 'meal_orders', 'activity_signups'].includes(activeModule.value.key));
 const memberLevelOptions = computed(() => state.memberManage.levels
   .slice()
   .sort(compareSortOrder)
@@ -1568,6 +1570,17 @@ function closeDrawer() {
   state.editingCollection = '';
 }
 
+function adminSearchPayload() {
+  const keyword = String(state.orderSearchKeyword || '').trim();
+  return isAdminSearchableModule.value && keyword ? { keyword } : {};
+}
+
+async function clearOrderSearch() {
+  if (!state.orderSearchKeyword) return;
+  state.orderSearchKeyword = '';
+  await loadRows();
+}
+
 async function loadRows() {
   if (!state.loggedIn) return;
   if (isOverview.value) {
@@ -1596,6 +1609,7 @@ async function loadRows() {
     const data = await callAdmin('list', {
       collection: activeModule.value.key,
       page_size: 100,
+      ...adminSearchPayload(),
     });
     state.rows = data.rows || [];
     setStatus('已连接', 'ok');
@@ -1705,9 +1719,10 @@ async function loadReservations() {
   state.loading = true;
   setStatus('连接中', 'muted');
   try {
+    const searchPayload = adminSearchPayload();
     const [diningReservations, accommodationReservations] = await Promise.all([
-      callAdmin('list', { collection: 'dining_reservations', page_size: 100 }),
-      callAdmin('list', { collection: 'accommodation_reservations', page_size: 100 }),
+      callAdmin('list', { collection: 'dining_reservations', page_size: 100, ...searchPayload }),
+      callAdmin('list', { collection: 'accommodation_reservations', page_size: 100, ...searchPayload }),
     ]);
     state.reservations.rows = [
       ...(diningReservations.rows || []).map((row) => normalizeReservationRow(row, 'dining', 'dining_reservations')),
@@ -3582,6 +3597,15 @@ onUnmounted(() => {
               {{ state.loading ? '正在读取数据。' : `共 ${tableRows.length} 条记录。` }}
             </p>
           </div>
+          <form v-if="isAdminSearchableModule" class="order-search" @submit.prevent="loadRows">
+            <input
+              v-model="state.orderSearchKeyword"
+              type="search"
+              placeholder="订单号 / 手机号 / 姓名"
+            />
+            <button class="btn secondary compact-btn" type="button" :disabled="state.loading" @click="clearOrderSearch">清空</button>
+            <button class="btn primary compact-btn" type="submit" :disabled="state.loading">查询</button>
+          </form>
         </div>
 
         <div v-if="isMealItemsModule" class="meal-filter-tabs">

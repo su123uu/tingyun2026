@@ -45,10 +45,14 @@
       <view class="list-main"><view class="list-icon"><t-icon name="info-circle" size="34rpx" /></view><text>关于我们</text></view>
       <t-icon class="chevron" name="chevron-right" size="32rpx" />
     </view>
+    <button class="list-item list-item-share" open-type="share">
+      <view class="list-main"><view class="list-icon gold"><t-icon name="share" size="34rpx" /></view><text>分享给朋友</text></view>
+      <t-icon class="chevron" name="chevron-right" size="32rpx" />
+    </button>
     <view wx:if="{{isStaff}}" class="list-item" bindtap="settings">
       <view class="list-main"><view class="list-icon"><t-icon name="setting" size="34rpx" /></view><text>设置</text></view>
       <t-icon class="chevron" name="chevron-right" size="32rpx" />
     </view>
   </view>
-  <text class="version">停云山居 v1.0.0</text>
+  <text class="version">山里请 云上坐</text>
 </view>

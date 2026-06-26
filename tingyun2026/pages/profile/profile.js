@@ -6,6 +6,7 @@ Page({
   },
   async onShow() {
     if(this.getTabBar()) this.getTabBar().setData({selected:4});
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     this.applyUser(await auth.getCurrentUser());
   },
   async bindMember(event) {
@@ -42,4 +43,16 @@ Page({
     wx.navigateTo({url:'/pages/staff-settings/staff-settings'});
   },
   contact() { wx.makePhoneCall({phoneNumber:'15192670475'}); },
+  onShareAppMessage() {
+    return {
+      title: '停云山居，山间的一处自在',
+      path: '/pages/profile/profile',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '停云山居，山间的一处自在',
+      query: '',
+    };
+  },
 });

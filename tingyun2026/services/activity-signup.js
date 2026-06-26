@@ -137,6 +137,7 @@ function signupPublicShape(signup, activity) {
     people_count: peopleCount,
     participant_count: peopleCount,
     unit_price: signup.unit_price || 0,
+    display_items: signup.display_items || [],
     can_cancel: (Number(signup.amount) || 0) <= 0 && signup.signup_status !== 'cancelled',
   });
 }
@@ -217,6 +218,12 @@ async function createSignup(input) {
     signup_status: 'pending_confirmation',
     payment_status: requiresWechatPay ? 'pending_wechat_pay' : customerType === 'member' ? 'offline_pending' : 'settled',
     remark: input.remark || '',
+    display_items: [{
+      id: activity.activity_id,
+      image: activity.image_url || '',
+      name: activity.title,
+      meta: `${displayTime.time} · ${activity.location || ''}`,
+    }],
     created_at: new Date().toISOString(),
   };
   const items = get();
@@ -261,10 +268,9 @@ async function deleteSignup(input) {
 }
 
 async function listSignups() {
-  const source = await listActivitySource();
   return get()
     .filter((signup) => !signup.user_deleted_at)
-    .map((signup) => signupPublicShape(signup, source.find((activity) => activity.activity_id === signup.activity_id)));
+    .map((signup) => signupPublicShape(signup));
 }
 
 const localActivitySignup = {

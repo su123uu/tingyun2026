@@ -1104,6 +1104,24 @@ p {
   margin-top: 16px;
 }
 
+.order-search {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 280px;
+}
+
+.order-search input {
+  width: min(320px, 52vw);
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--text);
+  background: #fff;
+}
+
 .calendar-filter-tabs .filter-tab.dining.active {
   border-color: rgba(71, 106, 80, 0.3);
   color: var(--green-deep);

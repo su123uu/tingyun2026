@@ -14,6 +14,12 @@ const RESERVATION_COLLECTIONS = ['dining_reservations', 'accommodation_reservati
 const ADMIN_RESERVATION_STATUSES = ['confirmed', 'rejected', 'cancelled'];
 const ADMIN_ACTIVITY_SIGNUP_STATUSES = ['confirmed', 'cancelled', 'completed'];
 const ADMIN_MEAL_ORDER_STATUSES = ['preparing', 'completed'];
+const ADMIN_SEARCH_FIELDS = {
+  meal_orders: ['order_no', 'order_id', 'table_id', 'table_name', 'customer_name', 'customer_mobile', 'checkout_customer_name', 'checkout_customer_mobile'],
+  dining_reservations: ['order_no', 'contact_name', 'mobile', 'room_name'],
+  accommodation_reservations: ['order_no', 'contact_name', 'mobile', 'room_name'],
+  activity_signups: ['order_no', 'signup_id', 'activity_title', 'contact_name', 'contact_mobile'],
+};
 const IMAGE_TYPES = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -687,13 +693,29 @@ async function list(event) {
   if (!moduleConfig) return fail('不支持的管理集合。', 'UNKNOWN_COLLECTION');
 
   const pageSize = Math.min(Math.max(Number(event.page_size) || 100, 1), 100);
+  const keyword = cleanText(event.keyword || event.search, 120);
+  const searchFields = keyword ? (ADMIN_SEARCH_FIELDS[event.collection] || []) : [];
   let result;
   try {
-    result = await db.collection(event.collection)
-      .where({ is_deleted: _.neq(true) })
-      .orderBy(moduleConfig.sort || 'updated_at', moduleConfig.sort === 'created_at' || moduleConfig.sort === 'updated_at' ? 'desc' : 'asc')
-      .limit(pageSize)
-      .get();
+    if (searchFields.length) {
+      const searchResults = await Promise.all(searchFields.map((field) => db.collection(event.collection)
+        .where({ is_deleted: _.neq(true), [field]: keyword })
+        .limit(pageSize)
+        .get()));
+      const rowMap = new Map();
+      searchResults.forEach((item) => {
+        (item.data || []).forEach((row) => {
+          rowMap.set(row._id || `${event.collection}-${row[moduleConfig.key] || row.order_no || row.signup_id}`, row);
+        });
+      });
+      result = { data: Array.from(rowMap.values()).slice(0, pageSize) };
+    } else {
+      result = await db.collection(event.collection)
+        .where({ is_deleted: _.neq(true) })
+        .orderBy(moduleConfig.sort || 'updated_at', moduleConfig.sort === 'created_at' || moduleConfig.sort === 'updated_at' ? 'desc' : 'asc')
+        .limit(pageSize)
+        .get();
+    }
   } catch (error) {
     const message = String(error.errMsg || error.message || '');
     if (message.includes('collection') && (message.includes('not exist') || message.includes('不存在'))) {

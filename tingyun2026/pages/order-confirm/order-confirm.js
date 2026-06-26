@@ -83,6 +83,22 @@ Page({
     this.setData({ navTop, navHeight });
   },
   goBack() { wx.navigateBack({ delta: 1, fail: () => wx.switchTab({ url: '/pages/menu/menu' }) }); },
+  onShow() {
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
+  },
+  onShareAppMessage() {
+    return {
+      title: '停云山居 · 山间的一餐',
+      path: '/pages/menu/menu',
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: '停云山居 · 山间的一餐',
+    };
+  },
   remarkInput(event) { this.setData({ remark: event.detail.value }); },
   toggleQuick(event) {
     const index = Number(event.currentTarget.dataset.index);
