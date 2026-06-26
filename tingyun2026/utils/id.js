@@ -8,7 +8,7 @@ function pad(value) {
 
 function timestamp(date) {
   return [
-    date.getFullYear(),
+    String(date.getFullYear()).slice(-2),
     pad(date.getMonth() + 1),
     pad(date.getDate()),
     pad(date.getHours()),
@@ -22,7 +22,7 @@ function randomCode(length) {
 }
 
 function createBusinessId(prefix) {
-  return `${prefix}${timestamp(new Date())}${randomCode(4)}`;
+  return `${prefix}${timestamp(new Date())}${randomCode(3)}`;
 }
 
 module.exports = { createId: createId, createBusinessId: createBusinessId };

@@ -20,8 +20,20 @@ function withImageAlias(item) {
   });
 }
 
+function normalizeStandardDishes(dishes) {
+  if (!dishes || Array.isArray(dishes) || typeof dishes !== 'object') return [];
+  return Object.keys(dishes).map((name) => {
+    return {
+      name: String(name || '').trim(),
+      items: (Array.isArray(dishes[name]) ? dishes[name] : [])
+        .map((item) => String(item || '').trim())
+        .filter(Boolean),
+    };
+  }).filter((group) => group.name || group.items.length);
+}
+
 function withDiningStandardDefaults(item) {
-  const dishes = Array.isArray(item.dishes) ? item.dishes : [];
+  const dishes = normalizeStandardDishes(item.dishes);
   return Object.assign(withImageAlias(item), { dishes });
 }
 
@@ -192,7 +204,8 @@ async function getDatabaseCatalog() {
   };
 }
 
-async function getCloudCatalog() {
+async function getCloudCatalog(options = {}) {
+  if (options.forceRefresh) cloudCatalogCache = null;
   if (canUseCloudDatabase()) {
     try {
       if (!cloudCatalogCache) cloudCatalogCache = await getDatabaseCatalog();
@@ -229,8 +242,8 @@ async function listAccommodationRooms() {
   const catalog = await getCloudCatalog();
   return catalog ? normalizeItems(catalog.accommodation_rooms || []) : [];
 }
-async function listDiningStandards() {
-  const catalog = await getCloudCatalog();
+async function listDiningStandards(options = {}) {
+  const catalog = await getCloudCatalog(options);
   const source = catalog ? catalog.dining_standards : [];
   return asArray(source).map(withDiningStandardDefaults);
 }

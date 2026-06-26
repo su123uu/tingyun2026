@@ -6,16 +6,16 @@
 
 主要目标：
 
-- 扫码点餐：堂食菜单、购物车、模拟支付、订单记录。
+- 扫码点餐：桌码开台、首单/加菜、整桌双价格、订单详情统一结账。
 - 预约预订：住宿、用餐、空间等预约展示与咨询入口。
 - 山居介绍：品牌、空间、活动信息展示。
-- 会员中心：会员权益、积分/消费等模拟数据展示。
+- 会员中心：手机号匹配、会员权益、线下核销状态与会员活动展示。
 
 ## 开发注意事项
 
 - 这是微信小程序项目，优先使用微信开发者工具打开 `tingyun2026/`。
 - 页面路径以 `tingyun2026/app.json` 中的 `pages` 为准。
-- 组件库主要来自 `tingyun2026/miniprogram_npm/tdesign-miniprogram/`。
+- 组件库来自 `tdesign-miniprogram`；依赖变更后先执行 `npm ci`，再在微信开发者工具中执行“构建 npm”生成 `miniprogram_npm/`。
 - 原型页面位于 `prototype/`，可用于对照小程序页面布局和交互。
 - 中文文件名和图片素材是项目内容的一部分，不要随意重命名。
 
@@ -80,3 +80,8 @@ setNavigationMetrics() {
 GitHub 仓库：
 
 `https://github.com/su123uu/tingyun2026`
+
+## Deployment Ownership
+
+- Cloud functions are deployed manually by the project owner. Do not deploy cloud functions from the coding agent.
+- The coding agent may modify cloud-function code and run local checks, then report the functions that require manual deployment.

@@ -5,6 +5,7 @@ export interface GuideProps extends TdGuideProps {
 }
 export { GuideStep };
 export default class Guide extends SuperComponent {
+    behaviors: string[];
     externalClasses: string[];
     properties: TdGuideProps;
     options: WechatMiniprogram.Component.ComponentOptions;

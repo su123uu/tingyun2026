@@ -81,19 +81,17 @@
       <strong>¥{{amount}}</strong>
       <text class="footer-manager" bindtap="callManager">房间不足或特殊需求？联系店长</text>
     </view>
-    <button class="pay-button" bindtap="submit">提交预订</button>
+    <button class="pay-button" disabled="{{submitting}}" bindtap="submit">{{submitting ? '提交中...' : '提交预订'}}</button>
   </view>
 </view>
 
 <t-calendar
   visible="{{calendarVisible}}"
   value="{{calendarValue}}"
-  holidayMap="{{holidayTips}}"
+  format="{{calendarFormat}}"
   minDate="{{minDate}}"
   maxDate="{{maxDate}}"
-  showWeekendTip="{{true}}"
   type="range"
-  workdayMap="{{workdayTips}}"
   usingCustomNavbar="{{true}}"
   custom-style="--td-calendar-active-color: #4F6F52; --td-calendar-item-centre-color: rgba(79, 111, 82, .14); --td-brand-color: #4F6F52; --td-brand-color-active: #38523C; --td-brand-color-disabled: #A9B9AA; --td-brand-color-light: #EEF4EE; --td-brand-color-light-active: #E1ECE1; --td-button-primary-bg-color: #4F6F52; --td-button-primary-border-color: #4F6F52; --td-button-primary-active-bg-color: #38523C; --td-button-primary-active-border-color: #38523C;"
   bind:confirm="confirmCalendar"

@@ -68,7 +68,7 @@ function pad(value) {
 
 function businessTimestamp(date) {
   return [
-    date.getFullYear(),
+    String(date.getFullYear()).slice(-2),
     pad(date.getMonth() + 1),
     pad(date.getDate()),
     pad(date.getHours()),
@@ -82,7 +82,7 @@ function randomCode(length) {
 }
 
 function createBusinessId(prefix) {
-  return `${prefix}${businessTimestamp(now())}${randomCode(4)}`;
+  return `${prefix}${businessTimestamp(now())}${randomCode(3)}`;
 }
 
 function moneyToCents(value) {
@@ -341,14 +341,12 @@ function statusFields(customerType) {
   if (customerType === 'member') {
     return {
       reservation_status: 'pending_confirmation',
-      settlement_status: 'pending_offline_points',
-      payment_status: 'pending_offline',
+      payment_status: 'offline_pending',
       lock_expires_at: null,
     };
   }
   return {
     reservation_status: 'pending_payment',
-    settlement_status: 'pending_wechat_pay',
     payment_status: 'pending_wechat_pay',
     lock_expires_at: null,
   };
@@ -358,7 +356,6 @@ function reservationPublicShape(order, type) {
   const orderNo = order.order_no || order.reservation_id;
   const common = {
     _id: order._id,
-    reservation_id: order.reservation_id || orderNo,
     order_no: orderNo,
     order_id: orderNo,
     reservation_type: type,
@@ -369,7 +366,7 @@ function reservationPublicShape(order, type) {
     people_count: order.people_count || order.guest_count || 0,
     amount: order.amount || 0,
     reservation_status: order.reservation_status,
-    settlement_status: order.settlement_status,
+    payment_status: order.payment_status || '',
     lock_expires_at: normalizeCloudDate(order.lock_expires_at),
     remark: order.remark || '',
     admin_remark: order.admin_remark || '',
@@ -562,28 +559,21 @@ async function createDiningReservation(input = {}, wxContext = {}) {
     clear_member: customer.customer_type === 'guest',
   });
 
-  const orderNo = createBusinessId('TYDINING');
+  const orderNo = createBusinessId('TYY');
   const slotTime = DINING_SLOT_TIME[timeSlot];
   const data = Object.assign({
-    reservation_id: orderNo,
     order_no: orderNo,
     customer_type: customer.customer_type,
     member_id: customer.member_id,
     contact_name: contactName,
-    customer_name: contactName,
     mobile,
-    customer_mobile: mobile,
     room_ids: selectedIds,
-    room_id: selectedIds[0] || '',
     room_name: selectedRooms.map((room) => room.name).join('、'),
     date,
-    reservation_date: date,
     time_slot: timeSlot,
-    reservation_time: timeSlot,
     start_at: dateTime(date, slotTime[0]),
     end_at: dateTime(date, slotTime[1]),
     people_count: peopleCount,
-    guest_count: peopleCount,
     meal_standard_id: mealStandardId,
     meal_standard_name: standard.name || '',
     amount: peopleCount * toNumber(standard.price_per_person, 0),
@@ -607,14 +597,14 @@ async function createDiningReservation(input = {}, wxContext = {}) {
     accepted_template_ids: input.notification_subscriptions && input.notification_subscriptions.accepted_template_ids,
     page: `pages/reservation-detail/reservation-detail?id=${orderNo}`,
   });
-  await safeCallNotification({
-    action: 'sendStaffNotification',
-    business_type: 'dining_reservation',
-    business_no: orderNo,
-    title: '新用餐预订',
-    payload: data,
-  });
-  if (data.payment_status === 'pending_offline') {
+  if (data.payment_status === 'offline_pending') {
+    await safeCallNotification({
+      action: 'sendStaffNotification',
+      business_type: 'dining_reservation',
+      business_no: orderNo,
+      title: '餐厅预订已支付',
+      payload: data,
+    });
     await safePrintReservationOrder(orderNo);
   }
   return reservationPublicShape(data, 'dining');
@@ -696,30 +686,23 @@ async function createAccommodationReservation(input = {}, wxContext = {}) {
   });
 
   const price = accommodationPrice(selectedRooms, customer.customer_type, checkInDate, checkOutDate);
-  const orderNo = createBusinessId('TYROOM');
+  const orderNo = createBusinessId('TYZ');
   const benefit = customer.customer_type === 'member'
     ? await lockAccommodationBenefit(input, customer, orderNo, price.amount)
     : { benefit_account_id: '', benefit_discount_amount: 0 };
   const amount = Math.max(0, price.amount - benefit.benefit_discount_amount);
 
   const data = Object.assign({
-    reservation_id: orderNo,
     order_no: orderNo,
     customer_type: customer.customer_type,
     member_id: customer.member_id,
     contact_name: contactName,
-    customer_name: contactName,
     mobile,
-    customer_mobile: mobile,
     room_ids: selectedIds,
-    room_id: selectedIds[0] || '',
     room_name: selectedRooms.map((room) => room.name).join('、'),
     check_in_date: checkInDate,
-    checkin_date: checkInDate,
     check_out_date: checkOutDate,
-    checkout_date: checkOutDate,
     people_count: peopleCount,
-    guest_count: peopleCount,
     nights,
     nightly_amount: price.nightly_amount,
     amount,
@@ -745,14 +728,14 @@ async function createAccommodationReservation(input = {}, wxContext = {}) {
     accepted_template_ids: input.notification_subscriptions && input.notification_subscriptions.accepted_template_ids,
     page: `pages/reservation-detail/reservation-detail?id=${orderNo}`,
   });
-  await safeCallNotification({
-    action: 'sendStaffNotification',
-    business_type: 'accommodation_reservation',
-    business_no: orderNo,
-    title: '新住宿预订',
-    payload: data,
-  });
-  if (data.payment_status === 'pending_offline') {
+  if (data.payment_status === 'offline_pending') {
+    await safeCallNotification({
+      action: 'sendStaffNotification',
+      business_type: 'accommodation_reservation',
+      business_no: orderNo,
+      title: '住宿预订已支付',
+      payload: data,
+    });
     await safePrintReservationOrder(orderNo);
   }
   return reservationPublicShape(data, 'accommodation');
@@ -814,7 +797,6 @@ async function createReservationPayment(input = {}, wxContext = {}) {
 
   return {
     order_no: orderNo,
-    reservation_id: orderNo,
     reservation_type: found.type,
     total_fee: totalFee,
     payment: payResult.payment || payResult,
@@ -834,7 +816,6 @@ async function simulateWechatPay(input = {}) {
   await db.collection(found.collectionName).doc(found.order._id).update({
     data: {
       reservation_status: 'paid_pending_confirmation',
-      settlement_status: 'wechat_paid',
       payment_status: 'settled',
       lock_expires_at: null,
       paid_at: now(),
@@ -843,7 +824,6 @@ async function simulateWechatPay(input = {}) {
   });
   return Object.assign(reservationPublicShape(found.order, found.type), {
     reservation_status: 'paid_pending_confirmation',
-    settlement_status: 'wechat_paid',
     payment_status: 'settled',
     lock_expires_at: '',
     paid_at: now().toISOString(),
@@ -895,7 +875,7 @@ async function deleteReservation(input = {}, wxContext = {}) {
       updated_at: now(),
     },
   });
-  return { order_no: orderNo, reservation_id: orderNo, user_deleted_at: deletedAt.toISOString() };
+  return { order_no: orderNo, user_deleted_at: deletedAt.toISOString() };
 }
 
 exports.main = async (event = {}) => {

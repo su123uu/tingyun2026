@@ -53,8 +53,8 @@ Page({
     activity: null,
     user: null,
     people: 1,
-    contact: '山里人',
-    mobile: '13800136688',
+    contact: '',
+    mobile: '',
     remark: '',
     unit_fee: 0,
     total_fee: 0,
@@ -149,7 +149,7 @@ Page({
         ? await notification.requestActivitySignupWithConsumption()
         : await notification.requestActivitySignupSuccess();
       const user = await auth.getCurrentUser();
-      let signup = await service.createSignup({
+      const signup = await service.createSignup({
         activity_id: this.data.activity.activity_id,
         people_count: this.data.people,
         contact_name: this.data.contact,
@@ -159,12 +159,8 @@ Page({
         remark: this.data.remark,
         notification_subscriptions: subscription,
       });
-      if (signup.settlement_status === 'pending_wechat_pay') {
+      if (signup.payment_status === 'pending_wechat_pay') {
         await this.payActivity(signup.order_no || signup.signup_id);
-        signup = Object.assign({}, signup, {
-          settlement_status: 'wechat_paid',
-          payment_status: 'settled',
-        });
       }
       this.setData({ submitted: true });
       wx.showModal({

@@ -53,10 +53,10 @@ async function cloudOrFallback(action, input, fallback, options = {}) {
 
 function statuses(type) {
   return type === 'member'
-    ? { reservation_status: 'pending_confirmation', settlement_status: 'pending_offline_points' }
+    ? { reservation_status: 'pending_confirmation', payment_status: 'offline_pending' }
     : {
       reservation_status: 'pending_payment',
-      settlement_status: 'pending_wechat_pay',
+      payment_status: 'pending_wechat_pay',
       lock_expires_at: '',
     };
 }
@@ -184,7 +184,7 @@ async function createDiningReservation(input) {
   assert(selected.every((room) => room.is_people_suitable), 'ROOM_PEOPLE_NOT_SUITABLE', '所选包间人数不合适');
   assert(selected.reduce((sum, room) => sum + room.max_capacity, 0) >= input.people_count, 'ROOM_CAPACITY_NOT_ENOUGH', '所选包间总容量不足');
   const user = await auth.getCurrentUser();
-  const orderNo = createBusinessId('TYDINING');
+  const orderNo = createBusinessId('TYY');
   const order = Object.assign({
     order_no: orderNo,
     order_id: orderNo,
@@ -215,7 +215,7 @@ async function createAccommodationReservation(input) {
   assert(selected.every((room) => !room.is_booked), 'ROOM_ALREADY_BOOKED', '所选房间已被预定，请重新选择');
   const user = await auth.getCurrentUser();
   const pricing = accommodationTotal(selected, user.customer_type, input.check_in_date, input.check_out_date);
-  const orderNo = createBusinessId('TYROOM');
+  const orderNo = createBusinessId('TYZ');
   const order = Object.assign({
     order_no: orderNo,
     order_id: orderNo,
@@ -240,7 +240,7 @@ async function simulateWechatPay(input) {
   assert(order, 'RESERVATION_NOT_FOUND', '未找到预订订单');
   assertReservationRoomsAvailable(order);
   order.reservation_status = 'paid_pending_confirmation';
-  order.settlement_status = 'wechat_paid';
+  order.payment_status = 'settled';
   delete order.lock_expires_at;
   save(orders);
   return order;

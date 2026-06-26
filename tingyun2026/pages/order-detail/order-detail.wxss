@@ -13,7 +13,14 @@
 .content { padding:0 28rpx 24rpx; }
 .section-title { display:flex; align-items:center; gap:18rpx; margin:34rpx 0 16rpx; font-size:30rpx; font-weight:700; letter-spacing:3rpx; }
 .section-title::before { width:5rpx; height:34rpx; border-radius:3rpx; background:#C9A962; content:""; }
+.overview-row { display:flex; align-items:stretch; gap:20rpx; }
+.overview-column { display:flex; min-width:0; flex:1; flex-direction:column; }
+.overview-column .section-title { gap:12rpx; font-size:27rpx; letter-spacing:2rpx; }
+.overview-column .section-title::before { width:4rpx; height:30rpx; }
+.overview-column .detail-card,.overview-column .timeline { box-sizing:border-box; flex:1; }
 .detail-card { padding:8rpx 28rpx; }
+.dining-card { padding:8rpx 20rpx; }
+.dining-card .info-line { gap:8rpx; padding:22rpx 0; font-size:23rpx; }
 .dish-batch { padding:10rpx 0 16rpx; border-bottom:1rpx solid rgba(26,26,26,.06); }
 .dish-batch:last-child { border-bottom:0; }
 .batch-head { display:flex; align-items:center; justify-content:space-between; padding:8rpx 0 14rpx; color:#8B7355; font-size:24rpx; font-weight:700; }
@@ -22,6 +29,7 @@
 .info-label { flex:none; color:#7C8A8C; }
 .info-line strong { color:#8B7355; }
 .remark-line text:last-child { text-align:right; }
+.batch-remark { display:block; margin-top:12rpx; color:#7C8A8C; font-size:24rpx; line-height:1.5; }
 .dish { display:flex; align-items:center; gap:18rpx; padding:20rpx 0; border-bottom:1rpx solid rgba(26,26,26,.06); }
 .dish:last-child { border-bottom:0; }
 .dish image { width:108rpx; height:108rpx; flex:none; border-radius:18rpx; background:#E8E4DC; }
@@ -29,11 +37,15 @@
 .dish-copy strong,.dish-copy text { display:block; }
 .dish-copy strong { overflow:hidden; font-size:26rpx; text-overflow:ellipsis; white-space:nowrap; }
 .dish-copy text { margin-top:12rpx; color:#7C8A8C; font-size:23rpx; }
-.dish-price { align-self:flex-start; flex:none; padding-top:4rpx; font-size:26rpx; }
-.add-meal-button { display:flex; min-height:84rpx; align-items:center; justify-content:center; margin:22rpx 0 0; border:0; border-radius:20rpx; color:#FFFFFF; background:#4F6F52; font-size:28rpx; font-weight:700; letter-spacing:2rpx; line-height:84rpx; }
+.dish-price { display:flex; align-self:flex-start; flex:none; flex-direction:column; align-items:flex-end; gap:6rpx; padding-top:4rpx; font-size:26rpx; }
+.meal-actions { display:flex; gap:18rpx; margin-top:22rpx; }
+.add-meal-button,.checkout-button { display:flex; min-height:84rpx; flex:1; align-items:center; justify-content:center; margin:0; border-radius:20rpx; font-size:28rpx; font-weight:700; letter-spacing:2rpx; line-height:84rpx; }
+.add-meal-button { border:1rpx solid rgba(79,111,82,.25); color:#4F6F52; background:#FFFFFF; }
+.checkout-button { border:0; color:#FFFFFF; background:#4F6F52; }
 .add-meal-button::after { border:0; }
-.timeline { padding:26rpx 26rpx 8rpx; }
-.step { position:relative; padding:0 0 34rpx 44rpx; color:#7C8A8C; font-size:24rpx; line-height:1.45; }
+.checkout-button::after { border:0; }
+.timeline { padding:26rpx 22rpx 8rpx; }
+.step { position:relative; padding:0 0 34rpx 38rpx; color:#7C8A8C; font-size:22rpx; line-height:1.45; }
 .step::before { position:absolute; top:6rpx; left:4rpx; width:16rpx; height:16rpx; border:4rpx solid #CBD0CB; border-radius:50%; background:#FFFFFF; content:""; }
 .step::after { position:absolute; top:30rpx; bottom:0; left:14rpx; width:2rpx; background:#D8DDD8; content:""; }
 .step:last-child { padding-bottom:20rpx; }

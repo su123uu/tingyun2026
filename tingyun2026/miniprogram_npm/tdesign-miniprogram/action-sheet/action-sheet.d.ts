@@ -67,11 +67,16 @@ export default class ActionSheet extends SuperComponent {
         event: string;
     }[];
     observers: {
-        'visible, items'(visible: boolean): void;
+        items(): void;
+        globalConfig(): void;
+    };
+    lifetimes: {
+        ready(): void;
     };
     methods: {
         init(): void;
         memoInitialData(): void;
+        updateInitialData(): void;
         splitGridThemeActions(): void;
         show(options: any): void;
         close(): void;

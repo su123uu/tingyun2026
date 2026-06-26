@@ -1,11 +1,11 @@
 const auth = require('../../services/auth');
-const cart = require('../../services/cart');
 const table = require('../../services/table-session');
+const cart = require('../../services/cart');
 const orders = require('../../services/meal-order');
 const notification = require('../../services/notification');
 Page({
   data: {
-    cart: { items: [], total_amount: 0 },
+    cart: { items: [], total_amount: 0, regular_total_amount: 0, member_total_amount: 0 },
     cartCount: 0,
     session: {},
     sessionLabel: '',
@@ -58,11 +58,13 @@ Page({
   },
   formatIdentityInitial(type, session = {}, user = {}) {
     if (type !== 'member') return '停';
-    const name = session.customer_name || user.nickname || user.customer_name || '';
+    const name = user.nickname || user.customer_name || session.customer_name || '';
     return String(name).trim().charAt(0) || '会';
   },
   resolveCustomerType(session = {}, user = {}) {
-    return session.customer_type === 'member'
+    return user.customer_type === 'member'
+      || Boolean(user.member_id)
+      || session.customer_type === 'member'
       || Boolean(session.member_id)
       ? 'member'
       : 'guest';
@@ -90,77 +92,27 @@ Page({
     this.setData({ quickRemarks });
   },
   submit() {
-    this.create(this.data.effectiveCustomerType !== 'member');
+    this.create();
   },
-  async create(pay) {
+  async create() {
     if (this.data.submitting) return;
     this.setData({ submitting: true });
     try {
-      const submitSubscription = await notification.requestMealOrderStatus();
-      const submitPayload = {
-        remark: this.data.remark,
-        quick_remarks: this.data.quickRemarks.filter((item) => item.selected).map((item) => item.text),
-        notification_subscriptions: submitSubscription,
-        keep_cart: false,
-        customer_mobile: this.data.user.mobile || '',
-        customer_name: this.data.user.nickname || this.data.user.customer_name || '',
-        member_id: this.data.user.member_id || '',
-      };
-      wx.showLoading({ title: '正在提交菜品...', mask: true });
-      const submittedOrder = await orders.createMealOrder(submitPayload);
-      const submittedOrderNo = submittedOrder.order_no || submittedOrder.order_id;
-      wx.redirectTo({ url:`/pages/order-detail/order-detail?id=${submittedOrderNo}` });
-      return;
-      const subscription = pay
-        ? await notification.requestMealOrderStatus()
-        : await notification.requestMealOrderWithConsumption();
+      const subscription = await notification.requestMealOrderStatus();
       const payload = {
         remark: this.data.remark,
         quick_remarks: this.data.quickRemarks.filter((item) => item.selected).map((item) => item.text),
         notification_subscriptions: subscription,
-        keep_cart: pay,
         customer_mobile: this.data.user.mobile || '',
         customer_name: this.data.user.nickname || this.data.user.customer_name || '',
         member_id: this.data.user.member_id || '',
+        customer_type: this.data.effectiveCustomerType,
+        member_level: this.data.memberLevel || '',
+        member_level_no: this.data.memberLevelNo || '',
       };
-      let order;
-      let orderNo = '';
-      let paymentNo = '';
-      let batchNo = 0;
-      if (pay) {
-        wx.showLoading({ title: '正在唤起微信支付...', mask: true });
-        const paymentResult = await orders.createMealOrderAndPayment(payload);
-        order = paymentResult.order || paymentResult;
-        orderNo = paymentResult.order_no || order.order_no || order.order_id;
-        paymentNo = paymentResult.payment_no || order.payment_no || '';
-        batchNo = paymentResult.batch_no || order.batch_no || 0;
-        const payment = paymentResult.payment || paymentResult.raw_payment || paymentResult;
-        if (!payment || !payment.timeStamp) throw new Error('支付参数生成失败');
-        wx.hideLoading();
-        try {
-          await new Promise((resolve, reject) => {
-            wx.requestPayment(Object.assign({}, payment, {
-              success: resolve,
-              fail: (error) => {
-                const message = error && error.errMsg && error.errMsg.includes('cancel')
-                  ? '支付已取消'
-                  : ((error && error.errMsg) || '微信支付失败');
-                reject(new Error(message));
-              },
-            }));
-          });
-        } catch (payError) {
-          const isCancel = payError && payError.message && payError.message.includes('取消');
-          if (isCancel) {
-            try { await orders.cancelMealOrder({ order_no: orderNo, payment_no: paymentNo, batch_no: batchNo, reason: 'payment_cancelled' }); } catch (e) { console.warn('cancelMealOrder failed', e); }
-          }
-          throw payError;
-        }
-        await cart.clearCart();
-      } else {
-        order = await orders.createMealOrder(payload);
-        orderNo = order.order_no || order.order_id;
-      }
+      wx.showLoading({ title: '正在提交菜品...', mask: true });
+      const order = await orders.createMealOrder(payload);
+      const orderNo = order.order_no || order.order_id;
       wx.redirectTo({ url:`/pages/order-detail/order-detail?id=${orderNo}` });
     } catch(error) {
       wx.hideLoading();

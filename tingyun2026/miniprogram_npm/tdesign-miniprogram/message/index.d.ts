@@ -1,9 +1,8 @@
 /// <reference types="miniprogram-api-typings" />
 /// <reference types="miniprogram-api-typings" />
-/// <reference types="miniprogram-api-typings" />
 import { MessageProps } from './message.interface';
 declare type Context = WechatMiniprogram.Page.TrivialInstance | WechatMiniprogram.Component.TrivialInstance;
-interface MessageActionOptionsType extends Optional<MessageProps> {
+interface MessageActionOptionsType extends Partial<MessageProps> {
     context?: Context;
     selector?: string;
 }

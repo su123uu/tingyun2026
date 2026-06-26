@@ -3,8 +3,9 @@ const reservations = require('../../services/reservation');
 const activitySignups = require('../../services/activity-signup');
 const catalog = require('../../services/catalog');
 const assets = require('../../config/assets').assets;
+const auth = require('../../services/auth');
 
-const mealStatus = { pending_payment:'未支付', pending_notice:'订单已提交', kitchen_notified:'订单已提交', preparing:'制作中', completed:'已完成' };
+const mealStatus = { preparing:'制作中', completed:'已完成' };
 const reservationStatus = { pending_payment:'待支付', paid_pending_confirmation:'已支付，待确认', pending_confirmation:'待确认', confirmed:'已确认', completed:'已完成' };
 const activityStatus = { pending_confirmation:'待确认', confirmed:'已确认', completed:'已完成', cancelled:'已取消' };
 reservationStatus.refunding = '退款处理中';
@@ -17,7 +18,10 @@ function asArray(value) {
 }
 
 function amountText(order) {
-  return order.type === 'activity' && !order.amount ? '免费' : `¥${order.amount}`;
+  const amount = order.type === 'meal'
+    ? (order.checkout_amount || order.regular_total_amount || order.total_amount)
+    : order.amount;
+  return order.type === 'activity' && !amount ? '免费' : `¥${amount}`;
 }
 
 function mealItems(order, menuItems) {
@@ -64,25 +68,24 @@ function addPreview(card, count, unit) {
 }
 
 function isMealPayable(order) {
-  return ['pending_checkout', 'pending_wechat_pay', 'paying'].includes(order.settlement_status)
-    && order.payment_status !== 'settled';
+  return order.payment_status === 'unpaid';
 }
 
 function isReservationPayable(order) {
   return order.customer_type !== 'member'
     && order.reservation_status === 'pending_payment'
-    && order.settlement_status === 'pending_wechat_pay';
+    && order.payment_status === 'pending_wechat_pay';
 }
 
 function isActivityPayable(signup) {
-  return signup.customer_type !== 'member' && signup.settlement_status === 'pending_wechat_pay';
+  return signup.customer_type !== 'member' && signup.payment_status === 'pending_wechat_pay';
 }
 
 function mealOrderStatus(order) {
   const status = order.order_status || order.kitchen_status || '';
   if (
     ['pending_notice', 'kitchen_notified'].includes(status)
-    && ['settled', 'pending_offline'].includes(order.payment_status)
+    && ['settled', 'offline_pending'].includes(order.payment_status)
   ) {
     return 'preparing';
   }
@@ -187,30 +190,57 @@ Page({
     const id=e.currentTarget.dataset.id;
     const type=e.currentTarget.dataset.type;
     try{
-      if(type==='meal')await this.payMeal(id);
+      let payResult = null;
+      if(type==='meal')payResult=await this.payMeal(id);
       if(type==='reservation')await this.payReservation(id);
       if(type==='activity')await this.payActivity(id);
       await this.onShow();
+      if(payResult&&payResult.memberPendingVerify){
+        wx.showToast({title:'已提交抵扣，待店员核销'});
+        return;
+      }
       wx.showToast({title:'支付完成'});
     }catch(error){
       wx.showToast({title:error.message||'支付未完成',icon:'none'});
     }
   },
   async payMeal(orderNo){
-    const paymentResult=await meal.checkoutMealOrder({order_no:orderNo});
+    const user=await auth.getCurrentUser();
+    const isMember=user.customer_type==='member'||Boolean(user.member_id);
+    const order=this.data.orders.find((item)=>item.type==='meal'&&item.order_no===orderNo)||{};
+    const pointsAmount=Number(order.member_total_amount||order.checkout_amount||order.regular_total_amount||order.total_amount||0)||0;
+    if(isMember){
+      const confirmed=await new Promise((resolve)=>{
+        wx.showModal({
+          title:'确认积分抵扣',
+          content:`确认使用会员积分抵扣本次消费 ¥${pointsAmount}？`,
+          confirmText:'确认抵扣',
+          cancelText:'暂不结账',
+          confirmColor:'#8B3A2F',
+          success:(result)=>resolve(Boolean(result.confirm)),
+          fail:()=>resolve(false),
+        });
+      });
+      if(!confirmed)throw new Error('已取消结账');
+    }
+    const paymentResult=await meal.checkoutMealOrder({
+      order_no:orderNo,
+      use_points:isMember,
+      points_deduct_amount:isMember?pointsAmount:0,
+      member_checkout_confirmed:isMember,
+    });
     const payment=paymentResult.payment||paymentResult.raw_payment||paymentResult;
-    if(!payment||!payment.timeStamp)return;
-    const paymentNo=paymentResult.payment_no||'';
-    const batchNo=paymentResult.batch_no||0;
+    if(!payment||!payment.timeStamp)return {memberPendingVerify:isMember};
     try{
       await this.requestPayment(payment);
     }catch(error){
       const isCancel=error&&error.message&&error.message.includes('取消');
       if(isCancel){
-        try{await meal.cancelMealOrder({order_no:orderNo,payment_no:paymentNo,batch_no:batchNo,reason:'payment_cancelled'});}catch(e){console.warn('cancelMealOrder failed',e);}
+        try{await meal.cancelMealOrder({order_no:orderNo,reason:'payment_cancelled'});}catch(e){console.warn('cancelMealOrder failed',e);}
       }
       throw error;
     }
+    return {paid:true};
   },
   async payReservation(orderNo){
     const paymentResult=await reservations.createReservationPayment({order_no:orderNo});

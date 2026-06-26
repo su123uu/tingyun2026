@@ -19,6 +19,7 @@
     "pages/coupons/coupons",
     "pages/staff-settings/staff-settings"
   ],
+  "lazyCodeLoading": "requiredComponents",
   "window": {
     "navigationBarTitleText": "停云山居",
     "navigationBarBackgroundColor": "#F8F6F1",

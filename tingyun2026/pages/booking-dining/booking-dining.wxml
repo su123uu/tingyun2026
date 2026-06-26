@@ -109,6 +109,7 @@
 <t-calendar
   visible="{{calendarVisible}}"
   value="{{calendarValue}}"
+  format="{{calendarFormat}}"
   minDate="{{minDate}}"
   maxDate="{{maxDate}}"
   type="single"
@@ -136,8 +137,13 @@
     </view>
   </view>
   <view class="standard-detail-list">
-    <strong class="standard-detail-title">餐品说明</strong>
-    <view wx:for="{{selectedStandardDishes}}" wx:key="name" class="standard-detail-row"><text>{{item.name}}</text><text>{{item.content}}</text></view>
+    <strong class="standard-detail-title">餐品明细</strong>
+    <view wx:for="{{selectedStandardDishes}}" wx:for-item="group" wx:key="name" class="standard-detail-row">
+      <text class="standard-dish-category">{{group.name}}</text>
+      <view class="standard-dish-items">
+        <text wx:for="{{group.items}}" wx:for-item="dish" wx:key="*this">{{dish}}</text>
+      </view>
+    </view>
   </view>
   <button class="standard-detail-button" bindtap="chooseStandard">{{standardId===selectedStandard.meal_standard_id?'已选择此餐标':'选择此餐标'}}</button>
 </view>

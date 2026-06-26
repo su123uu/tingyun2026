@@ -124,24 +124,24 @@ const MODULES = {
     fields: ['benefit_account_id', 'member_id', 'level_id', 'benefit_key', 'benefit_name', 'benefit_type', 'total_quota', 'used_quota', 'locked_quota', 'remaining_quota', 'quota_unit', 'valid_start_at', 'valid_end_at', 'account_status'],
   },
   dining_reservations: {
-    key: 'reservation_id',
+    key: 'order_no',
     sort: 'created_at',
-    fields: ['reservation_id', 'order_no', 'customer_type', 'member_id', 'customer_name', 'customer_mobile', 'reservation_date', 'reservation_time', 'guest_count', 'room_id', 'room_name', 'meal_standard_id', 'meal_standard_name', 'reservation_status', 'payment_status', 'settlement_status', 'remark', 'admin_remark'],
+    fields: ['order_no', 'customer_type', 'member_id', 'contact_name', 'mobile', 'date', 'time_slot', 'people_count', 'room_ids', 'room_name', 'meal_standard_id', 'meal_standard_name', 'reservation_status', 'payment_status', 'created_by_openid', 'remark', 'admin_remark'],
   },
   accommodation_reservations: {
-    key: 'reservation_id',
+    key: 'order_no',
     sort: 'created_at',
-    fields: ['reservation_id', 'order_no', 'customer_type', 'member_id', 'customer_name', 'customer_mobile', 'checkin_date', 'checkout_date', 'guest_count', 'room_id', 'room_name', 'reservation_status', 'payment_status', 'settlement_status', 'remark', 'admin_remark'],
+    fields: ['order_no', 'customer_type', 'member_id', 'contact_name', 'mobile', 'check_in_date', 'check_out_date', 'people_count', 'room_ids', 'room_name', 'reservation_status', 'payment_status', 'created_by_openid', 'remark', 'admin_remark'],
   },
   activity_signups: {
     key: 'signup_id',
     sort: 'created_at',
-    fields: ['signup_id', 'order_no', 'activity_id', 'activity_title', 'date', 'time', 'location', 'contact_name', 'contact_mobile', 'participant_count', 'customer_type', 'member_id', 'amount', 'signup_status', 'payment_status', 'settlement_status', 'success_notice_remark', 'created_by_openid', 'remark', 'admin_remark'],
+    fields: ['signup_id', 'order_no', 'activity_id', 'activity_title', 'date', 'time', 'location', 'contact_name', 'contact_mobile', 'participant_count', 'customer_type', 'member_id', 'amount', 'signup_status', 'payment_status', 'success_notice_remark', 'created_by_openid', 'remark', 'admin_remark'],
   },
   meal_orders: {
     key: 'order_id',
     sort: 'created_at',
-    fields: ['order_id', 'order_no', 'table_id', 'table_name', 'customer_type', 'customer_name', 'customer_mobile', 'items', 'total_amount', 'pay_amount', 'order_status', 'payment_status', 'remark', 'admin_remark'],
+    fields: ['order_id', 'order_no', 'table_id', 'table_name', 'customer_type', 'customer_name', 'customer_mobile', 'checkout_customer_type', 'checkout_customer_name', 'checkout_customer_mobile', 'items', 'batches', 'total_amount', 'regular_total_amount', 'member_total_amount', 'checkout_amount', 'order_status', 'payment_status', 'created_by_openid', 'notification_openid', 'checkout_openid', 'admin_remark'],
   },
   system_settings: {
     key: 'setting_key',
@@ -220,7 +220,7 @@ function reservationBusinessType(collectionName) {
 async function notifyReservationStatus(collectionName, row, status, adminRemark) {
   const businessType = reservationBusinessType(collectionName);
   const businessNo = cleanText(row.order_no || row.reservation_id, 120);
-  const openid = cleanText(row.created_by_openid, 120);
+  const openid = cleanText(row.checkout_openid || row.notification_openid || row.created_by_openid, 120);
   const payload = Object.assign({}, row, {
     reservation_status: status,
     status,
@@ -259,24 +259,16 @@ async function notifyReservationStatus(collectionName, row, status, adminRemark)
 
 async function notifyMealOrderStatus(row, status, adminRemark) {
   const businessNo = cleanText(row.order_no || row.order_id, 120);
-  const openid = cleanText(row.created_by_openid, 120);
+  const openid = cleanText(row.checkout_openid || row.notification_openid || row.created_by_openid, 120);
   const payload = Object.assign({}, row, {
     order_status: status,
     status,
     admin_remark: adminRemark,
   });
-  if (businessNo && openid && !(status === 'settled' && row.customer_type === 'member')) {
-    await safeCallNotification({
-      action: 'sendSubscribeNotification',
-      business_type: 'meal_order',
-      business_no: businessNo,
-      openid,
-      status,
-      admin_remark: adminRemark,
-      payload,
-    });
-  }
-  if (businessNo && openid && status === 'settled' && row.customer_type === 'member') {
+  const isMemberCheckout = row.checkout_customer_type === 'member';
+  // 点餐状态模板在顾客提交首单/加菜时发送“制作中”并消耗一次授权。
+  // 后台改为 preparing、completed 不再向顾客重复发送，避免把唯一订阅次数留给后续状态。
+  if (businessNo && openid && status === 'settled' && isMemberCheckout) {
     await safeCallNotification({
       action: 'sendSubscribeNotification',
       business_type: 'meal_order',
@@ -989,7 +981,7 @@ async function releaseAccommodationBenefit(row) {
 
 async function reservationStatusUpdate(event) {
   const status = cleanText(event.reservation_status || event.status, 40);
-  const settle = event.settle === true || cleanText(event.settlement_status || event.payment_status, 40) === 'settled';
+  const settle = event.settle === true || cleanText(event.payment_status, 40) === 'settled';
   if (status && !ADMIN_RESERVATION_STATUSES.includes(status)) {
     return fail('预约状态仅支持 confirmed、rejected、cancelled。', 'INVALID_RESERVATION_STATUS');
   }
@@ -1009,7 +1001,6 @@ async function reservationStatusUpdate(event) {
     if (status === 'cancelled') data.cancelled_at = now();
   }
   if (settle) {
-    data.settlement_status = 'settled';
     data.payment_status = 'settled';
     data.settled_at = now();
   }
@@ -1026,7 +1017,7 @@ async function reservationStatusUpdate(event) {
     _id: found.id,
     collection: found.collectionName,
     reservation_status: data.reservation_status,
-    settlement_status: data.settlement_status,
+    payment_status: data.payment_status,
   });
 }
 
@@ -1049,6 +1040,117 @@ async function findMealOrderRecord(event) {
   return null;
 }
 
+async function closeMemberMealOrderSession(order, reason = 'member_offline_settled') {
+  const sessionId = cleanText(order && order.session_id, 120);
+  let result = null;
+  if (sessionId) {
+    result = await db.collection('meal_table_sessions')
+      .where({ session_id: sessionId, is_deleted: _.neq(true) })
+      .limit(1)
+      .get();
+  }
+  if ((!result || !result.data || !result.data[0]) && order && order.table_id) {
+    result = await db.collection('meal_table_sessions')
+      .where({ table_id: order.table_id, session_status: 'active', is_deleted: _.neq(true) })
+      .orderBy('created_at', 'desc')
+      .limit(1)
+      .get();
+  }
+  const session = result && result.data && result.data[0];
+  if (!session || !session._id) return;
+
+  const closedAt = now();
+  await db.collection('meal_table_sessions').doc(session._id).update({
+    data: {
+      session_status: 'closed',
+      closed_reason: reason,
+      closed_at: closedAt,
+      updated_at: closedAt,
+    },
+  });
+  const tableResult = await db.collection('meal_tables')
+    .where({
+      table_id: session.table_id || order.table_id,
+      current_session_id: session.session_id,
+      is_deleted: _.neq(true),
+    })
+    .limit(1)
+    .get();
+  const table = tableResult.data && tableResult.data[0];
+  if (table && table._id) {
+    await db.collection('meal_tables').doc(table._id).update({
+      data: { current_session_id: '', updated_at: closedAt },
+    });
+  }
+}
+
+async function completeAndClearMealTable(event) {
+  const orderIds = Array.isArray(event.order_ids)
+    ? event.order_ids.map((item) => cleanText(item, 120)).filter(Boolean)
+    : [];
+  const sessionId = cleanText(event.session_id, 120);
+  const tableId = cleanText(event.table_id, 120);
+  const adminRemark = cleanText(event.admin_remark || event.remark || '后台桌台总览完成并清台', 500);
+  let orders = [];
+
+  for (const id of orderIds) {
+    try {
+      const result = await db.collection('meal_orders').doc(id).get();
+      if (result.data && result.data.is_deleted !== true) {
+        orders.push(Object.assign({}, result.data, { _id: id }));
+      }
+    } catch (error) {}
+  }
+  if (!orders.length && sessionId) {
+    const result = await db.collection('meal_orders')
+      .where({ session_id: sessionId, is_deleted: _.neq(true) })
+      .limit(100)
+      .get();
+    orders = result.data || [];
+  }
+  if (!orders.length && tableId) {
+    const result = await db.collection('meal_orders')
+      .where({ table_id: tableId, is_deleted: _.neq(true) })
+      .orderBy('created_at', 'desc')
+      .limit(100)
+      .get();
+    orders = (result.data || []).filter((order) => (
+      !['completed', 'cancelled', 'canceled', 'closed', 'refunded'].includes(cleanText(order.order_status, 40))
+      || order.payment_status !== 'settled'
+    ));
+  }
+  if (!orders.length) return fail('当前桌台没有可完成的点餐订单。', 'NO_MEAL_ORDERS');
+
+  const completedAt = now();
+  for (const order of orders) {
+    if (!order._id) continue;
+    await db.collection('meal_orders').doc(order._id).update({
+      data: {
+        order_status: 'completed',
+        payment_status: 'settled',
+        settled_at: order.settled_at || completedAt,
+        completed_at: order.completed_at || completedAt,
+        admin_remark: adminRemark,
+        updated_at: completedAt,
+      },
+    });
+  }
+
+  const closeSource = Object.assign({}, orders[0], {
+    session_id: sessionId || orders[0].session_id,
+    table_id: tableId || orders[0].table_id,
+  });
+  await closeMemberMealOrderSession(closeSource, 'completed_and_cleared_by_admin');
+
+  return ok({
+    order_count: orders.length,
+    session_id: closeSource.session_id || '',
+    table_id: closeSource.table_id || '',
+    order_status: 'completed',
+    payment_status: 'settled',
+  });
+}
+
 async function mealOrderStatusUpdate(event) {
   const found = await findMealOrderRecord(event);
   if (!found) return fail('点餐订单不存在或已删除。', 'NOT_FOUND');
@@ -1067,18 +1169,27 @@ async function mealOrderStatusUpdate(event) {
     if (orderStatus === 'completed') data.completed_at = now();
   }
 
-  const settle = event.settle === true || cleanText(event.settlement_status || event.payment_status, 40) === 'settled';
+  const settle = event.settle === true || cleanText(event.payment_status, 40) === 'settled';
+  const isMemberOfflineSettlement = settle
+    && found.row.checkout_customer_type === 'member'
+    && found.row.payment_status === 'offline_pending';
   if (settle) {
-    data.settlement_status = 'settled';
     data.payment_status = 'settled';
     data.settled_at = now();
+  }
+  if (isMemberOfflineSettlement) {
+    data.order_status = 'completed';
+    data.completed_at = now();
   }
 
   if (!orderStatus && !settle) return fail('请提供要更新的订单状态或结算状态。', 'EMPTY_UPDATE');
 
   await db.collection('meal_orders').doc(found.id).update({ data });
-  await notifyMealOrderStatus(Object.assign({}, found.row, data), orderStatus || 'settled', data.admin_remark || '');
-  return ok({ _id: found.id, order_status: data.order_status, settlement_status: data.settlement_status });
+  if (isMemberOfflineSettlement) {
+    await closeMemberMealOrderSession(Object.assign({}, found.row, data));
+  }
+  await notifyMealOrderStatus(Object.assign({}, found.row, data), settle ? 'settled' : orderStatus, data.admin_remark || '');
+  return ok({ _id: found.id, order_status: data.order_status, payment_status: data.payment_status });
 }
 
 async function findActivitySignupRecord(event) {
@@ -1102,7 +1213,7 @@ async function findActivitySignupRecord(event) {
 
 async function activitySignupStatusUpdate(event) {
   const status = cleanText(event.signup_status || event.status, 40);
-  const settle = event.settle === true || cleanText(event.settlement_status || event.payment_status, 40) === 'settled';
+  const settle = event.settle === true || cleanText(event.payment_status, 40) === 'settled';
   if (status && !ADMIN_ACTIVITY_SIGNUP_STATUSES.includes(status)) {
     return fail('活动报名状态仅支持 confirmed、cancelled、completed。', 'INVALID_ACTIVITY_SIGNUP_STATUS');
   }
@@ -1122,14 +1233,13 @@ async function activitySignupStatusUpdate(event) {
     if (status === 'completed') data.completed_at = now();
   }
   if (settle || status === 'completed') {
-    data.settlement_status = 'settled';
     data.payment_status = 'settled';
     data.settled_at = now();
   }
 
   await db.collection('activity_signups').doc(found.id).update({ data });
   await notifyActivitySignupStatus(Object.assign({}, found.row, data), status || 'completed', data.admin_remark || '');
-  return ok({ _id: found.id, signup_status: data.signup_status, settlement_status: data.settlement_status });
+  return ok({ _id: found.id, signup_status: data.signup_status, payment_status: data.payment_status });
 }
 
 async function uploadImage(event) {
@@ -1426,6 +1536,7 @@ exports.main = async (event = {}) => {
     if (event.action === 'generateActivityQrCode') return await generateActivityQrCode(event);
     if (event.action === 'reservationStatusUpdate') return await reservationStatusUpdate(event);
     if (event.action === 'mealOrderStatusUpdate') return await mealOrderStatusUpdate(event);
+    if (event.action === 'completeAndClearMealTable') return await completeAndClearMealTable(event);
     if (event.action === 'activitySignupStatusUpdate') return await activitySignupStatusUpdate(event);
     if (event.action === 'updateMemberBenefits') return await updateMemberBenefits(event);
     if (event.action === 'syncCloudFiles') return await syncCloudFiles(event);

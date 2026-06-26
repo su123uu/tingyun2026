@@ -9,15 +9,6 @@ const signupStatus = {
   cancelled: '已取消',
 };
 
-const sampleActivity = {
-  activity_id: 'tea',
-  title: '山间茶艺品鉴会',
-  date: '2026-06-20',
-  location: '茶空间',
-  people_count: 2,
-  status_text: '待确认',
-};
-
 function maskMobile(mobile) {
   return mobile ? mobile.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2') : '尚未绑定';
 }
@@ -143,7 +134,7 @@ Page({
       serviceBenefits: sections.serviceBenefits,
       quotaBenefits: sections.quotaBenefits,
       cardServices: sections.cardServices,
-      activities: isMember ? (signups.length ? signups.map(decorateSignup) : [sampleActivity]) : [],
+      activities: isMember ? signups.map(decorateSignup) : [],
     });
   },
   setNavigationMetrics() {
@@ -168,33 +159,22 @@ Page({
   intro() {
     wx.navigateTo({ url: '/pages/member/member' });
   },
-  bindMember() {
-    wx.showModal({
-      title: '模拟手机号授权',
-      content: '使用测试手机号 13800136688 绑定会员档案。',
-      confirmText: '授权绑定',
-      success: async (result) => {
-        if (!result.confirm) return;
-        const user = await auth.bindMobile({ mobile: '13800136688' });
-        const isMember = user.customer_type === 'member';
-        const profile = isMember
-          ? await memberService.getMemberProfile({ member_id: user.member_id, mobile: user.mobile })
-          : { level_benefits: [], benefit_accounts: [] };
-        const sections = isMember
-          ? buildBenefitSections(profile)
-          : { serviceBenefits: [], quotaBenefits: [], cardServices: [] };
-        this.setData({
-          user,
-          isMember,
-          mobileText: maskMobile(user.mobile),
-          validityText: formatValidity(user),
-          serviceBenefits: sections.serviceBenefits,
-          quotaBenefits: sections.quotaBenefits,
-          cardServices: sections.cardServices,
-          activities: isMember ? [sampleActivity] : [],
-        });
-      },
-    });
+  async bindMember(event) {
+    const code = event && event.detail && event.detail.code;
+    if (!code) {
+      wx.showToast({ title: '未完成手机号授权', icon: 'none' });
+      return;
+    }
+    try {
+      wx.showLoading({ title: '匹配会员中', mask: true });
+      await auth.bindMobile({ phoneCode: code });
+      wx.hideLoading();
+      await this.onShow();
+      wx.showToast({ title: this.data.isMember ? '会员匹配成功' : '未匹配到会员', icon: this.data.isMember ? 'success' : 'none' });
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({ title: error.message || '手机号授权失败', icon: 'none' });
+    }
   },
   contact() {
     wx.makePhoneCall({ phoneNumber: '15192670475' });

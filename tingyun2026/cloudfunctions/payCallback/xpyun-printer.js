@@ -127,7 +127,7 @@ function buildMealTicket(order = {}) {
     separator(),
     itemLines || line('无菜品明细'),
     separator(),
-    line(`合计：${money(order.total_amount || order.amount || order.pay_amount)}`),
+    line(`合计：${money(order.total_amount)}`),
     remarks.length ? line(`备注：${remarks.join(' / ')}`) : '',
     '<CUT>',
   ].join('');
@@ -139,8 +139,8 @@ function reservationTypeName(businessType) {
 
 function reservationStatusText(order = {}) {
   if (order.reservation_status === 'refunding') return '已支付，需退款处理';
-  if (order.payment_status === 'settled' || order.settlement_status === 'wechat_paid') return '已支付，待确认';
-  if (order.payment_status === 'pending_offline' || order.settlement_status === 'pending_offline_points') return '待线下核对，待确认';
+  if (order.payment_status === 'settled') return '已支付，待确认';
+  if (order.payment_status === 'offline_pending') return '待线下核对，待确认';
   return '待处理';
 }
 
@@ -169,7 +169,7 @@ function buildReservationTicket(order = {}, businessType = 'dining_reservation')
   }
 
   lines.push(separator());
-  lines.push(line(`金额：${money(order.amount || order.pay_amount || 0)}`));
+  lines.push(line(`金额：${money(order.amount || 0)}`));
   lines.push(line(`状态：${reservationStatusText(order)}`));
   lines.push(line(`创建时间：${formatTime(order.paid_at || order.created_at)}`));
   if (remarks.length) lines.push(line(`备注：${remarks.join(' / ')}`));

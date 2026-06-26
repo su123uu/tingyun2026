@@ -28,9 +28,9 @@ function isBoolean(value) {
   return typeof value === 'boolean';
 }
 
-var isNoEmptyObj = function (obj) {
+function isNoEmptyObj(obj) {
   return isObject(obj) && JSON.stringify(obj) !== '{}';
-};
+}
 
 function includes(arr, value) {
   if (!arr || !isArray(arr)) return false;
@@ -110,7 +110,7 @@ function _style(styles) {
         return item != null && item !== '';
       })
       .map(function (item) {
-        return isArray(item) ? _style(item) : endsWith(item, ';');
+        return isString(item) ? endsWith(item, ';') : _style(item);
       })
       .join(' ');
   }
@@ -131,7 +131,7 @@ function _style(styles) {
 
 function isValidIconName(str) {
   // prettier-ignore
-  return getRegExp('^[A-Za-z0-9\-]+$').test(str);
+  return getRegExp('^[A-Za-z0-9\-\_]+$').test(str);
 }
 
 module.exports = {

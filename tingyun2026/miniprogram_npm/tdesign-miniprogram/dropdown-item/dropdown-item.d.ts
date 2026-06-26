@@ -3,6 +3,7 @@ import type { TdDropdownItemProps } from './type';
 export interface DropdownItemProps extends TdDropdownItemProps {
 }
 export default class DropdownMenuItem extends SuperComponent {
+    behaviors: string[];
     options: {
         multipleSlots: boolean;
     };

@@ -65,7 +65,7 @@
 {
   "type": "contact",
   "title": "欢迎咨询",
-  "text": "山里人私人管家：成龙\n电话：18253287888\n地址：青岛市崂山区停云山居",
+  "text": "山里人私人管家：椿枫\n电话：18253287888\n地址：青岛市崂山区停云山居",
   "image_url": "cloud://cloud1-d6gzs6wuu4b4e902e.636c-cloud1-d6gzs6wuu4b4e902e-1437151055/intro/contact.webp"
 }
 ```

@@ -30,7 +30,60 @@ function formatShortDate(timestamp) {
   return formatDate(timestamp, '.').slice(5);
 }
 
+function parseDateKey(key) {
+  const parts = key.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+}
+
+function buildDateRangeMap(ranges) {
+  const map = {};
+  ranges.forEach((range) => {
+    let current = parseDateKey(range.start);
+    const end = parseDateKey(range.end);
+    while (current <= end) {
+      map[formatDate(current)] = range.label;
+      current = addDays(current, 1);
+    }
+  });
+  return map;
+}
+
+function normalizeStandardDishes(dishes) {
+  if (!dishes || Array.isArray(dishes) || typeof dishes !== 'object') return [];
+  return Object.keys(dishes).map((name) => {
+    return {
+      name: String(name || '').trim(),
+      items: asArray(dishes[name]).map((item) => String(item || '').trim()).filter(Boolean),
+    };
+  }).filter((group) => group.name || group.items.length);
+}
+
 const today = startOfDay(new Date());
+const holidayTips = buildDateRangeMap([
+  { start: '2026-01-01', end: '2026-01-03', label: '元旦' },
+  { start: '2026-02-15', end: '2026-02-23', label: '春节' },
+  { start: '2026-04-04', end: '2026-04-06', label: '清明' },
+  { start: '2026-05-01', end: '2026-05-05', label: '劳动节' },
+  { start: '2026-06-19', end: '2026-06-21', label: '端午' },
+  { start: '2026-09-25', end: '2026-09-27', label: '中秋' },
+  { start: '2026-10-01', end: '2026-10-07', label: '国庆' },
+]);
+const workdayTips = {
+  '2026-01-04': '调休',
+  '2026-02-14': '调休',
+  '2026-02-28': '调休',
+  '2026-05-09': '调休',
+  '2026-09-20': '调休',
+  '2026-10-10': '调休',
+};
+
+function formatCalendarDay(day) {
+  const key = formatDate(day.date.getTime());
+  const date = day.date;
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const suffix = workdayTips[key] || holidayTips[key] || (isWeekend ? '休' : '');
+  return Object.assign({}, day, { suffix });
+}
 
 Page({
   data: {
@@ -38,6 +91,9 @@ Page({
     dateDisplay: formatShortDate(today),
     calendarVisible: false,
     calendarValue: today,
+    calendarFormat: formatCalendarDay,
+    holidayTips,
+    workdayTips,
     minDate: today,
     maxDate: addDays(today, 366),
     slot: 'lunch',
@@ -52,8 +108,8 @@ Page({
     showStandardDetail: false,
     selectedStandard: null,
     selectedStandardDishes: [],
-    contact: '山里人',
-    mobile: '13800136688',
+    contact: '',
+    mobile: '',
     hasSavedContact: false,
     savedContactName: '',
     savedContactMobile: '',
@@ -81,7 +137,7 @@ Page({
       mobile: user.mobile || this.data.mobile,
     });
     await this.loadContactProfile();
-    const standards = await catalog.listDiningStandards();
+    const standards = await catalog.listDiningStandards({ forceRefresh: true });
     this.setData({ standards: asArray(standards).map((standard) => {
       const img = standard.image || standard.image_url || STANDARD_IMAGE;
       const hasImage = !!(standard.image || standard.image_url);
@@ -89,6 +145,7 @@ Page({
         image: img,
         hasImage,
         initial: (standard.name || '').charAt(0),
+        dishes: normalizeStandardDishes(standard.dishes),
       });
     }) });
     await this.refreshRooms();
@@ -228,9 +285,12 @@ Page({
   openStandardDetail(event) {
     const selectedStandard = this.data.standards.find((standard) => standard.meal_standard_id === event.currentTarget.dataset.id);
     if (selectedStandard) {
+      if (!selectedStandard.dishes || Array.isArray(selectedStandard.dishes) || typeof selectedStandard.dishes !== 'object') {
+        console.warn('餐标菜品需使用 dishes: { "凉菜": ["菜名1", "菜名2"] } 结构，当前数据：', selectedStandard.dishes);
+      }
       this.setData({
         selectedStandard,
-        selectedStandardDishes: asArray(selectedStandard.dishes),
+        selectedStandardDishes: normalizeStandardDishes(selectedStandard.dishes),
         showStandardDetail: true,
       });
     }

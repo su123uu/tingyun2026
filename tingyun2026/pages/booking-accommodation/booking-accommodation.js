@@ -71,6 +71,14 @@ const workdayTips = {
   '2026-10-10': '调休',
 };
 
+function formatCalendarDay(day) {
+  const key = formatDate(day.date.getTime());
+  const date = day.date;
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const suffix = workdayTips[key] || holidayTips[key] || (isWeekend ? '休' : '');
+  return Object.assign({}, day, { suffix });
+}
+
 Page({
   data: {
     checkIn: formatDate(today),
@@ -79,6 +87,7 @@ Page({
     checkOutDisplay: formatShortDate(tomorrow),
     calendarVisible: false,
     calendarValue: [today, tomorrow],
+    calendarFormat: formatCalendarDay,
     holidayTips,
     workdayTips,
     minDate: today,
@@ -90,8 +99,8 @@ Page({
     showRoomDetail: false,
     selectedRoom: null,
     roomGalleryCurrent: 0,
-    contact: '山里人',
-    mobile: '13800136688',
+    contact: '',
+    mobile: '',
     hasSavedContact: false,
     savedContactName: '',
     savedContactMobile: '',
@@ -99,6 +108,7 @@ Page({
     amount: 0,
     nights: 1,
     customerType: 'guest',
+    submitting: false,
     navTop: 28,
     navHeight: 32,
     heroHeight: 218,
@@ -275,8 +285,10 @@ Page({
     }
   },
   submit() {
+    if (this.data.submitting) return;
     if (!this.data.checkIn || !this.data.checkOut) return this.toast('请选择入住和离店日期');
     if (!this.data.selectedRooms.length) return this.toast('请选择房间');
+    this.setData({ submitting: true });
     this.create();
   },
   callManager() {
@@ -287,6 +299,7 @@ Page({
       const subscription = this.data.customerType === 'member'
         ? await notification.requestReservationWithConsumption()
         : await notification.requestReservationStatus();
+      wx.showLoading({ title: '提交中...', mask: true });
       let order = await reservations.createAccommodationReservation({
         check_in_date: this.data.checkIn,
         check_out_date: this.data.checkOut,
@@ -297,12 +310,16 @@ Page({
         remark: this.data.remark,
         notification_subscriptions: subscription,
       });
+      wx.hideLoading();
       if (order.customer_type === 'guest') {
         await this.payReservation(order.order_no || order.order_id);
       }
       wx.redirectTo({ url: `/pages/reservation-detail/reservation-detail?id=${order.order_no || order.order_id}` });
     } catch (error) {
+      wx.hideLoading();
       this.toast(error.message);
+    } finally {
+      this.setData({ submitting: false });
     }
   },
   async payReservation(orderNo) {

@@ -55,6 +55,7 @@ const STATUS_LABELS = {
   preparing: '制作中',
   completed: '已完成',
   settled: '已结算',
+  offline_pending: '待会员核销',
   pending_payment: '待支付',
   pending_notice: '订单已提交',
   paid_pending_confirmation: '待确认',
@@ -128,7 +129,11 @@ function getTemplateId(key) {
 
 function shouldFallbackToHttpApi(error) {
   const message = String((error && (error.errMsg || error.message)) || '');
-  return message.includes('INVALID_WX_ACCESS_TOKEN') || message.includes('invalid wx openapi access_token');
+  const code = Number(error && error.errCode);
+  return message.includes('INVALID_WX_ACCESS_TOKEN')
+    || message.includes('invalid wx openapi access_token')
+    || message.includes('function has no permission')
+    || code === -604101;
 }
 
 function putField(data, field, value, maxLength = 20) {
@@ -153,14 +158,14 @@ function mealTemplateData(values = {}) {
   putField(data, fields.store, process.env.STORE_NAME || mealStoreName(values), 20);
   putField(data, fields.table, firstCharacterString([
     values.table_id,
-    values.room_id,
     Array.isArray(values.room_ids) ? values.room_ids.join('-') : '',
+    values.room_id,
     values.table_name,
     values.business_no,
   ], 32), 32);
   putField(data, fields.status, values.status_label || statusLabel(values.status || values.order_status || values.reservation_status), 10);
   putField(data, fields.time, values.time || formatTime(values.start_at || values.updated_at || values.created_at), 20);
-  putField(data, fields.amount, formatAmount(values.amount || values.total_amount || values.pay_amount), 10);
+  putField(data, fields.amount, formatAmount(values.amount || values.total_amount), 10);
   return data;
 }
 
@@ -205,7 +210,7 @@ function memberConsumptionTemplateData(values = {}) {
     : businessType === 'activity_signup' ? '停云山居-活动报名'
     : '停云山居';
   putField(data, fields.store, storeName, 20);
-  putField(data, fields.amount, formatAmount(values.amount || values.total_amount || values.pay_amount), 10);
+  putField(data, fields.amount, formatAmount(values.amount || values.total_amount), 10);
   putField(data, fields.time, formatTime(values.completed_at || values.settled_at || values.updated_at || values.created_at || now()), 20);
   return data;
 }
@@ -399,6 +404,18 @@ async function findSubscription(event, templateKey) {
   return result.data && result.data[0] ? result.data[0] : null;
 }
 
+async function logSubscribeSkipped(event = {}, templateKey, reason) {
+  await logNotification({
+    channel: 'wechat_subscribe',
+    business_type: cleanText(event.business_type, 80),
+    business_no: cleanText(event.business_no || event.order_no || event.order_id, 120),
+    openid: cleanText(event.openid || event.touser, 120),
+    template_key: cleanText(templateKey, 80),
+    status: 'skipped',
+    error_message: cleanText(reason, 500),
+  });
+}
+
 async function sendSubscribeNotification(event = {}) {
   const businessType = cleanText(event.business_type, 80);
   const businessNo = cleanText(event.business_no || event.order_no || event.order_id, 120);
@@ -406,11 +423,20 @@ async function sendSubscribeNotification(event = {}) {
   const templateId = getTemplateId(templateKey);
   const openid = cleanText(event.openid || event.touser, 120);
 
-  if (!templateId) return { sent: false, reason: 'template_not_configured' };
-  if (!openid || !businessType || !businessNo) return { sent: false, reason: 'missing_target' };
+  if (!templateId) {
+    await logSubscribeSkipped(event, templateKey, 'template_not_configured');
+    return { sent: false, reason: 'template_not_configured' };
+  }
+  if (!openid || !businessType || !businessNo) {
+    await logSubscribeSkipped(event, templateKey, 'missing_target');
+    return { sent: false, reason: 'missing_target' };
+  }
 
   const subscription = await findSubscription(event, templateKey);
-  if (!subscription) return { sent: false, reason: 'subscription_not_found' };
+  if (!subscription) {
+    await logSubscribeSkipped(event, templateKey, 'subscription_not_found');
+    return { sent: false, reason: 'subscription_not_found' };
+  }
 
   const values = Object.assign({}, event.payload || {}, {
     business_no: businessNo,
@@ -563,10 +589,10 @@ function mealItemsText(items = []) {
       const name = cleanText(item.name || item.item_name || item.title || item.item_id, 40);
       const quantity = Number(item.quantity || item.count || 1) || 1;
       const spec = cleanText(item.specification || item.spec || '', 30);
-      return [name, spec ? `(${spec})` : '', `x${quantity}`].filter(Boolean).join('');
+      return [name, spec ? `(${spec})` : '', `x ${quantity}`].filter(Boolean).join(' ');
     })
     .filter(Boolean)
-    .join('，');
+    .join('\n');
 }
 
 function staffRemarkText(payload = {}) {
@@ -575,6 +601,57 @@ function staffRemarkText(payload = {}) {
     : [];
   const remark = cleanText(payload.remark, 200);
   return quickRemarks.concat(remark ? [remark] : []).join('，');
+}
+
+function buildRoomConfirmMessage(payload = {}) {
+  const contactName = cleanText(payload.contact_name || payload.customer_name, 40) || '您';
+  const roomName = cleanText(payload.room_name, 40);
+  const checkInDate = cleanText(payload.check_in_date || payload.date, 20);
+  const checkOutDate = cleanText(payload.check_out_date, 20);
+  const storeAddress = process.env.STORE_ADDRESS || '';
+  const storePhone = process.env.STORE_PHONE || '';
+
+  const msgLines = [
+    `【停云山居】`,
+    `山里人${contactName}，您好！`,
+    roomName ? `已为您预定${roomName} 房间` : '已为您预定房间',
+    ' ',
+    checkInDate ? `入住：${checkInDate}` : '入住：',
+    checkOutDate ? `离店：${checkOutDate}` : '离店：',
+    roomName ? `房间：${roomName}` : '房间：',
+    storeAddress ? `地址：${storeAddress}` : '地址：',
+    storePhone ? `电话：${storePhone}` : '电话：',
+    ' ',
+    '山居夜宿 枕山而眠',
+  ];
+  return msgLines.join('\n');
+}
+
+function buildDiningConfirmMessage(payload = {}) {
+  const contactName = cleanText(payload.contact_name || payload.customer_name, 40) || '您';
+  const standardName = cleanText(payload.meal_standard_name, 40);
+  const dateText = cleanText(payload.date || payload.reservation_date, 20);
+  const timeSlot = cleanText(payload.time_slot || payload.reservation_time, 20);
+  const mealLabel = timeSlot === 'lunch' ? '午餐' : timeSlot === 'dinner' ? '晚餐' : timeSlot;
+  const roomName = cleanText(payload.room_name, 40);
+  const storeAddress = process.env.STORE_ADDRESS || '';
+  const storePhone = process.env.STORE_PHONE || '';
+
+  const msgLines = [
+    `【停云山居】`,
+    `山里人${contactName}，您好！`,
+    standardName ? `已为您预定${standardName}套餐` : '已为您预定用餐套餐',
+    ' ',
+    dateText ? `日期：${dateText}` : '日期：',
+    mealLabel ? `餐别：${mealLabel}` : '餐别：午餐/晚餐',
+    roomName ? `房间：${roomName}` : '房间：',
+    storeAddress ? `地址：${storeAddress}` : '地址：',
+    storePhone ? `电话：${storePhone}` : '电话：',
+    ' ',
+    '时令入味 慢享山中一席',
+    '停云山居恭候您的光临！',
+  ];
+  return msgLines.join('\n');
 }
 
 function buildStaffMessage(event = {}) {
@@ -589,9 +666,10 @@ function buildStaffMessage(event = {}) {
     title,
     businessNo ? `单号：${businessNo}` : '',
     activityTitle ? `活动：${activityTitle}` : '',
-    payload.customer_name || payload.contact_name ? `联系人：${payload.customer_name || payload.contact_name}` : '',
-    payload.customer_mobile || payload.mobile ? `电话：${payload.customer_mobile || payload.mobile}` : '',
+    payload.contact_name || payload.customer_name ? `联系人：${payload.contact_name || payload.customer_name}` : '',
+    payload.mobile || payload.customer_mobile ? `电话：${payload.mobile || payload.customer_mobile}` : '',
   ];
+  let customerText = null;
   // 用餐预定专用字段
   if (businessType === 'dining_reservation') {
     const peopleCount = payload.people_count || payload.guest_count;
@@ -605,35 +683,34 @@ function buildStaffMessage(event = {}) {
     if (payload.amount !== undefined) lines.push(`金额：${payload.amount}`);
     if (event.status) lines.push(`状态：${statusLabel(event.status)}`);
     if (remarkText) lines.push(`备注：${remarkText}`);
+    if (event.status === 'confirmed') customerText = buildDiningConfirmMessage(payload);
+  } else if (businessType === 'accommodation_reservation') {
+    // 住宿预定专用字段
+    const peopleCount = payload.people_count || payload.guest_count;
+    if (peopleCount) lines.push(`人数：${peopleCount}`);
+    if (payload.room_name) lines.push(`房间：${payload.room_name}`);
+    const checkInDate = payload.check_in_date || payload.date;
+    const checkOutDate = payload.check_out_date;
+    if (checkInDate) lines.push(`入住日期：${checkInDate}`);
+    if (checkOutDate) lines.push(`离店日期：${checkOutDate}`);
+    if (payload.amount !== undefined) lines.push(`金额：${payload.amount}`);
+    if (event.status) lines.push(`状态：${statusLabel(event.status)}`);
+    if (remarkText) lines.push(`备注：${remarkText}`);
+    if (event.status === 'confirmed') customerText = buildRoomConfirmMessage(payload);
   } else {
     // 其他业务类型保持原有逻辑
     if (payload.table_name) lines.push(`桌台：${payload.table_name}`);
     if (payload.room_name) lines.push(`房间：${payload.room_name}`);
-    if (itemsText) lines.push(`菜品：${itemsText}`);
+    if (itemsText) lines.push(`菜品：\n${itemsText}`);
     if (payload.amount !== undefined) lines.push(`金额：${payload.amount}`);
     if (event.status) lines.push(`状态：${statusLabel(event.status)}`);
     if (remarkText) lines.push(`备注：${remarkText}`);
   }
-  return lines.filter(Boolean).join('\n');
+  return { staff: lines.filter(Boolean).join('\n'), customer: customerText };
 }
 
 function staffMessage(event = {}) {
-  return buildStaffMessage(event);
-  const payload = event.payload || {};
-  const title = cleanText(event.title, 80) || '停云山居通知';
-  const businessNo = cleanText(event.business_no || event.order_no || event.order_id || payload.order_no, 120);
-  const lines = [
-    title,
-    businessNo ? `单号：${businessNo}` : '',
-    payload.table_name ? `桌台：${payload.table_name}` : '',
-    payload.room_name ? `房间：${payload.room_name}` : '',
-    payload.customer_name || payload.contact_name ? `联系人：${payload.customer_name || payload.contact_name}` : '',
-    payload.customer_mobile || payload.mobile ? `电话：${payload.customer_mobile || payload.mobile}` : '',
-    payload.amount !== undefined ? `金额：${payload.amount}` : '',
-    event.status ? `状态：${statusLabel(event.status)}` : '',
-    payload.remark ? `备注：${payload.remark}` : '',
-  ].filter(Boolean);
-  return lines.join('\n');
+  return buildStaffMessage(event).staff;
 }
 
 async function sendStaffNotification(event = {}) {
@@ -650,25 +727,27 @@ async function sendStaffNotification(event = {}) {
   try {
     const accessToken = await getWeComAccessToken();
     if (!accessToken) return { sent: false, reason: 'wecom_not_configured' };
-    const payload = {
-      msgtype: 'text',
-      agentid: agentId,
-      text: { content: staffMessage(event) },
-      safe: 0,
-    };
-    if (touser) payload.touser = touser;
-    if (toparty) payload.toparty = toparty;
-    if (totag) payload.totag = totag;
+    const businessType = cleanText(event.business_type, 80);
+    const businessNo = cleanText(event.business_no || event.order_no || event.order_id, 120);
 
-    const response = await requestJson('POST', `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${encodeURIComponent(accessToken)}`, payload);
-    await logNotification({
-      channel: 'wecom',
-      business_type: cleanText(event.business_type, 80),
-      business_no: cleanText(event.business_no || event.order_no || event.order_id, 120),
-      status: response.errcode === 0 ? 'sent' : 'failed',
-      response,
-    });
-    return { sent: response.errcode === 0, response };
+    const { staff, customer } = buildStaffMessage(event);
+    const basePayload = { msgtype: 'text', agentid: agentId, safe: 0 };
+    if (touser) basePayload.touser = touser;
+    if (toparty) basePayload.toparty = toparty;
+    if (totag) basePayload.totag = totag;
+
+    const results = [];
+    // 第1条：订单详情（给店员看）
+    const r1 = await requestJson('POST', `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${encodeURIComponent(accessToken)}`, { ...basePayload, text: { content: staff } });
+    await logNotification({ channel: 'wecom', business_type: businessType, business_no: businessNo, status: r1.errcode === 0 ? 'sent' : 'failed', response: r1 });
+    results.push(r1);
+    // 第2条：客户确认短信（方便店员复制）
+    if (customer) {
+      const r2 = await requestJson('POST', `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${encodeURIComponent(accessToken)}`, { ...basePayload, text: { content: customer } });
+      await logNotification({ channel: 'wecom', business_type: businessType, business_no: businessNo, status: r2.errcode === 0 ? 'sent' : 'failed', response: r2 });
+      results.push(r2);
+    }
+    return { sent: results.every((r) => r.errcode === 0), responses: results };
   } catch (error) {
     await logNotification({
       channel: 'wecom',
@@ -682,24 +761,27 @@ async function sendStaffNotification(event = {}) {
 }
 
 async function sendWeComWebhookNotification(event = {}) {
+  const businessType = cleanText(event.business_type, 80);
+  const businessNo = cleanText(event.business_no || event.order_no || event.order_id, 120);
+  const { staff, customer } = buildStaffMessage(event);
   try {
-    const response = await requestJson('POST', process.env.WECOM_WEBHOOK_URL, {
-      msgtype: 'text',
-      text: { content: staffMessage(event) },
-    });
-    await logNotification({
-      channel: 'wecom_webhook',
-      business_type: cleanText(event.business_type, 80),
-      business_no: cleanText(event.business_no || event.order_no || event.order_id, 120),
-      status: response.errcode === 0 ? 'sent' : 'failed',
-      response,
-    });
-    return { sent: response.errcode === 0, response };
+    const results = [];
+    // 第1条：订单详情（给店员看）
+    const r1 = await requestJson('POST', process.env.WECOM_WEBHOOK_URL, { msgtype: 'text', text: { content: staff } });
+    await logNotification({ channel: 'wecom_webhook', business_type: businessType, business_no: businessNo, status: r1.errcode === 0 ? 'sent' : 'failed', response: r1 });
+    results.push(r1);
+    // 第2条：客户确认短信（方便店员复制）
+    if (customer) {
+      const r2 = await requestJson('POST', process.env.WECOM_WEBHOOK_URL, { msgtype: 'text', text: { content: customer } });
+      await logNotification({ channel: 'wecom_webhook', business_type: businessType, business_no: businessNo, status: r2.errcode === 0 ? 'sent' : 'failed', response: r2 });
+      results.push(r2);
+    }
+    return { sent: results.every((r) => r.errcode === 0), responses: results };
   } catch (error) {
     await logNotification({
       channel: 'wecom_webhook',
-      business_type: cleanText(event.business_type, 80),
-      business_no: cleanText(event.business_no || event.order_no || event.order_id, 120),
+      business_type: businessType,
+      business_no: businessNo,
       status: 'failed',
       error_message: cleanText(error.message, 500),
     });

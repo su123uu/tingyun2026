@@ -36,21 +36,20 @@ const reservationsModule = {
   name: '预定管理',
   group: '订单预约',
   titleField: 'order_no',
-  idField: 'reservation_id',
-  columns: ['__type', 'order_no', 'customer_name', 'customer_mobile', '__date', 'room_name', 'reservation_status'],
+  idField: 'order_no',
+  columns: ['__type', 'order_no', 'contact_name', 'mobile', '__date', 'room_name', 'reservation_status'],
   fields: [
     { key: '__collection', label: '集合', hidden: true },
     { key: '__type', label: '类型', hidden: true },
-    { key: 'reservation_id', label: '预约 ID', hidden: true },
     { key: 'order_no', label: '订单号' },
-    { key: 'customer_name', label: '联系人' },
-    { key: 'customer_mobile', label: '手机号' },
-    { key: 'reservation_date', label: '用餐日期', reservationType: 'dining' },
-    { key: 'reservation_time', label: '用餐时间', reservationType: 'dining' },
-    { key: 'checkin_date', label: '入住日期', reservationType: 'accommodation' },
-    { key: 'checkout_date', label: '离店日期', reservationType: 'accommodation' },
-    { key: 'guest_count', label: '人数', type: 'number' },
-    { key: 'room_id', label: '房间/包间 ID' },
+    { key: 'contact_name', label: '联系人' },
+    { key: 'mobile', label: '手机号' },
+    { key: 'date', label: '用餐日期', reservationType: 'dining' },
+    { key: 'time_slot', label: '用餐时间', reservationType: 'dining' },
+    { key: 'check_in_date', label: '入住日期', reservationType: 'accommodation' },
+    { key: 'check_out_date', label: '离店日期', reservationType: 'accommodation' },
+    { key: 'people_count', label: '人数', type: 'number' },
+    { key: 'room_ids', label: '房间/包间 ID', type: 'json' },
     { key: 'room_name', label: '房间/包间名称' },
     { key: 'meal_standard_id', label: '餐标 ID', reservationType: 'dining' },
     { key: 'meal_standard_name', label: '餐标名称', reservationType: 'dining' },
@@ -96,6 +95,12 @@ const state = reactive({
     tableSessions: [],
     selectedTableId: '',
     moveTargetTableId: '',
+    recentOrderFilter: 'all',
+    priceEditor: {
+      visible: false,
+      totalAmount: 0,
+      items: [],
+    },
   },
   calendar: {
     diningReservations: [],
@@ -197,6 +202,7 @@ const titleField = computed(() => activeModule.value.titleField || activeModule.
 const tableColumns = computed(() => activeModule.value.columns || activeModule.value.fields.slice(0, 5).map((field) => field.key));
 const isBannerModule = computed(() => activeModule.value.key === 'home_banners');
 const isMealItemsModule = computed(() => activeModule.value.key === 'meal_items');
+const isMealOrdersModule = computed(() => activeModule.value.key === 'meal_orders');
 const isMealTablesModule = computed(() => activeModule.value.key === 'meal_tables');
 const isDiningRoomsModule = computed(() => activeModule.value.key === 'dining_rooms');
 const isAccommodationRoomsModule = computed(() => activeModule.value.key === 'accommodation_rooms');
@@ -257,21 +263,21 @@ const dashboardStats = computed(() => {
 });
 const dashboardEvents = computed(() => {
   const dining = state.calendar.diningReservations.map((row) => ({
-    id: row._id || row.reservation_id,
+    id: row._id || row.order_no,
     type: 'dining',
     collection: 'dining_reservations',
-    date: normalizeCalendarDate(row.reservation_date),
-    customer: row.customer_name || row.contact_name || '用餐预约',
+    date: normalizeCalendarDate(row.date),
+    customer: row.contact_name || '用餐预约',
     place: row.room_name || row.table_name || '未选包间',
     status: row.reservation_status || '-',
     row,
   }));
   const accommodation = state.calendar.accommodationReservations.map((row) => ({
-    id: row._id || row.reservation_id,
+    id: row._id || row.order_no,
     type: 'accommodation',
     collection: 'accommodation_reservations',
-    date: normalizeCalendarDate(row.checkin_date),
-    customer: row.customer_name || row.contact_name || '住宿预约',
+    date: normalizeCalendarDate(row.check_in_date),
+    customer: row.contact_name || '住宿预约',
     place: row.room_name || '未选客房',
     status: row.reservation_status || '-',
     row,
@@ -302,7 +308,12 @@ const statusPanelReservationEvents = computed(() => {
     });
 });
 const sortedMealOrders = computed(() => state.overview.mealOrders.slice().sort(compareRecentRecords));
-const recentMealOrders = computed(() => sortedMealOrders.value.slice(0, 8));
+const recentMealOrders = computed(() => {
+  const rows = state.overview.recentOrderFilter === 'memberPendingSettle'
+    ? sortedMealOrders.value.filter(canSettleMemberMealOrder)
+    : sortedMealOrders.value;
+  return rows.slice(0, 8);
+});
 const activeMealOrders = computed(() => sortedMealOrders.value.filter(isActiveMealOrder));
 const selectedTable = computed(() => {
   return state.overview.tables.find((table) => getTableId(table) === state.overview.selectedTableId) || null;
@@ -317,6 +328,26 @@ const selectedTableItems = computed(() => {
     order_no: order.order_no || order.order_id || '',
     customer_type: order.customer_type || 'guest',
   })));
+});
+const selectedTableTotalAmount = computed(() => selectedTableOrders.value
+  .reduce((sum, order) => sum + orderAmount(order), 0));
+const selectedTableEditableItems = computed(() => {
+  return selectedTableOrders.value.flatMap((order) => {
+    const batches = Array.isArray(order.batches) && order.batches.length
+      ? order.batches
+      : [{ batch_no: 1, items: Array.isArray(order.items) ? order.items : [] }];
+    return batches.flatMap((batch, batchIndex) => (Array.isArray(batch.items) ? batch.items : []).map((item, itemIndex) => ({
+      key: `${order._id || order.order_no || order.order_id}-${batchIndex}-${itemIndex}`,
+      orderId: order._id,
+      batchIndex,
+      itemIndex,
+      name: item.name || item.item_name || item.title || '未命名菜品',
+      quantity: Math.max(1, Number(item.quantity) || 1),
+      regularAmount: Number(item.regular_amount ?? item.amount ?? ((Number(item.price) || 0) * (Number(item.quantity) || 1))) || 0,
+      memberAmount: Number(item.member_amount ?? item.amount ?? ((Number(item.member_price ?? item.price) || 0) * (Number(item.quantity) || 1))) || 0,
+      isFree: item.is_free === true,
+    })));
+  });
 });
 const availableMoveTables = computed(() => {
   return state.overview.tables.filter((table) => {
@@ -454,9 +485,8 @@ function isActiveMealOrder(order) {
   const statusValues = [
     order.order_status || order.kitchen_status,
     order.payment_status,
-    order.settlement_status,
   ].map((value) => String(value || '').toLowerCase());
-  const inactive = ['cancelled', 'canceled', 'completed', 'closed', 'refunded', 'pending_payment', 'pending_wechat_pay', 'paying'];
+  const inactive = ['cancelled', 'canceled', 'completed', 'closed', 'refunded'];
   return !statusValues.some((value) => inactive.includes(value));
 }
 
@@ -540,12 +570,170 @@ function normalizeOrderItems(order) {
     name: item.name || item.item_name || item.title || '未命名菜品',
     quantity: Number(item.quantity) || 1,
     price: Number(item.price ?? item.member_price ?? 0) || 0,
-    amount: (Number(item.price ?? item.member_price ?? 0) || 0) * (Number(item.quantity) || 1),
+    amount: item.is_free === true
+      ? 0
+      : Number(item.regular_amount ?? item.amount ?? ((Number(item.price ?? item.member_price ?? 0) || 0) * (Number(item.quantity) || 1))) || 0,
+    isFree: item.is_free === true,
   }));
 }
 
 function orderAmount(order) {
   return Number(order.total_amount ?? order.pay_amount ?? order.amount ?? 0) || 0;
+}
+
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function closeTablePriceEditor() {
+  state.overview.priceEditor.visible = false;
+  state.overview.priceEditor.items = [];
+}
+
+function openTablePriceEditor() {
+  if (!selectedTableOrders.value.length) {
+    toast('当前桌台没有可编辑的点餐订单。', 'error');
+    return;
+  }
+  const items = selectedTableEditableItems.value;
+  if (!items.length) {
+    toast('当前订单没有可编辑的菜品明细。', 'error');
+    return;
+  }
+  state.overview.priceEditor.items = items.map((item) => ({ ...item }));
+  state.overview.priceEditor.totalAmount = roundMoney(selectedTableTotalAmount.value);
+  state.overview.priceEditor.visible = true;
+}
+
+function editorPayableTotal() {
+  return roundMoney(state.overview.priceEditor.items.reduce((sum, item) => (
+    sum + (item.isFree ? 0 : item.regularAmount)
+  ), 0));
+}
+
+function syncEditorTotalAfterFreeChange() {
+  state.overview.priceEditor.totalAmount = editorPayableTotal();
+}
+
+function distributeMoney(total, items, field) {
+  if (!items.length) return [];
+  const cents = Math.round(total * 100);
+  const basis = items.reduce((sum, item) => sum + Math.max(0, Number(item[field]) || 0), 0);
+  let assigned = 0;
+  return items.map((item, index) => {
+    const value = index === items.length - 1
+      ? cents - assigned
+      : Math.round(cents * (basis > 0 ? Math.max(0, Number(item[field]) || 0) / basis : 1 / items.length));
+    assigned += value;
+    return value / 100;
+  });
+}
+
+function patchOrderPriceFromEditor(order, editorItems, totalShare) {
+  const sourceBatches = Array.isArray(order.batches) && order.batches.length
+    ? order.batches
+    : [{
+      batch_no: 1,
+      batch_type: 'primary',
+      batch_title: '首单',
+      items: Array.isArray(order.items) ? order.items : [],
+      amount: orderAmount(order),
+      regular_amount: orderAmount(order),
+      member_amount: Number(order.member_total_amount ?? orderAmount(order)) || 0,
+    }];
+  const batches = sourceBatches.map((batch) => ({
+    ...batch,
+    items: (Array.isArray(batch.items) ? batch.items : []).map((item) => ({ ...item })),
+  }));
+  const rows = editorItems.filter((item) => item.orderId === order._id);
+  const payableRows = rows.filter((item) => !item.isFree);
+  const originalRegularTotal = payableRows.reduce((sum, item) => sum + Math.max(0, item.regularAmount), 0);
+  const originalMemberTotal = payableRows.reduce((sum, item) => sum + Math.max(0, item.memberAmount), 0);
+  const regularAmounts = distributeMoney(totalShare, payableRows, 'regularAmount');
+  const memberTarget = originalRegularTotal > 0
+    ? roundMoney(totalShare * originalMemberTotal / originalRegularTotal)
+    : totalShare;
+  const memberAmounts = distributeMoney(memberTarget, payableRows, 'memberAmount');
+  const amountByKey = new Map(payableRows.map((item, index) => [item.key, {
+    regularAmount: regularAmounts[index],
+    memberAmount: memberAmounts[index],
+  }]));
+
+  rows.forEach((row) => {
+    const item = batches[row.batchIndex]?.items?.[row.itemIndex];
+    if (!item) return;
+    const quantity = Math.max(1, Number(item.quantity) || row.quantity || 1);
+    const amounts = amountByKey.get(row.key);
+    const isFree = row.isFree === true;
+    const regularAmount = isFree ? 0 : (amounts?.regularAmount ?? 0);
+    const memberAmount = isFree ? 0 : (amounts?.memberAmount ?? regularAmount);
+    item.is_free = isFree;
+    item.amount = regularAmount;
+    item.regular_amount = regularAmount;
+    item.member_amount = memberAmount;
+    item.price = roundMoney(regularAmount / quantity);
+    item.regular_price = item.price;
+    item.member_price = roundMoney(memberAmount / quantity);
+  });
+
+  const activeBatches = batches.filter((batch) => !['cancelled', 'canceled'].includes(String(batch.order_status || '').toLowerCase()));
+  activeBatches.forEach((batch) => {
+    const totals = (batch.items || []).reduce((sum, item) => ({
+      regular: sum.regular + (item.is_free ? 0 : Number(item.regular_amount ?? item.amount) || 0),
+      member: sum.member + (item.is_free ? 0 : Number(item.member_amount ?? item.regular_amount ?? item.amount) || 0),
+    }), { regular: 0, member: 0 });
+    batch.amount = roundMoney(totals.regular);
+    batch.regular_amount = batch.amount;
+    batch.member_amount = roundMoney(totals.member);
+  });
+  const totals = activeBatches.reduce((sum, batch) => ({
+    regular: sum.regular + (Number(batch.regular_amount ?? batch.amount) || 0),
+    member: sum.member + (Number(batch.member_amount ?? batch.regular_amount ?? batch.amount) || 0),
+  }), { regular: 0, member: 0 });
+  return {
+    batches,
+    items: activeBatches.flatMap((batch) => batch.items || []),
+    total_amount: roundMoney(totals.regular),
+    regular_total_amount: roundMoney(totals.regular),
+    member_total_amount: roundMoney(totals.member),
+  };
+}
+
+async function saveTablePriceEditor() {
+  const orders = selectedTableOrders.value.slice();
+  const editor = state.overview.priceEditor;
+  const totalAmount = roundMoney(editor.totalAmount);
+  const payableItems = editor.items.filter((item) => !item.isFree);
+  if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+    toast('请输入不小于 0 的总价格。', 'error');
+    return;
+  }
+  if (totalAmount > 0 && !payableItems.length) {
+    toast('菜品均已设为免费，请将总价格设为 0。', 'error');
+    return;
+  }
+  const orderWeights = orders.map((order) => ({
+    order,
+    amount: editor.items.filter((item) => item.orderId === order._id && !item.isFree)
+      .reduce((sum, item) => sum + Math.max(0, item.regularAmount), 0),
+  }));
+  const orderTotals = distributeMoney(totalAmount, orderWeights, 'amount');
+
+  state.saving = true;
+  try {
+    await Promise.all(orderWeights.map(({ order }, index) => callAdmin('update', {
+      collection: 'meal_orders',
+      _id: order._id,
+      data: patchOrderPriceFromEditor(order, editor.items, orderTotals[index]),
+    })));
+    closeTablePriceEditor();
+    await loadOverview();
+    toast('菜品免费状态和订单总价已保存。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.saving = false;
+  }
 }
 
 function getReservationStatusMeta(value) {
@@ -565,7 +753,7 @@ function reservationTypeLabel(type) {
 }
 
 function reservationDateValue(row) {
-  return row.__date || row.reservation_date || row.checkin_date || '';
+  return row.__date || row.date || row.check_in_date || '';
 }
 
 function mealSlotLabel(value) {
@@ -587,8 +775,7 @@ function isPendingReservation(row) {
 
 function canSettleMemberReservation(row) {
   return row?.customer_type === 'member'
-    && row.settlement_status !== 'settled'
-    && row.payment_status !== 'settled';
+    && row.payment_status === 'offline_pending';
 }
 
 function compareReservations(left, right) {
@@ -707,7 +894,7 @@ function isPendingActivitySignup(row) {
 function canSettleActivitySignup(row) {
   return row?.customer_type === 'member'
     && row.signup_status === 'confirmed'
-    && row.settlement_status !== 'settled';
+    && row.payment_status === 'offline_pending';
 }
 
 function signupStatusLabel(value) {
@@ -726,16 +913,10 @@ function paymentStatusLabel(value) {
     paid: '已支付',
     refunded: '已退款',
     offline: '线下',
+    offline_pending: '待线下核销',
+    pending_wechat_pay: '待微信支付',
+    paying: '支付中',
     settled: '已结算',
-  };
-  return labels[value] || value || '-';
-}
-
-function settlementStatusLabel(value) {
-  const labels = {
-    pending: '待核销',
-    unsettled: '待核销',
-    settled: '已核销',
   };
   return labels[value] || value || '-';
 }
@@ -745,7 +926,7 @@ function normalizeReservationRow(row, type, collection) {
     ...row,
     __type: type,
     __collection: collection,
-    __date: type === 'dining' ? row.reservation_date : row.checkin_date,
+    __date: type === 'dining' ? row.date : row.check_in_date,
   };
 }
 
@@ -826,11 +1007,27 @@ function normalizeMealDetails(value) {
 }
 
 function normalizeStandardDishes(value) {
-  const list = Array.isArray(value) ? value : [];
-  return list.map((item) => ({
-    name: item?.name || '',
-    content: item?.content || item?.quantity || '',
-  })).filter((item) => item.name || item.content);
+  if (!value || Array.isArray(value) || typeof value !== 'object') return [];
+  return Object.keys(value).map((name) => {
+    return {
+      name,
+      items: Array.isArray(value[name])
+        ? value[name].map((dish) => String(dish || '').trim()).filter(Boolean)
+        : [],
+    };
+  }).filter((item) => item.name || item.items.length);
+}
+
+function serializeStandardDishes(rows) {
+  const result = {};
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const name = String(row?.name || '').trim();
+    const items = Array.isArray(row?.items)
+      ? row.items.map((dish) => String(dish || '').trim()).filter(Boolean)
+      : [];
+    if (name) result[name] = items;
+  });
+  return result;
 }
 
 function normalizeImageRows(value, previewValue, fallbackValue = '', fallbackPreview = '') {
@@ -1137,14 +1334,20 @@ function nextRecordId(module = activeModule.value) {
   return `${module.key}${String(maxNumber + 1).padStart(2, '0')}`;
 }
 
-function nextReservationId(collection) {
-  const expression = new RegExp(`^${escapeRegExp(collection)}(\\d+)$`, 'i');
-  const maxNumber = state.reservations.rows.reduce((max, row) => {
-    if (row.__collection !== collection) return max;
-    const match = expression.exec(String(row.reservation_id || ''));
-    return match ? Math.max(max, Number(match[1]) || 0) : max;
-  }, 0);
-  return `${collection}${String(maxNumber + 1).padStart(2, '0')}`;
+function nextReservationOrderNo(collection) {
+  const prefix = collection === 'dining_reservations' ? 'TYDINING' : 'TYROOM';
+  const date = new Date();
+  const pad = (value) => String(value).padStart(2, '0');
+  const timestamp = [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds()),
+  ].join('');
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `${prefix}${timestamp}${random}`;
 }
 
 function applyMealCategory(key) {
@@ -1173,6 +1376,37 @@ function addMealDetail() {
 function removeMealDetail(index) {
   if (!Array.isArray(form.__detailsRows)) return;
   form.__detailsRows.splice(index, 1);
+}
+
+function addStandardDishGroup() {
+  if (!Array.isArray(form.__detailsRows)) form.__detailsRows = [];
+  form.__detailsRows.push({ name: '', items: [''] });
+}
+
+function addStandardDishItem(group) {
+  if (!Array.isArray(group.items)) group.items = [];
+  group.items.push('');
+}
+
+function removeStandardDishItem(group, index) {
+  if (!Array.isArray(group.items)) return;
+  group.items.splice(index, 1);
+}
+
+function moveStandardDishGroup(index, offset) {
+  if (!Array.isArray(form.__detailsRows)) return;
+  const target = index + offset;
+  if (target < 0 || target >= form.__detailsRows.length) return;
+  const [group] = form.__detailsRows.splice(index, 1);
+  form.__detailsRows.splice(target, 0, group);
+}
+
+function moveStandardDishItem(group, index, offset) {
+  if (!Array.isArray(group.items)) return;
+  const target = index + offset;
+  if (target < 0 || target >= group.items.length) return;
+  const [item] = group.items.splice(index, 1);
+  group.items.splice(target, 0, item);
 }
 
 function nextMealSortOrder(categoryKey) {
@@ -1595,6 +1829,49 @@ async function settleActivitySignup(row) {
   }
 }
 
+function canSettleMemberMealOrder(row) {
+  return row?.checkout_customer_type === 'member'
+    && row?.payment_status === 'offline_pending';
+}
+
+async function settleMemberMealOrder(row) {
+  if (!row?._id) return;
+  if (!window.confirm(`确认完成会员订单“${row.order_no || row.order_id || ''}”的线下核销并自动清台？`)) return;
+  state.saving = true;
+  try {
+    await callAdmin('mealOrderStatusUpdate', {
+      _id: row._id,
+      settle: true,
+      admin_remark: row.admin_remark || '会员线下核销完成，自动清台',
+    });
+    await loadRows();
+    toast('会员核销已完成，桌台已自动清台。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.saving = false;
+  }
+}
+
+async function settleMemberMealOrderOnly(row) {
+  if (!row?._id) return;
+  if (!window.confirm(`确认完成会员订单“${row.order_no || row.order_id || ''}”的核销？`)) return;
+  state.saving = true;
+  try {
+    await callAdmin('mealOrderStatusUpdate', {
+      _id: row._id,
+      settle: true,
+      admin_remark: row.admin_remark || '会员核销完成',
+    });
+    await loadRows();
+    toast('会员核销已完成。');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    state.saving = false;
+  }
+}
+
 async function settleMemberReservationEvent(event) {
   if (!event?.collection || !event?.row?._id) return;
   state.saving = true;
@@ -1635,7 +1912,7 @@ async function openCreateReservation(collection) {
   const type = collection === 'dining_reservations' ? 'dining' : 'accommodation';
   form.__collection = collection;
   form.__type = type;
-  form.reservation_id = nextReservationId(collection);
+  form.order_no = nextReservationOrderNo(collection);
   form.reservation_status = 'pending_confirmation';
   state.editingId = '';
   state.editingCollection = collection;
@@ -1650,6 +1927,7 @@ function selectOverviewTable(table) {
 function closeOverviewTablePanel() {
   state.overview.selectedTableId = '';
   state.overview.moveTargetTableId = '';
+  closeTablePriceEditor();
 }
 
 async function moveSelectedTableOrder() {
@@ -1713,51 +1991,6 @@ async function moveSelectedTableOrder() {
   }
 }
 
-async function clearSelectedTable() {
-  const table = selectedTable.value;
-  if (!table) return;
-  if (!window.confirm(`确认清台“${table.table_name || table.table_id}”？`)) return;
-
-  state.saving = true;
-  try {
-    const session = getTableSession(table);
-    if (session?._id) {
-      await callAdmin('update', {
-        collection: 'meal_table_sessions',
-        _id: session._id,
-        data: {
-          session_status: 'closed',
-          closed_reason: 'cleared_by_admin',
-          closed_at: new Date().toISOString(),
-        },
-      });
-    }
-    if (table._id) {
-      await callAdmin('update', {
-        collection: 'meal_tables',
-        _id: table._id,
-        data: { current_session_id: '' },
-      });
-    }
-    for (const order of selectedTableOrders.value) {
-      await callAdmin('update', {
-        collection: 'meal_orders',
-        _id: order._id,
-        data: {
-          order_status: 'completed',
-          payment_status: order.payment_status || 'settled',
-        },
-      });
-    }
-    await loadOverview();
-    toast('已清台。');
-  } catch (error) {
-    toast(error.message, 'error');
-  } finally {
-    state.saving = false;
-  }
-}
-
 async function completeAndClearSelectedTable() {
   const table = selectedTable.value;
   const orders = selectedTableOrders.value.slice();
@@ -1771,68 +2004,15 @@ async function completeAndClearSelectedTable() {
   state.saving = true;
   try {
     const session = getTableSession(table);
-    for (const order of orders) {
-      await callAdmin('mealOrderStatusUpdate', {
-        _id: order._id,
-        order_status: 'completed',
-        settle: true,
-        admin_remark: '后台桌台总览完成并清台',
-      });
-    }
-    if (session?._id) {
-      await callAdmin('update', {
-        collection: 'meal_table_sessions',
-        _id: session._id,
-        data: {
-          session_status: 'closed',
-          closed_reason: 'completed_and_cleared_by_admin',
-          closed_at: new Date().toISOString(),
-        },
-      });
-    }
-    if (table._id) {
-      await callAdmin('update', {
-        collection: 'meal_tables',
-        _id: table._id,
-        data: { current_session_id: '' },
-      });
-    }
+    await callAdmin('completeAndClearMealTable', {
+      table_id: table.table_id || '',
+      session_id: session?.session_id || table.current_session_id || '',
+      order_ids: orders.map((order) => order._id).filter(Boolean),
+      admin_remark: '后台桌台总览完成并清台',
+    });
     state.overview.moveTargetTableId = '';
     await loadOverview();
     toast('已完成并清台。');
-  } catch (error) {
-    toast(error.message, 'error');
-  } finally {
-    state.saving = false;
-  }
-}
-
-async function updateSelectedTableMealOrders(action) {
-  const orders = selectedTableOrders.value;
-  if (!orders.length) {
-    toast('当前桌台没有点餐订单。', 'error');
-    return;
-  }
-  const actionLabels = {
-    preparing: '制作中',
-    completed: '已完成',
-    settled: '已结算',
-  };
-  const label = actionLabels[action] || action;
-  if (!window.confirm(`确认将当前桌台订单更新为“${label}”？`)) return;
-
-  state.saving = true;
-  try {
-    for (const order of orders) {
-      await callAdmin('mealOrderStatusUpdate', {
-        _id: order._id,
-        order_status: action === 'settled' ? '' : action,
-        settle: action === 'settled',
-        admin_remark: `后台桌台总览更新为${label}`,
-      });
-    }
-    await loadOverview();
-    toast(`已更新为${label}。`);
   } catch (error) {
     toast(error.message, 'error');
   } finally {
@@ -2123,7 +2303,7 @@ function buildPayload() {
     } else if (field.type === 'itemDetails') {
       value = normalizeMealDetails(form.__detailsRows);
     } else if (field.type === 'standardDishes') {
-      value = normalizeStandardDishes(form.__detailsRows);
+      value = serializeStandardDishes(form.__detailsRows);
     } else if (field.type === 'images') {
       value = (form[`__${field.key}Rows`] || [])
         .map((item) => String(item.value || '').trim())
@@ -3096,15 +3276,24 @@ onUnmounted(() => {
                 <div v-if="!selectedTableItems.length" class="mini-empty">暂无点餐记录</div>
                 <div v-else class="dish-list">
                   <div v-for="(item, index) in selectedTableItems" :key="`${item.order_no}-${item.name}-${index}`" class="dish-row">
-                    <span>{{ item.name }}<em v-if="item.customer_type === 'member'" class="tag-member">会员</em></span>
+                    <span>
+                      {{ item.name }}
+                      <em v-if="item.isFree" class="tag-free">免费</em>
+                      <em v-else-if="item.customer_type === 'member'" class="tag-member">会员</em>
+                    </span>
                     <small>x{{ item.quantity }}</small>
-                    <strong>{{ formatMoney(item.amount) }}</strong>
+                    <strong :class="{ free: item.isFree }">{{ item.isFree ? '免费' : formatMoney(item.amount) }}</strong>
+                  </div>
+                  <div class="dish-total-row">
+                    <span>菜品总价</span>
+                    <strong>{{ formatMoney(selectedTableTotalAmount) }}</strong>
                   </div>
                 </div>
               </section>
 
               <section>
                 <h3>桌台操作</h3>
+                <button class="btn primary table-edit-btn" type="button" :disabled="state.saving || !selectedTableOrders.length" @click="openTablePriceEditor">编辑价格</button>
                 <label class="field">
                   <span>移到空闲桌台</span>
                   <select v-model="state.overview.moveTargetTableId">
@@ -3124,9 +3313,15 @@ onUnmounted(() => {
         </section>
 
         <aside class="recent-orders-panel">
-          <div>
-            <h2>最近订单</h2>
-            <p>最近的点餐订单</p>
+          <div class="section-head">
+            <div>
+              <h2>最近订单</h2>
+              <p>最近的点餐订单</p>
+            </div>
+            <div class="meal-filter-tabs compact">
+              <button class="filter-tab" :class="{ active: state.overview.recentOrderFilter === 'all' }" type="button" @click="state.overview.recentOrderFilter = 'all'">全部</button>
+              <button class="filter-tab" :class="{ active: state.overview.recentOrderFilter === 'memberPendingSettle' }" type="button" @click="state.overview.recentOrderFilter = 'memberPendingSettle'">会员待核销</button>
+            </div>
           </div>
           <div v-if="!recentMealOrders.length" class="mini-empty">暂无订单</div>
           <button
@@ -3239,7 +3434,7 @@ onUnmounted(() => {
             <div>
               <strong>{{ signup.contact_name || '未填写联系人' }}<em v-if="signup.customer_type === 'member'" class="tag-member">会员</em></strong>
               <span>{{ signup.contact_mobile || '-' }} · {{ signup.participant_count || signup.people_count || 1 }} 人</span>
-              <small>{{ formatMoney(signup.amount) }} · {{ signupStatusLabel(signup.signup_status) }} · {{ paymentStatusLabel(signup.payment_status) }} / {{ settlementStatusLabel(signup.settlement_status) }}</small>
+              <small>{{ formatMoney(signup.amount) }} · {{ signupStatusLabel(signup.signup_status) }} · {{ paymentStatusLabel(signup.payment_status) }}</small>
               <p v-if="signup.remark || signup.admin_remark">{{ signup.remark || signup.admin_remark }}</p>
             </div>
             <div class="activity-signup-actions">
@@ -3499,6 +3694,7 @@ onUnmounted(() => {
                     :alt="displayValue(row, titleField)"
                     :style="imageStyle(column)"
                   />
+                  <span v-else-if="column === 'price' || column === 'member_price'">{{ formatMoney(row[column]) }}</span>
                   <span v-else>{{ displayValue(row, column) }}</span>
                 </td>
                 <td class="row-actions">
@@ -3513,11 +3709,20 @@ onUnmounted(() => {
                     确认报名
                   </button>
                   <button
-                    v-if="isActivitySignupsModule && row.customer_type === 'member' && row.signup_status === 'confirmed' && row.settlement_status !== 'settled'"
+                    v-if="isActivitySignupsModule && row.customer_type === 'member' && row.signup_status === 'confirmed' && row.payment_status === 'offline_pending'"
                     class="btn primary"
                     type="button"
                     :disabled="state.saving"
                     @click="settleActivitySignup(row)"
+                  >
+                    会员核销
+                  </button>
+                  <button
+                    v-if="isMealOrdersModule && canSettleMemberMealOrder(row)"
+                    class="btn primary"
+                    type="button"
+                    :disabled="state.saving"
+                    @click="settleMemberMealOrderOnly(row)"
                   >
                     会员核销
                   </button>
@@ -3561,11 +3766,11 @@ onUnmounted(() => {
         <div class="detail-list">
           <div>
             <span>联系人</span>
-            <strong>{{ state.calendar.selectedEvent.row.customer_name || '-' }}</strong>
+            <strong>{{ state.calendar.selectedEvent.row.contact_name || '-' }}</strong>
           </div>
           <div>
             <span>手机号</span>
-            <strong>{{ state.calendar.selectedEvent.row.customer_mobile || '-' }}</strong>
+            <strong>{{ state.calendar.selectedEvent.row.mobile || '-' }}</strong>
           </div>
           <div>
             <span>{{ state.calendar.selectedEvent.type === 'dining' ? '包间' : '客房' }}</span>
@@ -3573,11 +3778,11 @@ onUnmounted(() => {
           </div>
           <div>
             <span>人数</span>
-            <strong>{{ state.calendar.selectedEvent.row.guest_count || '-' }}</strong>
+            <strong>{{ state.calendar.selectedEvent.row.people_count || '-' }}</strong>
           </div>
           <div v-if="state.calendar.selectedEvent.type === 'dining'">
             <span>用餐时间</span>
-            <strong>{{ mealSlotLabel(state.calendar.selectedEvent.row.reservation_time) }}</strong>
+            <strong>{{ mealSlotLabel(state.calendar.selectedEvent.row.time_slot) }}</strong>
           </div>
           <div v-if="state.calendar.selectedEvent.type === 'dining'">
             <span>餐标</span>
@@ -3585,11 +3790,11 @@ onUnmounted(() => {
           </div>
           <div v-if="state.calendar.selectedEvent.type === 'accommodation'">
             <span>入住日期</span>
-            <strong>{{ state.calendar.selectedEvent.row.checkin_date || '-' }}</strong>
+            <strong>{{ state.calendar.selectedEvent.row.check_in_date || '-' }}</strong>
           </div>
           <div v-if="state.calendar.selectedEvent.type === 'accommodation'">
             <span>离店日期</span>
-            <strong>{{ state.calendar.selectedEvent.row.checkout_date || '-' }}</strong>
+            <strong>{{ state.calendar.selectedEvent.row.check_out_date || '-' }}</strong>
           </div>
           <div class="wide">
             <span>备注</span>
@@ -3747,13 +3952,31 @@ onUnmounted(() => {
               <div
                 v-for="(detail, index) in form.__detailsRows"
                 :key="index"
-                class="detail-row-editor"
+                class="standard-dish-group-editor"
               >
-                <input v-model="detail.name" type="text" placeholder="名称，如热菜" />
-                <input v-model="detail.content" type="text" placeholder="内容，如 黑椒牛仔骨 / 清蒸鱼" />
-                <button class="btn secondary" type="button" @click="removeMealDetail(index)">删除</button>
+                <div class="standard-dish-group-head">
+                  <input v-model="detail.name" type="text" placeholder="分类名称，如凉菜" />
+                  <div class="standard-dish-actions">
+                    <button class="btn secondary compact-btn" type="button" :disabled="index === 0" @click="moveStandardDishGroup(index, -1)">上移</button>
+                    <button class="btn secondary compact-btn" type="button" :disabled="index === form.__detailsRows.length - 1" @click="moveStandardDishGroup(index, 1)">下移</button>
+                    <button class="btn danger compact-btn" type="button" @click="removeMealDetail(index)">删除</button>
+                  </div>
+                </div>
+                <div class="standard-dish-item-list">
+                  <div
+                    v-for="(dish, dishIndex) in detail.items"
+                    :key="dishIndex"
+                    class="standard-dish-item-editor"
+                  >
+                    <input v-model="detail.items[dishIndex]" type="text" placeholder="菜名，如红油留香鸡" />
+                    <button class="btn secondary compact-btn" type="button" :disabled="dishIndex === 0" @click="moveStandardDishItem(detail, dishIndex, -1)">上移</button>
+                    <button class="btn secondary compact-btn" type="button" :disabled="dishIndex === detail.items.length - 1" @click="moveStandardDishItem(detail, dishIndex, 1)">下移</button>
+                    <button class="btn secondary compact-btn" type="button" @click="removeStandardDishItem(detail, dishIndex)">删除</button>
+                  </div>
+                </div>
+                <button class="btn secondary compact-btn add-dish-item-btn" type="button" @click="addStandardDishItem(detail)">添加菜名</button>
               </div>
-              <button class="btn secondary add-detail-btn" type="button" @click="addMealDetail">添加菜品</button>
+              <button class="btn secondary add-detail-btn" type="button" @click="addStandardDishGroup">添加分类</button>
             </div>
             <div v-else-if="field.type === 'reservationStatus'" class="status-choice-grid">
               <button
@@ -4053,7 +4276,7 @@ onUnmounted(() => {
             </label>
             <input v-else-if="field.type === 'number'" v-model.number="form[field.key]" type="number" step="0.01" />
             <input v-else-if="field.type === 'datetime'" v-model="form[field.key]" type="datetime-local" />
-            <input v-else v-model="form[field.key]" type="text" :readonly="isMembersModule && state.editingId && field.key === 'member_id'" />
+            <input v-else v-model="form[field.key]" type="text" :readonly="Boolean(isMembersModule && state.editingId && field.key === 'member_id')" />
           </label>
         </div>
 
@@ -4139,6 +4362,45 @@ onUnmounted(() => {
           <button class="btn secondary" type="button" @click="closeDrawer">取消</button>
           <button class="btn primary" type="submit" :disabled="state.saving">
             {{ state.saving ? '保存中' : '保存' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div v-if="state.overview.priceEditor.visible" class="editor-modal" aria-modal="true">
+      <button class="modal-mask" type="button" aria-label="关闭" @click="closeTablePriceEditor"></button>
+      <form class="editor-dialog table-price-editor" @submit.prevent="saveTablePriceEditor">
+        <div class="drawer-head">
+          <div>
+            <h2>编辑桌台价格</h2>
+            <p>{{ selectedTable?.table_name || selectedTable?.table_id }} · 菜品免费后会从总价中扣除</p>
+          </div>
+          <button class="icon-btn" type="button" title="关闭" @click="closeTablePriceEditor">×</button>
+        </div>
+
+        <label class="field table-price-total">
+          <span>订单总价</span>
+          <input v-model.number="state.overview.priceEditor.totalAmount" type="number" min="0" step="0.01" />
+          <small>保存后将按当前未免费菜品的原价比例调整金额；会员优惠比例会保留。</small>
+        </label>
+
+        <div class="table-price-items">
+          <label v-for="item in state.overview.priceEditor.items" :key="item.key" class="table-price-item">
+            <span>
+              <strong>{{ item.name }}</strong>
+              <small>x{{ item.quantity }} · 原价 {{ formatMoney(item.regularAmount) }}</small>
+            </span>
+            <span class="switch-row">
+              <input v-model="item.isFree" type="checkbox" @change="syncEditorTotalAfterFreeChange" />
+              免费
+            </span>
+          </label>
+        </div>
+
+        <div class="drawer-actions">
+          <button class="btn secondary" type="button" @click="closeTablePriceEditor">取消</button>
+          <button class="btn primary" type="submit" :disabled="state.saving">
+            {{ state.saving ? '保存中' : '保存修改' }}
           </button>
         </div>
       </form>

@@ -194,7 +194,7 @@ async function createSignup(input) {
   const amount = unitPrice * peopleCount;
   const displayTime = activityDisplayTime(activity);
   const requiresWechatPay = customerType !== 'member' && amount > 0;
-  const orderNo = createBusinessId('TYACTIVITY');
+  const orderNo = createBusinessId('TYW');
   const signup = {
     order_no: orderNo,
     signup_id: orderNo,
@@ -215,8 +215,7 @@ async function createSignup(input) {
     unit_price: unitPrice,
     amount,
     signup_status: 'pending_confirmation',
-    settlement_status: requiresWechatPay ? 'pending_wechat_pay' : customerType === 'member' ? 'pending_offline_points' : 'settled',
-    payment_status: requiresWechatPay ? 'pending_wechat_pay' : customerType === 'member' ? 'pending_offline' : 'settled',
+    payment_status: requiresWechatPay ? 'pending_wechat_pay' : customerType === 'member' ? 'offline_pending' : 'settled',
     remark: input.remark || '',
     created_at: new Date().toISOString(),
   };
@@ -231,7 +230,6 @@ async function simulateWechatPay(input) {
   const items = get();
   const signup = items.find((item) => (item.order_no || item.signup_id) === orderNo);
   assert(signup, 'SIGNUP_NOT_FOUND', '未找到活动报名');
-  signup.settlement_status = 'wechat_paid';
   signup.payment_status = 'settled';
   signup.paid_at = new Date().toISOString();
   save(items);

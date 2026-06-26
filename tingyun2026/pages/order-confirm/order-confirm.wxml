@@ -47,6 +47,13 @@
         <view class="dish-copy"><strong>{{item.name}}</strong><text>¥{{item.price}} × {{item.quantity}}</text></view>
         <strong class="dish-price">¥{{item.price * item.quantity}}</strong>
       </view>
+      <view class="dish-total">
+        <text>总价格</text>
+        <view class="dish-total-prices">
+          <strong>¥{{cart.regular_total_amount}}</strong>
+          <text>会员价 ¥{{cart.member_total_amount}}</text>
+        </view>
+      </view>
     </view>
 
     <text class="section-title">订单备注</text>
@@ -57,11 +64,16 @@
       </view>
     </view>
 
-    <text class="section-title">金额汇总</text>
-    <view class="amount-summary card">
-      <view><text>商品金额</text><strong>¥{{cart.total_amount}}</strong></view>
-      <view class="amount-total"><text>{{effectiveCustomerType === 'member' ? '线下会员账户核对' : '微信支付'}}</text><strong>¥{{cart.total_amount}}</strong></view>
+    <view class="settlement-notice">
+      <text>用餐完毕再结算</text>
+      <text>祝您用餐愉快</text>
     </view>
   </view>
-  <view class="footer"><view class="pay-copy"><text>本次菜品金额</text><strong>¥{{cart.total_amount}}</strong></view><button class="pay-button" bindtap="submit">提交菜品</button></view>
+  <view class="footer">
+    <view class="pay-copy">
+      <strong>¥{{cart.regular_total_amount}}</strong>
+      <text>会员价 ¥{{cart.member_total_amount}}</text>
+    </view>
+    <button class="pay-button" bindtap="submit">提交菜品，稍后结账</button>
+  </view>
 </view>

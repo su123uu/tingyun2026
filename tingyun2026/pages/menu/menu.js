@@ -8,7 +8,9 @@ function asArray(value) {
 }
 
 function normalizeCart(cart) {
-  return cart && Array.isArray(cart.items) ? cart : { items: [], total_amount: 0 };
+  return cart && Array.isArray(cart.items)
+    ? Object.assign({ total_amount: 0, regular_total_amount: cart.total_amount || 0, member_total_amount: cart.total_amount || 0 }, cart)
+    : { items: [], total_amount: 0, regular_total_amount: 0, member_total_amount: 0 };
 }
 
 Page({
@@ -16,7 +18,7 @@ Page({
     categories: [],
     active: 'package',
     items: [],
-    cart: { items: [], total_amount: 0 },
+    cart: { items: [], total_amount: 0, regular_total_amount: 0, member_total_amount: 0 },
     cartGroups: [],
     count: 0,
     session: null,
@@ -71,9 +73,18 @@ Page({
       .filter(Boolean)
       .map((item) => this.decodeText(item));
     for (const value of candidates) {
-      const sceneMatch = /(?:^|[?&])scene=([^&]+)/.exec(value);
-      const scene = sceneMatch ? this.decodeText(sceneMatch[1]) : value;
-      if (/(?:^|&)t=[^&]+/.test(scene) && /(?:^|&)k=[^&]+/.test(scene)) return scene;
+      // 小程序码扫码结果可能是：
+      // pages/menu/menu?scene=t=A01&k=token&v=1
+      // 此处不能只取 scene 到第一个 &，否则会把 scene 内的 k 截断。
+      const sceneIndex = value.search(/(?:^|[?&])scene=/);
+      const scene = sceneIndex >= 0
+        ? value.slice(value.indexOf('scene=', sceneIndex) + 'scene='.length)
+        : value;
+      const tableMatch = /(?:^|[?&])t=([^&#]+)/.exec(scene);
+      const tokenMatch = /(?:^|[?&])k=([^&#]+)/.exec(scene);
+      if (tableMatch && tokenMatch) {
+        return `t=${encodeURIComponent(this.decodeText(tableMatch[1]))}&k=${encodeURIComponent(this.decodeText(tokenMatch[1]))}`;
+      }
     }
     return '';
   },
@@ -82,7 +93,8 @@ Page({
       const result = await new Promise((resolve, reject) => {
         wx.scanCode({
           onlyFromCamera: true,
-          scanType: ['qrCode'],
+          // 桌码由后台生成的是微信小程序码，不是普通方形二维码。
+          // 不限制 scanType，交给微信客户端识别小程序码后从 res.path 里取 scene。
           success: resolve,
           fail: reject,
         });
@@ -95,33 +107,35 @@ Page({
     }
   },
   async handleQrScene(options = {}) {
-    const rawScene = options.scene ? decodeURIComponent(options.scene) : '';
+    const rawScene = this.extractTableScene({ result: options.scene });
+    if (!rawScene) return;
     const tableMatch = /(?:^|&)t=([^&]+)/.exec(rawScene);
     const tokenMatch = /(?:^|&)k=([^&]+)/.exec(rawScene);
-    if (!tableMatch || !tokenMatch) return;
     try {
       const tableId = decodeURIComponent(tableMatch[1]);
       const qrToken = decodeURIComponent(tokenMatch[1]);
       const pendingTableCode = `t=${tableId}&k=${qrToken}`;
+      const user = await auth.getCurrentUser();
       const activeSession = await tableService.getCurrentTableSessionByCode({ code: pendingTableCode });
       if (activeSession) {
         if (activeSession.active_order_no) {
           wx.navigateTo({ url: `/pages/order-detail/order-detail?id=${activeSession.active_order_no}` });
+          return;
         }
+        const customerType = this.resolveCustomerType(activeSession, user);
         this.setData({
           pendingTableCode: '',
           session: activeSession,
           sessionLabel: this.formatSessionLabel(activeSession),
           showPeoplePicker: false,
           peopleCount: activeSession.people_count || 2,
-          customerType: activeSession.customer_type || 'guest',
-          memberLevel: activeSession.member_level || '',
-          memberLevelNo: activeSession.member_level_no || '',
-          identityInitial: this.formatIdentityInitial(activeSession.customer_type || 'guest', activeSession),
+          customerType,
+          memberLevel: user.member_level || activeSession.member_level || '',
+          memberLevelNo: user.member_level_no || activeSession.member_level_no || '',
+          identityInitial: this.formatIdentityInitial(customerType, user.customer_type === 'member' ? user : activeSession),
         });
         return;
       }
-      const user = await auth.getCurrentUser();
       if (user.mobile) {
         // 宸叉湁鎵嬫満鍙凤紝鐩存帴寮逛汉鏁伴€夋嫨
         this.setData({
@@ -161,11 +175,14 @@ Page({
       catalog.listMealItems(),
       cartService.getCart(),
       tableService.getCurrentTableSession(),
+      auth.getCurrentUser(),
     ]);
     const categories = asArray(result[0]);
     const items = asArray(result[1]);
     const cart = normalizeCart(result[2]);
     const session = this.data.pendingTableCode ? null : result[3];
+    const user = result[4] || {};
+    const customerType = this.resolveCustomerType(session || {}, user);
     this.allItems = items;
     this.setData({
       categories,
@@ -174,6 +191,10 @@ Page({
       session,
       sessionLabel: this.formatSessionLabel(session),
       count: this.cartCount(cart),
+      customerType,
+      memberLevel: user.member_level || (session && session.member_level) || '',
+      memberLevelNo: user.member_level_no || (session && session.member_level_no) || '',
+      identityInitial: this.formatIdentityInitial(customerType, user.customer_type === 'member' ? user : (session || {})),
     });
     this.refresh();
   },
@@ -189,8 +210,16 @@ Page({
   },
   formatIdentityInitial(type, source = {}) {
     if (type !== 'member') return '\u505c';
-    const name = source.customer_name || source.nickname || source.member_name || '';
+    const name = source.nickname || source.customer_name || source.member_name || '';
     return String(name).trim().charAt(0) || '\u4f1a';
+  },
+  resolveCustomerType(session = {}, user = {}) {
+    return user.customer_type === 'member'
+      || Boolean(user.member_id)
+      || session.customer_type === 'member'
+      || Boolean(session.member_id)
+      ? 'member'
+      : 'guest';
   },
   increasePeople() {
     this.setData({ peopleCount: Math.min(20, this.data.peopleCount + 1) });
@@ -244,18 +273,20 @@ Page({
     if (!this.data.pendingTableCode) return this.toast('请先扫描桌上的二维码');
     try {
       const input = { people_count: this.data.peopleCount };
+      const user = await auth.getCurrentUser();
       const session = this.data.pendingTableCode === 'TEST_TABLE:A01'
         ? await tableService.startTableSessionForTest(Object.assign({}, input, { table_id: 'A01' }))
         : await tableService.startTableSession(Object.assign({}, input, { code: this.data.pendingTableCode }));
+      const customerType = this.resolveCustomerType(session, user);
       this.setData({
         session,
         sessionLabel: this.formatSessionLabel(session),
         pendingTableCode: '',
         showPeoplePicker: false,
-        customerType: session.customer_type || this.data.customerType,
-        memberLevel: session.member_level || this.data.memberLevel,
-        memberLevelNo: session.member_level_no || this.data.memberLevelNo,
-        identityInitial: this.formatIdentityInitial(session.customer_type || this.data.customerType, session),
+        customerType,
+        memberLevel: user.member_level || session.member_level || this.data.memberLevel,
+        memberLevelNo: user.member_level_no || session.member_level_no || this.data.memberLevelNo,
+        identityInitial: this.formatIdentityInitial(customerType, user.customer_type === 'member' ? user : session),
       });
       this.toast('已识别 ' + this.formatSessionLabel(session), 'success');
     } catch (error) {

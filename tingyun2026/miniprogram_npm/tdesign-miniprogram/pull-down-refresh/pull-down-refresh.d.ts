@@ -1,4 +1,4 @@
-import { SuperComponent, RelationsOptions } from '../common/src/index';
+import { RelationsOptions, SuperComponent } from '../common/src/index';
 export default class PullDownRefresh extends SuperComponent {
     pixelRatio: number;
     startPoint: {
@@ -10,6 +10,7 @@ export default class PullDownRefresh extends SuperComponent {
     closingAnimateTimeFlag: number;
     refreshStatusTimer: any;
     externalClasses: string[];
+    behaviors: string[];
     options: {
         multipleSlots: boolean;
         pureDataPattern: RegExp;
@@ -38,8 +39,11 @@ export default class PullDownRefresh extends SuperComponent {
         barHeight(val: any): void;
         maxBarHeight(v: any): void;
         loadingBarHeight(v: any): void;
+        globalConfig(): void;
     };
     methods: {
+        updateDistanceTop(): void;
+        updateLoadingTexts(): void;
         resetTimer(): void;
         onScrollToBottom(): void;
         onScrollToTop(): void;

@@ -13,14 +13,14 @@ interface ColumnItemValue {
     label: string | number;
 }
 export default class DateTimePicker extends SuperComponent {
+    behaviors: string[];
     properties: import("./type").TdDateTimePickerProps;
     externalClasses: string[];
     options: {
         multipleSlots: boolean;
     };
     observers: {
-        'start, end, value': () => void;
-        customLocale(v: any): void;
+        'start, end, value, globalConfig'(): void;
         mode(m: any): void;
     };
     date: any;
@@ -30,8 +30,6 @@ export default class DateTimePicker extends SuperComponent {
         columns: any[];
         columnsValue: any[];
         fullModes: any[];
-        locale: any;
-        dayjsLocale: any;
     };
     controlledProps: {
         key: string;
@@ -39,7 +37,7 @@ export default class DateTimePicker extends SuperComponent {
     }[];
     methods: {
         updateColumns(): void;
-        getDaysOfWeekInMonth(date: Dayjs): Array<{
+        getDaysOfWeekInMonth(date: Dayjs, type: string): Array<{
             value: string;
             label: string;
         }>;

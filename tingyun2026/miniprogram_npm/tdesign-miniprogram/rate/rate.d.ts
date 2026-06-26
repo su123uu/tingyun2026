@@ -1,5 +1,6 @@
 import { SuperComponent } from '../common/src/index';
 export default class Rate extends SuperComponent {
+    behaviors: string[];
     externalClasses: string[];
     properties: import("./type").TdRateProps;
     controlledProps: {
@@ -9,7 +10,6 @@ export default class Rate extends SuperComponent {
     data: {
         prefix: string;
         classPrefix: string;
-        defaultTexts: string[];
         tipsVisible: boolean;
         tipsLeft: number;
         actionType: string;

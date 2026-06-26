@@ -48,7 +48,7 @@ function pad(value) {
 
 function businessTimestamp(date) {
   return [
-    date.getFullYear(),
+    String(date.getFullYear()).slice(-2),
     pad(date.getMonth() + 1),
     pad(date.getDate()),
     pad(date.getHours()),
@@ -62,7 +62,7 @@ function randomCode(length = 4) {
 }
 
 function createBusinessId(prefix) {
-  return `${prefix}${businessTimestamp(now())}${randomCode(4)}`;
+  return `${prefix}${businessTimestamp(now())}${randomCode(3)}`;
 }
 
 function moneyToCents(value) {
@@ -83,24 +83,30 @@ function getPayCallbackFunction() {
 
 async function safeCallNotification(data) {
   try {
-    return await cloud.callFunction({
+    const result = await cloud.callFunction({
       name: 'notificationManage',
       data,
     });
+    const body = result && result.result ? result.result : result;
+    if (!body || body.ok !== true) {
+      console.warn('notificationManage returned failure', data && data.action, body);
+      return null;
+    }
+    return body.data;
   } catch (error) {
     console.warn('notificationManage skipped', data && data.action, error);
     return null;
   }
 }
 
-async function safePrintMealOrder(orderNo, paymentNo = '') {
+async function safePrintMealOrder(orderNo, batchNo = 0) {
   try {
     return await cloud.callFunction({
       name: 'payCallback',
       data: {
         action: 'printMealOrder',
         order_no: orderNo,
-        payment_no: paymentNo,
+        batch_no: batchNo,
       },
     });
   } catch (error) {
@@ -210,12 +216,6 @@ function sessionPublicShape(session) {
     table_name: session.table_name || session.table_id,
     table_area: session.table_area || '',
     people_count: session.people_count || 1,
-    customer_type: session.customer_type || 'guest',
-    member_id: session.member_id || '',
-    member_level: session.member_level || '',
-    member_level_no: session.member_level_no || '',
-    customer_name: session.customer_name || '',
-    customer_mobile: session.customer_mobile || '',
     has_order: session.has_order === true,
     active_order_no: session.active_order_no || '',
     created_at: normalizeCloudDate(session.created_at),
@@ -259,20 +259,12 @@ async function closeOrderSession(order, reason = 'checkout_settled') {
   const session = await getSessionById(order.session_id);
   if (!session || !session._id) return;
   await closeSession(session, reason);
-  await clearCurrentSession(session.table_id, session.session_id);
+  await clearCurrentSession(session.table_id || order.table_id, session.session_id);
 }
 
 async function startTableSession(input = {}, wxContext = {}) {
   const peopleCount = Math.max(1, Math.floor(toNumber(input.people_count, 1)));
   const table = await getTableByCode(input);
-  const opener = await getCustomer(input);
-  await ensureUser(wxContext, {
-    customer_type: opener.customer_type,
-    member_id: opener.member_id,
-    mobile: opener.customer_mobile,
-    customer_name: opener.customer_name,
-    clear_member: opener.customer_type === 'guest',
-  });
   const existing = await getSessionById(table.current_session_id);
   if (existing && existing.session_status !== 'closed') {
     const hasOrders = await sessionHasOrders(existing);
@@ -291,14 +283,6 @@ async function startTableSession(input = {}, wxContext = {}) {
     table_name: table.table_name || table.table_id,
     table_area: table.table_area || '',
     people_count: peopleCount,
-    customer_type: opener.customer_type,
-    member_id: opener.member_id,
-    member_level: opener.member_level || '',
-    member_level_no: opener.member_level_no || '',
-    customer_name: opener.customer_name,
-    customer_mobile: opener.customer_mobile,
-    user_id: wxContext.OPENID || '',
-    created_by_openid: wxContext.OPENID || '',
     session_status: 'active',
     has_order: false,
     created_at: now(),
@@ -467,15 +451,6 @@ async function getCustomer(input = {}) {
   };
 }
 
-function sessionCustomer(session = {}) {
-  return {
-    customer_type: session.customer_type === 'member' ? 'member' : 'guest',
-    member_id: session.member_id || '',
-    customer_name: session.customer_name || '',
-    customer_mobile: session.customer_mobile || '',
-  };
-}
-
 async function getMenuItemsByIds(ids) {
   if (!ids.length) return [];
   const result = await db.collection('meal_items')
@@ -501,18 +476,24 @@ async function buildOrderItems(cartItems = []) {
   menuItems.forEach((item) => { menuMap[item.item_id] = item; });
   return ids.map((itemId) => {
     const item = menuMap[itemId];
-    const price = toNumber(item.price, 0);
+    const regularPrice = toNumber(item.price, 0);
+    const memberPriceValue = item.member_price === undefined || item.member_price === null
+      ? regularPrice
+      : toNumber(item.member_price, regularPrice);
     const quantity = merged[itemId];
     return {
       item_id: itemId,
       category_key: item.category_key || '',
       category_name: item.category_name || '',
       name: item.name || itemId,
-      price,
-      member_price: item.member_price === undefined || item.member_price === null ? null : toNumber(item.member_price, 0),
+      price: regularPrice,
+      regular_price: regularPrice,
+      member_price: memberPriceValue,
       image: item.image || item.image_url || '',
       quantity,
-      amount: price * quantity,
+      amount: regularPrice * quantity,
+      regular_amount: regularPrice * quantity,
+      member_amount: memberPriceValue * quantity,
     };
   });
 }
@@ -533,12 +514,7 @@ function isPrimaryOrder(order) {
 function isActiveOrder(order) {
   const orderStatus = cleanText(order.order_status, 40);
   if (['completed', 'cancelled', 'canceled', 'closed', 'refunded'].includes(orderStatus)) return false;
-  if (['pending_payment', 'pending_wechat_pay', 'paying'].includes(orderStatus)) return false;
   return ACTIVE_ORDER_STATUSES.includes(orderStatus);
-}
-
-function appendOrdersFor(order, orders) {
-  return [];
 }
 
 function batchTitle(batchNo) {
@@ -546,58 +522,24 @@ function batchTitle(batchNo) {
 }
 
 function activeBatches(batches = []) {
-  return batches.filter((batch) => !['cancelled', 'canceled'].includes(cleanText(batch.payment_status || batch.settlement_status, 40)));
-}
-
-function paymentNoFor(orderNo, batchNo) {
-  return `${orderNo}B${batchNo}`;
-}
-
-function batchFromOrder(order = {}, batchNo = 1) {
-  const orderNo = order.order_no || order.order_id || '';
-  const amount = toNumber(order.amount || order.total_amount || order.pay_amount, 0);
-  return {
-    batch_no: toNumber(order.batch_no, batchNo) || batchNo,
-    batch_type: batchNo === 1 ? 'primary' : 'append',
-    batch_title: batchTitle(batchNo),
-    order_no: orderNo,
-    payment_no: order.payment_no || paymentNoFor(orderNo, batchNo),
-    items: Array.isArray(order.items) ? order.items : [],
-    amount,
-    total_amount: amount,
-    pay_amount: amount,
-    wechat_pay_amount: toNumber(order.wechat_pay_amount, 0),
-    remark: order.remark || '',
-    quick_remarks: Array.isArray(order.quick_remarks) ? order.quick_remarks : [],
-    settlement_status: order.settlement_status || '',
-    payment_status: order.payment_status || '',
-    order_status: order.order_status || '',
-    created_at: normalizeCloudDate(order.created_at),
-    paid_at: normalizeCloudDate(order.paid_at),
-    settled_at: normalizeCloudDate(order.settled_at),
-    print_status: order.print_status || '',
-  };
+  return batches.filter((batch) => !['cancelled', 'canceled'].includes(cleanText(batch.order_status, 40)));
 }
 
 function normalizeBatches(order = {}) {
-  const orderNo = order.order_no || order.order_id || '';
   const stored = Array.isArray(order.batches) && order.batches.length
     ? order.batches.map((batch, index) => {
       const batchNo = toNumber(batch.batch_no, index + 1) || index + 1;
-      const amount = toNumber(batch.amount || batch.total_amount || batch.pay_amount, 0);
+      const regularAmount = toNumber(batch.regular_amount, toNumber(batch.amount, 0));
+      const memberAmount = toNumber(batch.member_amount, regularAmount);
       return Object.assign({}, batch, {
         batch_no: batchNo,
         batch_type: batch.batch_type || (batchNo === 1 ? 'primary' : 'append'),
         batch_title: batch.batch_title || batchTitle(batchNo),
-        order_no: orderNo,
-        payment_no: batch.payment_no || paymentNoFor(orderNo, batchNo),
         items: Array.isArray(batch.items) ? batch.items : [],
-        amount,
-        total_amount: amount,
-        pay_amount: amount,
+        amount: regularAmount,
+        regular_amount: regularAmount,
+        member_amount: memberAmount,
         created_at: normalizeCloudDate(batch.created_at),
-        paid_at: normalizeCloudDate(batch.paid_at),
-        settled_at: normalizeCloudDate(batch.settled_at),
       });
     })
     : [];
@@ -622,12 +564,11 @@ function aggregateItemsFromBatches(batches = []) {
   return Object.keys(map).map((itemId) => map[itemId]);
 }
 
-function totalAmountFromBatches(batches = []) {
-  return activeBatches(batches).reduce((sum, batch) => sum + toNumber(batch.amount || batch.total_amount || batch.pay_amount, 0), 0);
-}
-
-function hasPendingWechatBatch(batches = []) {
-  return activeBatches(batches).some((batch) => ['pending_wechat_pay', 'paying'].includes(cleanText(batch.payment_status, 40)));
+function totalsFromBatches(batches = []) {
+  return activeBatches(batches).reduce((totals, batch) => ({
+    regular_total_amount: totals.regular_total_amount + toNumber(batch.regular_amount, toNumber(batch.amount, 0)),
+    member_total_amount: totals.member_total_amount + toNumber(batch.member_amount, toNumber(batch.regular_amount, toNumber(batch.amount, 0))),
+  }), { regular_total_amount: 0, member_total_amount: 0 });
 }
 
 function orderPublicShape(order) {
@@ -641,104 +582,79 @@ function orderPublicShape(order) {
   });
 }
 
-function hydrateOrder(order, orders) {
-  const appendOrders = appendOrdersFor(order, orders).map(orderPublicShape);
-  const batches = [orderPublicShape(order)].concat(appendOrders).map((entry, index) => Object.assign({}, entry, {
-    batch_title: index === 0 ? '首单' : `追加菜 ${index}`,
-  }));
-  const totalAmount = batches.reduce((sum, entry) => sum + toNumber(entry.amount || entry.total_amount, 0), 0);
-  return Object.assign(orderPublicShape(order), {
-    ignored_batches: appendOrders,
-    batches,
-    all_items: batches.reduce((items, entry) => items.concat(entry.items || []), []),
-    total_amount: totalAmount,
-    amount: totalAmount,
-    pay_amount: totalAmount,
-  });
-}
-
 function hydrateMealOrder(order, orders) {
   const batches = normalizeBatches(order);
   const visibleBatches = activeBatches(batches);
-  const totalAmount = totalAmountFromBatches(batches);
+  const totals = totalsFromBatches(batches);
   return Object.assign(orderPublicShape(order), {
     batches: visibleBatches,
     all_items: visibleBatches.reduce((items, entry) => items.concat(entry.items || []), []),
-    items: aggregateItemsFromBatches(batches),
-    total_amount: totalAmount,
-    amount: totalAmount,
-    pay_amount: totalAmount,
+    total_amount: totals.regular_total_amount,
+    regular_total_amount: totals.regular_total_amount,
+    member_total_amount: totals.member_total_amount,
   });
 }
 
 async function createMealOrder(input = {}, wxContext = {}) {
   const session = await resolveCurrentSession(input);
-  const currentUserCustomer = await getCustomer(input);
-  const customer = sessionCustomer(session) || currentUserCustomer;
+  const submittingCustomer = await getCustomer(input);
   const items = await buildOrderItems(input.items || input.cart_items || []);
-  const amount = items.reduce((sum, item) => sum + item.amount, 0);
+  const regularAmount = items.reduce((sum, item) => sum + item.regular_amount, 0);
+  const memberAmount = items.reduce((sum, item) => sum + item.member_amount, 0);
   const orders = await listOrdersBySession(session.session_id);
-  const primaryOrder = orders.find((order) => isPrimaryOrder(order) && isActiveOrder(order));
-  const orderNo = primaryOrder ? (primaryOrder.order_no || primaryOrder.order_id) : createBusinessId('TYMEAL');
+  const pendingMemberSettlement = orders.find((order) => (
+    isActiveOrder(order) && order.payment_status === 'offline_pending'
+  ));
+  assert(!pendingMemberSettlement, 'ORDER_CHECKOUT_PENDING', '当前订单正在等待店员线下核销，暂不能继续加菜');
+  const primaryOrder = orders.find((order) => (
+    isPrimaryOrder(order) && isActiveOrder(order) && order.payment_status === 'unpaid'
+  ));
+  const orderNo = primaryOrder ? (primaryOrder.order_no || primaryOrder.order_id) : createBusinessId('TYD');
   const currentBatches = primaryOrder ? normalizeBatches(primaryOrder) : [];
   const batchNo = currentBatches.length + 1;
-  const paymentNo = paymentNoFor(orderNo, batchNo);
   const quickRemarks = Array.isArray(input.quick_remarks) ? input.quick_remarks.map((item) => cleanText(item, 40)).filter(Boolean) : [];
   const createdAt = now();
   const batch = {
     batch_no: batchNo,
     batch_type: batchNo === 1 ? 'primary' : 'append',
     batch_title: batchTitle(batchNo),
-    order_no: orderNo,
-    payment_no: paymentNo,
     items,
-    amount,
-    total_amount: amount,
-    pay_amount: amount,
-    points_amount: 0,
-    wechat_pay_amount: 0,
+    amount: regularAmount,
+    regular_amount: regularAmount,
+    member_amount: memberAmount,
     remark: cleanText(input.remark, 200),
     quick_remarks: quickRemarks,
-    settlement_status: 'pending_checkout',
-    order_status: 'preparing',
-    payment_status: 'pending_checkout',
     print_status: '',
     created_at: createdAt,
     updated_at: createdAt,
   };
   await ensureUser(wxContext, {
-    customer_type: currentUserCustomer.customer_type,
-    member_id: currentUserCustomer.member_id,
-    mobile: currentUserCustomer.customer_mobile,
-    customer_name: currentUserCustomer.customer_name,
-    clear_member: currentUserCustomer.customer_type === 'guest',
+    customer_type: submittingCustomer.customer_type,
+    member_id: submittingCustomer.member_id,
+    mobile: submittingCustomer.customer_mobile,
+    customer_name: submittingCustomer.customer_name,
+    clear_member: submittingCustomer.customer_type === 'guest',
   });
 
   let data;
   if (primaryOrder && primaryOrder._id) {
     const batches = currentBatches.concat(batch);
-    const totalAmount = totalAmountFromBatches(batches);
+    const totals = totalsFromBatches(batches);
     data = Object.assign({}, primaryOrder, {
       batches,
-      items: aggregateItemsFromBatches(batches),
-      amount: totalAmount,
-      total_amount: totalAmount,
-      pay_amount: totalAmount,
-      wechat_pay_amount: toNumber(primaryOrder.wechat_pay_amount, 0),
-      settlement_status: 'pending_checkout',
-      payment_status: 'pending_checkout',
+      total_amount: totals.regular_total_amount,
+      regular_total_amount: totals.regular_total_amount,
+      member_total_amount: totals.member_total_amount,
+      payment_status: 'unpaid',
       order_status: 'preparing',
       updated_at: createdAt,
     });
     await db.collection('meal_orders').doc(primaryOrder._id).update({
       data: {
         batches,
-        items: data.items,
-        amount: totalAmount,
-        total_amount: totalAmount,
-        pay_amount: totalAmount,
-        wechat_pay_amount: data.wechat_pay_amount,
-        settlement_status: data.settlement_status,
+        total_amount: totals.regular_total_amount,
+        regular_total_amount: totals.regular_total_amount,
+        member_total_amount: totals.member_total_amount,
         payment_status: data.payment_status,
         order_status: data.order_status,
         updated_at: createdAt,
@@ -746,32 +662,23 @@ async function createMealOrder(input = {}, wxContext = {}) {
     });
   } else {
     data = {
-    order_id: orderNo,
     order_no: orderNo,
     session_id: session.session_id,
     table_id: session.table_id,
     table_name: session.table_name || session.table_id,
     table_area: session.table_area || '',
     people_count: session.people_count || 1,
-    user_id: wxContext.OPENID || '',
-    created_by_openid: wxContext.OPENID || '',
-    customer_type: customer.customer_type,
-    member_id: customer.member_id,
-    customer_name: customer.customer_name,
-    customer_mobile: customer.customer_mobile,
+    notification_openid: wxContext.OPENID || '',
+    customer_type: submittingCustomer.customer_type,
+    member_id: submittingCustomer.member_id,
+    customer_name: submittingCustomer.customer_name,
+    customer_mobile: submittingCustomer.customer_mobile,
     batches: [batch],
-    items,
-    amount,
-    total_amount: amount,
-    pay_amount: amount,
-    points_amount: 0,
-    wechat_pay_amount: 0,
-    remark: cleanText(input.remark, 200),
-    quick_remarks: quickRemarks,
-    settlement_status: 'pending_checkout',
+    total_amount: regularAmount,
+    regular_total_amount: regularAmount,
+    member_total_amount: memberAmount,
     order_status: 'preparing',
-    payment_status: 'pending_checkout',
-    admin_remark: '',
+    payment_status: 'unpaid',
     created_at: createdAt,
     updated_at: createdAt,
     is_deleted: false,
@@ -793,9 +700,7 @@ async function createMealOrder(input = {}, wxContext = {}) {
     business_type: 'meal_order',
     business_no: orderNo,
     openid: wxContext.OPENID || '',
-    template_keys: customer.customer_type === 'member'
-      ? ['mealOrderStatus', 'memberConsumption']
-      : ['mealOrderStatus'],
+    template_keys: ['mealOrderStatus'],
     accepted_template_ids: input.notification_subscriptions && input.notification_subscriptions.accepted_template_ids,
     page: `pages/order-detail/order-detail?id=${orderNo}`,
   });
@@ -805,7 +710,8 @@ async function createMealOrder(input = {}, wxContext = {}) {
     business_type: 'meal_order',
     business_no: orderNo,
     title: primaryOrder ? '追加点餐通知' : '新点餐订单',
-      payload: data,
+      // 菜品和备注属于本次点餐批次；合并后企业微信才能展示本次新增内容。
+      payload: Object.assign({}, data, batch, { items }),
     }), 'sendStaffNotification');
     await safeCallNotification({
       action: 'sendSubscribeNotification',
@@ -815,13 +721,13 @@ async function createMealOrder(input = {}, wxContext = {}) {
       status: 'preparing',
       payload: Object.assign({}, data, batch, { items }),
     });
-    runBackground(safePrintMealOrder(orderNo, paymentNo), 'printMealOrder');
+    runBackground(safePrintMealOrder(orderNo, batchNo), 'printMealOrder');
   }
   return Object.assign(orderPublicShape(data), {
     batch_no: batchNo,
     batch_type: batch.batch_type,
-    payment_no: paymentNo,
-    current_batch_amount: amount,
+    current_batch_amount: regularAmount,
+    current_batch_member_amount: memberAmount,
   });
 }
 
@@ -833,27 +739,23 @@ async function findOrder(orderNo) {
   return result.data && result.data[0] ? result.data[0] : null;
 }
 
-function findBatchForPayment(order = {}, input = {}) {
-  const batches = normalizeBatches(order, []);
-  const paymentNo = cleanText(input.payment_no || input.out_trade_no || input.outTradeNo, 120);
-  const batchNo = Math.floor(toNumber(input.batch_no, 0));
-  if (paymentNo) return batches.find((batch) => batch.payment_no === paymentNo);
-  if (batchNo > 0) return batches.find((batch) => toNumber(batch.batch_no, 0) === batchNo);
-  return batches.find((batch) => ['pending_wechat_pay', 'paying'].includes(cleanText(batch.payment_status, 40))) || batches[0];
-}
-
 async function createUnifiedMealPayment(input = {}, wxContext = {}) {
   const orderNo = cleanText(input.order_no || input.order_id, 120);
   assert(orderNo, 'ORDER_NO_REQUIRED', '缺少订单编号');
   const order = await findOrder(orderNo);
   assert(order && !order.user_deleted_at, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  assert(order.customer_type !== 'member', 'MEMBER_OFFLINE_PAYMENT', '会员订单请线下核对会员账户');
   assert(order.payment_status !== 'settled', 'ORDER_ALREADY_PAID', '订单已结清');
+  assert(order.payment_status === 'unpaid', 'ORDER_NOT_PAYABLE', '订单当前不可结账');
+
+  // Do not use the table opener or prior dish submitter to decide how to settle.
+  // A guest checking out a table opened by a member must still be able to pay by WeChat.
+  const checkoutCustomer = await getCustomer(input);
+  assert(checkoutCustomer.customer_type !== 'member', 'MEMBER_OFFLINE_PAYMENT', '会员结账请线下抵扣');
 
   const batches = normalizeBatches(order, []);
   assert(activeBatches(batches).length, 'EMPTY_ORDER', '订单没有可结算菜品');
-  const totalAmount = totalAmountFromBatches(batches);
-  const totalFee = moneyToCents(totalAmount);
+  const checkoutAmount = toNumber(order.regular_total_amount, toNumber(order.total_amount, 0));
+  const totalFee = moneyToCents(checkoutAmount);
   assert(totalFee > 0, 'INVALID_PAY_AMOUNT', '支付金额必须大于 0');
   assert(cloud.cloudPay && cloud.cloudPay.unifiedOrder, 'CLOUD_PAY_UNAVAILABLE', '当前云函数环境不支持 cloudPay.unifiedOrder');
 
@@ -869,26 +771,19 @@ async function createUnifiedMealPayment(input = {}, wxContext = {}) {
     attach: 'meal_order',
   });
 
-  const nextBatches = batches.map((entry) => (
-    activeBatches([entry]).length
-      ? Object.assign({}, entry, {
-        settlement_status: 'pending_wechat_pay',
-        payment_status: 'paying',
-        checkout_payment_no: paymentNo,
-        updated_at: now(),
-      })
-      : entry
-  ));
-
   await db.collection('meal_orders').doc(order._id).update({
     data: {
-      batches: nextBatches,
-      settlement_status: 'pending_wechat_pay',
       payment_status: 'paying',
-      wechat_pay_amount: totalAmount,
+      payment_method: 'wechat',
+      checkout_customer_type: 'guest',
+      checkout_member_id: '',
+      checkout_customer_name: checkoutCustomer.customer_name,
+      checkout_customer_mobile: checkoutCustomer.customer_mobile,
+      checkout_openid: wxContext.OPENID || '',
       payment_trade_no: paymentNo,
       payment_total_fee: totalFee,
       payment_sub_mch_id: getPaySubMchId(),
+      checkout_amount: checkoutAmount,
       payment_requested_at: now(),
       updated_at: now(),
     },
@@ -904,79 +799,13 @@ async function createUnifiedMealPayment(input = {}, wxContext = {}) {
   };
 }
 
-async function createMealPayment(input = {}, wxContext = {}) {
-  return createUnifiedMealPayment(input, wxContext);
-  const orderNo = cleanText(input.order_no || input.order_id, 120);
-  assert(orderNo, 'ORDER_NO_REQUIRED', '缺少订单编号');
-  const order = await findOrder(orderNo);
-  assert(order, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  assert(!order.user_deleted_at, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  assert(order.created_by_openid === wxContext.OPENID, 'FORBIDDEN', '无权支付该订单');
-  assert(order.customer_type !== 'member', 'MEMBER_OFFLINE_PAYMENT', '会员订单请线下核对会员账户');
-
-  const batches = normalizeBatches(order, []);
-  const batch = findBatchForPayment(order, input);
-  assert(batch, 'MEAL_BATCH_NOT_FOUND', '未找到待支付的点餐批次');
-  assert(batch.payment_status !== 'settled', 'ORDER_ALREADY_PAID', '该批次已支付');
-  assert(['pending_wechat_pay', 'paying'].includes(cleanText(batch.payment_status, 40)), 'ORDER_NOT_PAYABLE', '该批次当前不可支付');
-
-  const totalFee = moneyToCents(batch.wechat_pay_amount || batch.pay_amount || batch.total_amount || batch.amount);
-  assert(totalFee > 0, 'INVALID_PAY_AMOUNT', '支付金额必须大于 0');
-  assert(cloud.cloudPay && cloud.cloudPay.unifiedOrder, 'CLOUD_PAY_UNAVAILABLE', '当前云函数环境不支持 cloudPay.unifiedOrder');
-
-  const paymentNo = batch.payment_no || paymentNoFor(orderNo, batch.batch_no);
-  const payResult = await cloud.cloudPay.unifiedOrder({
-    body: `停云山居扫码点餐-${order.table_name || order.table_id || ''}`.slice(0, 120),
-    outTradeNo: paymentNo,
-    spbillCreateIp: cleanText(input.spbill_create_ip, 64) || '127.0.0.1',
-    subMchId: getPaySubMchId(),
-    totalFee,
-    envId: getPayEnvId(),
-    functionName: getPayCallbackFunction(),
-    attach: 'meal_order',
-  });
-
-  const nextBatches = batches.map((entry) => (
-    entry.payment_no === paymentNo
-      ? Object.assign({}, entry, {
-        payment_status: 'paying',
-        payment_trade_no: paymentNo,
-        payment_total_fee: totalFee,
-        payment_sub_mch_id: getPaySubMchId(),
-        payment_requested_at: now(),
-        updated_at: now(),
-      })
-      : entry
-  ));
-
-  await db.collection('meal_orders').doc(order._id).update({
-    data: {
-      batches: nextBatches,
-      payment_status: 'paying',
-      payment_trade_no: paymentNo,
-      payment_total_fee: totalFee,
-      payment_sub_mch_id: getPaySubMchId(),
-      payment_requested_at: now(),
-      updated_at: now(),
-    },
-  });
-
-  return {
-    order_no: orderNo,
-    payment_no: paymentNo,
-    batch_no: batch.batch_no,
-    total_fee: totalFee,
-    payment: payResult.payment || payResult,
-    raw_payment: payResult,
-  };
-}
-
 async function checkoutMealOrder(input = {}, wxContext = {}) {
   const orderNo = cleanText(input.order_no || input.order_id, 120);
   assert(orderNo, 'ORDER_NO_REQUIRED', '缺少订单编号');
   const order = await findOrder(orderNo);
   assert(order && !order.user_deleted_at, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
   assert(order.payment_status !== 'settled', 'ORDER_ALREADY_PAID', '订单已结清');
+  assert(order.payment_status === 'unpaid', 'ORDER_NOT_PAYABLE', '订单当前不可结账');
 
   const customer = await getCustomer(input);
   await ensureUser(wxContext, {
@@ -993,75 +822,54 @@ async function checkoutMealOrder(input = {}, wxContext = {}) {
 
   const batches = normalizeBatches(order, []);
   assert(activeBatches(batches).length, 'EMPTY_ORDER', '订单没有可结算菜品');
-  const settledAt = now();
-  const nextBatches = batches.map((batch) => (
-    activeBatches([batch]).length
-      ? Object.assign({}, batch, {
-        settlement_status: 'pending_offline_points',
-        payment_status: 'pending_offline',
-        settled_at: settledAt,
-        updated_at: settledAt,
-      })
-      : batch
-  ));
-  const totalAmount = totalAmountFromBatches(nextBatches);
+  assert(input.member_checkout_confirmed === true || input.use_points === true, 'MEMBER_CHECKOUT_CONFIRM_REQUIRED', '请先确认使用会员积分抵扣。');
+  const checkoutAt = now();
+  const checkoutAmount = toNumber(order.member_total_amount, toNumber(order.regular_total_amount, toNumber(order.total_amount, 0)));
+  const pointsDeductAmount = toNumber(input.points_deduct_amount, checkoutAmount);
   const patch = {
-    customer_type: 'member',
-    member_id: customer.member_id,
-    customer_name: customer.customer_name,
-    customer_mobile: customer.customer_mobile,
-    batches: nextBatches,
-    items: aggregateItemsFromBatches(nextBatches),
-    amount: totalAmount,
-    total_amount: totalAmount,
-    pay_amount: totalAmount,
-    wechat_pay_amount: 0,
-    settlement_status: 'pending_offline_points',
-    payment_status: 'pending_offline',
-    settled_at: settledAt,
-    updated_at: settledAt,
+    order_status: 'completed',
+    payment_status: 'offline_pending',
+    payment_method: 'member_points',
+    checkout_customer_type: 'member',
+    checkout_member_id: customer.member_id,
+    checkout_customer_name: customer.customer_name,
+    checkout_customer_mobile: customer.customer_mobile,
+    checkout_openid: wxContext.OPENID || '',
+    checkout_amount: checkoutAmount,
+    points_deduct_amount: pointsDeductAmount,
+    points_deduct_status: 'pending_verify',
+    member_checkout_confirmed: true,
+    checkout_requested_at: checkoutAt,
+    completed_at: checkoutAt,
+    updated_at: checkoutAt,
   };
 
   await db.collection('meal_orders').doc(order._id).update({ data: patch });
-  await closeOrderSession(Object.assign({}, order, patch), 'member_checkout');
+  await closeOrderSession(Object.assign({}, order, patch), 'member_points_pending_verify');
+  await safeCallNotification({
+    action: 'registerSubscription',
+    business_type: 'meal_order',
+    business_no: orderNo,
+    openid: wxContext.OPENID || '',
+    template_keys: ['memberConsumption'],
+    accepted_template_ids: input.notification_subscriptions && input.notification_subscriptions.accepted_template_ids,
+    page: `pages/order-detail/order-detail?id=${orderNo}`,
+  });
   await safeCallNotification({
     action: 'sendStaffNotification',
     business_type: 'meal_order',
     business_no: orderNo,
     title: '会员结账待核对',
+    title: '会员积分抵扣已结清',
+    title: '会员积分抵扣待核销',
     payload: Object.assign({}, order, patch),
   });
 
   return Object.assign(orderPublicShape(Object.assign({}, order, patch)), {
     checkout_type: 'member',
     requires_payment: false,
+    cleared: true,
   });
-}
-
-async function createMealOrderAndPayment(input = {}, wxContext = {}) {
-  const order = await createMealOrder(input, wxContext);
-  const orderNo = order.order_no || order.order_id;
-  const paymentNo = order.payment_no || '';
-  const batchNo = order.batch_no || 0;
-  const response = {
-    order,
-    order_no: orderNo,
-    payment_no: paymentNo,
-    batch_no: batchNo,
-  };
-
-  const needsWechatPay = order.customer_type !== 'member'
-    && ['pending_wechat_pay', 'paying'].includes(cleanText(order.payment_status, 40));
-  if (!needsWechatPay) return response;
-
-  const paymentResult = await createMealPayment({
-    order_no: orderNo,
-    payment_no: paymentNo,
-    batch_no: batchNo,
-    spbill_create_ip: input.spbill_create_ip,
-  }, wxContext);
-
-  return Object.assign({}, response, paymentResult, { order });
 }
 
 async function cancelMealOrder(input = {}, wxContext = {}) {
@@ -1069,96 +877,25 @@ async function cancelMealOrder(input = {}, wxContext = {}) {
   assert(orderNo, 'ORDER_NO_REQUIRED', '缺少订单编号');
   const order = await findOrder(orderNo);
   assert(order, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  assert(order.created_by_openid === wxContext.OPENID, 'FORBIDDEN', '无权取消该订单');
+  assert(order.checkout_openid === wxContext.OPENID, 'FORBIDDEN', '无权取消本次支付');
   assert(order.payment_status !== 'settled', 'ORDER_ALREADY_PAID', '订单已支付，不能取消');
 
-  const canCancel = ['pending_payment', 'pending_wechat_pay', 'paying'].includes(cleanText(order.order_status, 40))
-    || ['pending_payment', 'pending_wechat_pay', 'paying'].includes(cleanText(order.payment_status, 40));
-  assert(canCancel, 'ORDER_NOT_CANCELABLE', '当前订单不能取消');
+  assert(order.payment_status === 'paying', 'ORDER_NOT_CANCELABLE', '当前订单没有进行中的支付');
 
   await db.collection('meal_orders').doc(order._id).update({
     data: {
-      order_status: 'cancelled',
-      payment_status: 'cancelled',
-      settlement_status: 'cancelled',
-      cancelled_reason: cleanText(input.reason, 120) || 'payment_cancelled',
-      cancelled_at: now(),
+      payment_status: 'unpaid',
+      payment_method: '',
+      checkout_customer_type: '',
+      checkout_member_id: '',
+      checkout_customer_name: '',
+      checkout_customer_mobile: '',
+      checkout_openid: '',
+      payment_cancelled_at: now(),
       updated_at: now(),
     },
   });
-
-  const session = await getSessionById(order.session_id);
-  if (session && session._id) {
-    const sessionOrders = await listOrdersBySession(order.session_id);
-    const hasActive = sessionOrders.some((entry) => (entry.order_no || entry.order_id) !== orderNo && isActiveOrder(entry));
-    await db.collection('meal_table_sessions').doc(session._id).update({
-      data: {
-        has_order: hasActive,
-        updated_at: now(),
-      },
-    });
-  }
-
-  return { order_no: orderNo, order_status: 'cancelled' };
-}
-
-async function cancelMealOrderV2(input = {}, wxContext = {}) {
-  const orderNo = cleanText(input.order_no || input.order_id, 120);
-  assert(orderNo, 'ORDER_NO_REQUIRED', '缺少订单编号');
-  const order = await findOrder(orderNo);
-  assert(order, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
-  assert(order.created_by_openid === wxContext.OPENID, 'FORBIDDEN', '无权取消该订单');
-
-  const batches = normalizeBatches(order, []);
-  const batch = findBatchForPayment(order, input);
-  assert(batch, 'MEAL_BATCH_NOT_FOUND', '未找到待取消的点餐批次');
-  assert(['pending_payment', 'pending_wechat_pay', 'paying'].includes(cleanText(batch.order_status, 40))
-    || ['pending_payment', 'pending_wechat_pay', 'paying'].includes(cleanText(batch.payment_status, 40)), 'ORDER_NOT_CANCELABLE', '当前批次不能取消');
-
-  const cancelledAt = now();
-  const nextBatches = batches.map((entry) => (
-    entry.payment_no === batch.payment_no
-      ? Object.assign({}, entry, {
-        order_status: 'cancelled',
-        payment_status: 'cancelled',
-        settlement_status: 'cancelled',
-        cancelled_reason: cleanText(input.reason, 120) || 'payment_cancelled',
-        cancelled_at: cancelledAt,
-        updated_at: cancelledAt,
-      })
-      : entry
-  ));
-  const totalAmount = totalAmountFromBatches(nextBatches);
-  const active = activeBatches(nextBatches);
-  const pendingWechat = hasPendingWechatBatch(nextBatches);
-  const data = {
-    batches: nextBatches,
-    items: aggregateItemsFromBatches(nextBatches),
-    amount: totalAmount,
-    total_amount: totalAmount,
-    pay_amount: totalAmount,
-    payment_status: pendingWechat ? 'pending_wechat_pay' : (active.length ? 'settled' : 'cancelled'),
-    settlement_status: pendingWechat ? 'pending_wechat_pay' : (active.length ? 'settled' : 'cancelled'),
-    order_status: active.length ? 'preparing' : 'cancelled',
-    updated_at: cancelledAt,
-  };
-
-  await db.collection('meal_orders').doc(order._id).update({ data });
-
-  const session = await getSessionById(order.session_id);
-  if (session && session._id) {
-    const sessionOrders = await listOrdersBySession(order.session_id);
-    const hasActive = sessionOrders.some((entry) => (entry.order_no || entry.order_id) !== orderNo && isActiveOrder(entry))
-      || active.length > 0;
-    await db.collection('meal_table_sessions').doc(session._id).update({
-      data: {
-        has_order: hasActive,
-        updated_at: now(),
-      },
-    });
-  }
-
-  return { order_no: orderNo, payment_no: batch.payment_no, batch_no: batch.batch_no, order_status: data.order_status };
+  return { order_no: orderNo, payment_status: 'unpaid' };
 }
 
 async function listMealOrders(input = {}, wxContext = {}) {
@@ -1173,12 +910,23 @@ async function listMealOrders(input = {}, wxContext = {}) {
     return orders.filter((order) => !order.user_deleted_at).map((order) => hydrateMealOrder(order, orders));
   }
 
-  const ownResult = await db.collection('meal_orders')
-    .where({ is_deleted: _.neq(true), created_by_openid: openid })
-    .orderBy('created_at', 'desc')
-    .limit(100)
-    .get();
-  const ownOrders = (ownResult.data || []).filter((order) => !order.user_deleted_at);
+  const [submitterResult, checkoutResult] = await Promise.all([
+    db.collection('meal_orders')
+      .where({ is_deleted: _.neq(true), notification_openid: openid })
+      .orderBy('created_at', 'desc')
+      .limit(100)
+      .get(),
+    db.collection('meal_orders')
+      .where({ is_deleted: _.neq(true), checkout_openid: openid })
+      .orderBy('created_at', 'desc')
+      .limit(100)
+      .get(),
+  ]);
+  const ownOrders = Array.from(new Map(
+    (submitterResult.data || []).concat(checkoutResult.data || [])
+      .filter((order) => !order.user_deleted_at)
+      .map((order) => [order._id || order.order_no, order]),
+  ).values());
   const sessionIds = Array.from(new Set(ownOrders.map((order) => order.session_id).filter(Boolean)));
   if (!sessionIds.length) return [];
 
@@ -1210,7 +958,9 @@ async function getMealOrderDetail(input = {}, wxContext = {}) {
   const openid = wxContext.OPENID || '';
   const inputSessionId = cleanText(input.session_id, 120);
   const canViewBySession = inputSessionId && inputSessionId === primary.session_id && isActiveOrder(primary);
-  const canView = !openid || canViewBySession || orders.some((order) => order.created_by_openid === openid);
+  const canView = !openid
+    || canViewBySession
+    || orders.some((order) => order.notification_openid === openid || order.checkout_openid === openid);
   assert(canView, 'FORBIDDEN', '无权查看该订单');
   assert(!primary.user_deleted_at || canView, 'MEAL_ORDER_NOT_FOUND', '未找到点餐订单');
   return hydrateMealOrder(primary, orders);
@@ -1224,7 +974,7 @@ async function deleteMealOrder(input = {}, wxContext = {}) {
   const primary = found;
   assert(primary, 'MEAL_ORDER_NOT_FOUND', '未找到点餐主订单');
   const openid = wxContext.OPENID || '';
-  assert(!openid || primary.created_by_openid === openid, 'FORBIDDEN', '无权删除该订单');
+  assert(!openid || primary.notification_openid === openid, 'FORBIDDEN', '无权删除该订单');
   const deletedAt = now();
   const data = {
     user_deleted_at: deletedAt,
@@ -1244,10 +994,8 @@ exports.main = async (event = {}) => {
     if (action === 'startTableSession') return ok(await startTableSession(event, wxContext));
     if (action === 'startTableSessionForTest') return ok(await startTableSessionForTest(event, wxContext));
     if (action === 'createMealOrder') return ok(await createMealOrder(event, wxContext));
-    if (action === 'createMealOrderAndPayment') return ok(await createMealOrderAndPayment(event, wxContext));
-    if (action === 'createMealPayment') return ok(await createMealPayment(event, wxContext));
     if (action === 'checkoutMealOrder') return ok(await checkoutMealOrder(event, wxContext));
-    if (action === 'cancelMealOrder') return ok(await cancelMealOrderV2(event, wxContext));
+    if (action === 'cancelMealOrder') return ok(await cancelMealOrder(event, wxContext));
     if (action === 'listMealOrders') return ok(await listMealOrders(event, wxContext));
     if (action === 'getMealOrderDetail') return ok(await getMealOrderDetail(event, wxContext));
     if (action === 'deleteMealOrder') return ok(await deleteMealOrder(event, wxContext));

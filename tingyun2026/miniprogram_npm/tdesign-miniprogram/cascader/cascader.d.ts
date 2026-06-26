@@ -4,6 +4,7 @@ import { TdCascaderProps } from './type';
 export interface CascaderProps extends TdCascaderProps {
 }
 export default class Cascader extends SuperComponent {
+    behaviors: string[];
     externalClasses: string[];
     options: WechatMiniprogram.Component.ComponentOptions;
     properties: TdCascaderProps<import("../common/common").TreeOptionData<string | number>>;
@@ -20,7 +21,7 @@ export default class Cascader extends SuperComponent {
     };
     data: {
         prefix: string;
-        name: string;
+        classPrefix: string;
         stepIndex: number;
         selectedIndexes: any[];
         selectedValue: any[];

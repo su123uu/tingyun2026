@@ -24,7 +24,7 @@
   <view wx:else class="guest-card">
     <text class="guest-title">尚未匹配会员档案</text>
     <text class="guest-copy">授权手机号后，可查看并使用属于你的会员权益。</text>
-    <button bindtap="bindMember">授权手机号并匹配会员</button>
+    <button open-type="getPhoneNumber" bindgetphonenumber="bindMember">授权手机号并匹配会员</button>
   </view>
 
   <view class="content">

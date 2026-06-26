@@ -1,7 +1,6 @@
 const storage = require('../utils/storage');
 const createId = require('../utils/id').createId;
 const assert = require('../utils/validators').assert;
-const auth = require('./auth');
 
 const KEY = 'table_session';
 const IDLE_SESSION_MINUTES = 20;
@@ -60,12 +59,6 @@ async function localStartTableSession(input, user = {}) {
     table_name: parsed.table_id,
     table_area: '',
     people_count: peopleCount,
-    customer_type: user.customer_type || 'guest',
-    member_id: user.member_id || '',
-    member_level: user.member_level || '',
-    member_level_no: user.member_level_no || '',
-    customer_name: user.nickname || '',
-    customer_mobile: user.mobile || '',
     created_at: new Date().toISOString(),
     expires_at: new Date(Date.now() + IDLE_SESSION_MINUTES * 60 * 1000).toISOString(),
     has_order: false,
@@ -73,40 +66,24 @@ async function localStartTableSession(input, user = {}) {
 }
 
 async function startTableSession(input) {
-  const user = await auth.getCurrentUser();
   try {
-    const session = await callMealCloud('startTableSession', Object.assign({}, input, {
-      mobile: user.mobile || '',
-      customer_name: user.nickname || '',
-      customer_type: user.customer_type || 'guest',
-      member_id: user.member_id || '',
-      member_level: user.member_level || '',
-      member_level_no: user.member_level_no || '',
-    }));
+    const session = await callMealCloud('startTableSession', input);
     return storage.set(KEY, session);
   } catch (error) {
     if (error.fromCloudResult) throw error;
     console.warn('mealOrderManage startTableSession fallback to local', error);
-    return localStartTableSession(input, user);
+    return localStartTableSession(input);
   }
 }
 
 async function startTableSessionForTest(input) {
-  const user = await auth.getCurrentUser();
   try {
-    const session = await callMealCloud('startTableSessionForTest', Object.assign({}, input, {
-      mobile: user.mobile || '',
-      customer_name: user.nickname || '',
-      customer_type: user.customer_type || 'guest',
-      member_id: user.member_id || '',
-      member_level: user.member_level || '',
-      member_level_no: user.member_level_no || '',
-    }));
+    const session = await callMealCloud('startTableSessionForTest', input);
     return storage.set(KEY, session);
   } catch (error) {
     if (error.fromCloudResult) throw error;
     console.warn('mealOrderManage startTableSessionForTest fallback to local', error);
-    return localStartTableSession({ code: 't=' + (input.table_id || 'A01') + '&k=test', people_count: input.people_count }, user);
+    return localStartTableSession({ code: 't=' + (input.table_id || 'A01') + '&k=test', people_count: input.people_count });
   }
 }
 

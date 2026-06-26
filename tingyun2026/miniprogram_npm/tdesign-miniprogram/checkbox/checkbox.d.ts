@@ -1,4 +1,6 @@
 import { SuperComponent, ComponentsOptionsType, RelationsOptions } from '../common/src/index';
+import { TdCheckboxProps } from './type';
+export declare type CheckboxProps = TdCheckboxProps;
 export default class CheckBox extends SuperComponent {
     externalClasses: string[];
     behaviors: string[];
@@ -46,7 +48,7 @@ export default class CheckBox extends SuperComponent {
         };
         icon?: {
             type: null;
-            value?: string[] | "rectangle" | "circle" | "line";
+            value?: import("./type").CheckboxIconType;
         };
         indeterminate?: {
             type: BooleanConstructor;

@@ -1,6 +1,8 @@
+/// <reference types="miniprogram-api-typings" />
 import { SuperComponent } from '../common/src/index';
-import { UploadFile } from './type';
+import { UploadFile, SizeLimitObj } from './type';
 export default class Upload extends SuperComponent {
+    behaviors: string[];
     externalClasses: string[];
     options: {
         multipleSlots: boolean;
@@ -32,21 +34,36 @@ export default class Upload extends SuperComponent {
     lifetimes: {
         ready(): void;
     };
-    onProofTap(e: any): void;
     handleLimit(customFiles: UploadFile[], max: number): void;
     triggerSuccessEvent(files: any): void;
     triggerFailEvent(err: any): void;
-    onFileClick(e: any): void;
+    onFileClick(e: WechatMiniprogram.BaseEvent): void;
     getFileType(mediaType: string[], tempFilePath: string, fileType?: string): string;
     getRandFileName(filePath: any): string;
+    checkFileSize(size: number, sizeLimit: SizeLimitObj | number, fileType?: string): boolean;
     onDelete(e: any): void;
     deleteHandle(index: number): void;
     updateGrid(): void;
+    resetDragLayout(): void;
     initDragLayout(): void;
     initDragList(): void;
+    getDragSelectors(): {
+        itemSelector: string;
+        wrapSelector: string;
+    };
+    getDragColumn(): number;
+    getDragItemGap(): number;
     initDragBaseData(): void;
     methods: {
-        uploadFiles(files: UploadFile[]): Promise<unknown>;
+        isMediaFile(file: UploadFile): any;
+        isPreviewable(file: UploadFile): boolean;
+        getPreviewMediaSources(): WechatMiniprogram.MediaSource[];
+        getMediaIndex(index: number): number;
+        onPreview(e: WechatMiniprogram.BaseEvent): void;
+        isImageUrl(url: string): boolean;
+        onPreviewImage(e: WechatMiniprogram.BaseEvent): void;
+        onPreviewMedia(e: WechatMiniprogram.BaseEvent): void;
+        uploadFiles(files: UploadFile[]): Promise<any>;
         startUpload(files: UploadFile[]): any;
         onAddTap(): void;
         chooseMedia(mediaType: any): void;

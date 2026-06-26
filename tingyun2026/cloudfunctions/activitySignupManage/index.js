@@ -96,7 +96,7 @@ function pad(value) {
 
 function businessTimestamp(date) {
   return [
-    date.getFullYear(),
+    String(date.getFullYear()).slice(-2),
     pad(date.getMonth() + 1),
     pad(date.getDate()),
     pad(date.getHours()),
@@ -110,7 +110,7 @@ function randomCode(length) {
 }
 
 function createBusinessId(prefix) {
-  return `${prefix}${businessTimestamp(now())}${randomCode(4)}`;
+  return `${prefix}${businessTimestamp(now())}${randomCode(3)}`;
 }
 
 function normalizeCloudDate(value) {
@@ -421,7 +421,6 @@ function signupPublicShape(signup, activity) {
     member_id: signup.member_id || '',
     amount: signup.amount || 0,
     signup_status: signup.signup_status,
-    settlement_status: signup.settlement_status,
     payment_status: signup.payment_status || '',
     remark: signup.remark || '',
     admin_remark: signup.admin_remark || '',
@@ -473,7 +472,7 @@ async function createSignup(input = {}, wxContext = {}) {
   const amount = unitPrice * peopleCount;
   const displayTime = activityDisplayTime(activity);
   const requiresWechatPay = customer.customer_type !== 'member' && amount > 0;
-  const orderNo = createBusinessId('TYACTIVITY');
+  const orderNo = createBusinessId('TYW');
   const data = {
     signup_id: orderNo,
     order_no: orderNo,
@@ -494,8 +493,7 @@ async function createSignup(input = {}, wxContext = {}) {
     unit_price: unitPrice,
     amount,
     signup_status: 'pending_confirmation',
-    settlement_status: requiresWechatPay ? 'pending_wechat_pay' : customer.customer_type === 'member' ? 'pending_offline_points' : 'settled',
-    payment_status: requiresWechatPay ? 'pending_wechat_pay' : customer.customer_type === 'member' ? 'pending_offline' : 'settled',
+    payment_status: requiresWechatPay ? 'pending_wechat_pay' : customer.customer_type === 'member' ? 'offline_pending' : 'settled',
     remark,
     admin_remark: '',
     success_notice_remark: cleanText(activity.success_notice_remark, 200),
@@ -548,18 +546,16 @@ async function findSignup(orderNo) {
 async function simulateWechatPay(input = {}) {
   const signup = await findSignup(input.order_no || input.signup_id);
   assert(signup.customer_type !== 'member', 'PAYMENT_NOT_REQUIRED', '会员报名由店员线下核对');
-  assert(signup.settlement_status === 'pending_wechat_pay', 'INVALID_STATUS', '当前报名不需要支付');
+  assert(signup.payment_status === 'pending_wechat_pay', 'INVALID_STATUS', '当前报名不需要支付');
   const paidAt = now();
   await db.collection('activity_signups').doc(signup._id).update({
     data: {
-      settlement_status: 'wechat_paid',
       payment_status: 'settled',
       paid_at: paidAt,
       updated_at: now(),
     },
   });
   return signupPublicShape(Object.assign({}, signup, {
-    settlement_status: 'wechat_paid',
     payment_status: 'settled',
     paid_at: paidAt,
   }));
@@ -569,7 +565,7 @@ async function createActivityPayment(input = {}, wxContext = {}) {
   const signup = await findSignup(input.order_no || input.signup_id);
   assert(signup.created_by_openid === wxContext.OPENID, 'FORBIDDEN', '无权支付该活动报名');
   assert(signup.customer_type !== 'member', 'PAYMENT_NOT_REQUIRED', '会员活动报名由店员线下核销');
-  assert(signup.settlement_status === 'pending_wechat_pay', 'INVALID_STATUS', '当前报名不需要支付');
+  assert(signup.payment_status === 'pending_wechat_pay', 'INVALID_STATUS', '当前报名不需要支付');
   assert(signup.payment_status !== 'settled', 'ORDER_ALREADY_PAID', '活动报名已支付');
 
   const totalFee = moneyToCents(signup.amount);

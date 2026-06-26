@@ -1,13 +1,22 @@
 const storage = require('../utils/storage');
 const catalog = require('./catalog');
 const assert = require('../utils/validators').assert;
-const cartTotal = require('../utils/pricing').cartTotal;
 
 const KEY = 'cart';
 const asArray = (value) => (Array.isArray(value) ? value : []);
+function itemMemberPrice(item = {}) {
+  if (item.member_price === undefined || item.member_price === null || item.member_price === '') {
+    return Number(item.price) || 0;
+  }
+  const value = Number(item.member_price);
+  return Number.isFinite(value) && value >= 0 ? value : Number(item.price) || 0;
+}
+
 const build = (cartItems) => {
   const items = asArray(cartItems);
-  return { items, total_amount: cartTotal(items) };
+  const regular_total_amount = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
+  const member_total_amount = items.reduce((sum, item) => sum + itemMemberPrice(item) * (Number(item.quantity) || 0), 0);
+  return { items, total_amount: regular_total_amount, regular_total_amount, member_total_amount };
 };
 
 async function getMenuItems() {

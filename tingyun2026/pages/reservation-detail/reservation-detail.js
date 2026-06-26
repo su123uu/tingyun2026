@@ -15,10 +15,10 @@ const statuses = {
 statuses.refunding = { text: '退款处理中', desc: '房间未能确认占用，客服将联系您处理退款。', tone: 'weak' };
 statuses.refunded = { text: '已退款', desc: '本次预约已完成退款。', tone: 'weak' };
 
-const settlement = {
+const paymentStatuses = {
   pending_wechat_pay: '待微信支付',
-  wechat_paid: '已微信支付',
-  pending_offline_points: '待线下会员账户核对',
+  paying: '支付中',
+  offline_pending: '待线下会员账户核对',
   settled: '已结清',
 };
 
@@ -58,12 +58,12 @@ Page({
     this.setData({
       order: Object.assign({}, order, {
         order_no: order.order_no || order.order_id,
-        can_pay: order.customer_type !== 'member' && order.reservation_status === 'pending_payment' && order.settlement_status === 'pending_wechat_pay',
+        can_pay: order.customer_type !== 'member' && order.reservation_status === 'pending_payment' && order.payment_status === 'pending_wechat_pay',
         can_delete: true,
         status_text: status.text,
         status_desc: status.desc,
         status_tone: status.tone || '',
-        settlement_text: settlement[order.settlement_status] || order.settlement_status,
+        payment_text: paymentStatuses[order.payment_status] || order.payment_status,
         payment_method: order.customer_type === 'member' ? '线下会员账户核对' : '微信支付',
         reservation_label: isDining ? '用餐预订' : '住宿预订',
         detail_title: isDining ? '餐厅信息' : '住宿信息',

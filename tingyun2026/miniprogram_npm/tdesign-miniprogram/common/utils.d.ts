@@ -1,9 +1,14 @@
 /// <reference types="miniprogram-api-typings" />
 /// <reference types="miniprogram-api-typings" />
 /// <reference types="miniprogram-api-typings" />
-export declare const systemInfo: WechatMiniprogram.WindowInfo | WechatMiniprogram.SystemInfo;
-export declare const appBaseInfo: WechatMiniprogram.AppBaseInfo | WechatMiniprogram.SystemInfo;
-export declare const deviceInfo: WechatMiniprogram.DeviceInfo | WechatMiniprogram.SystemInfo;
+interface WxWorkSystemInfo extends WechatMiniprogram.SystemInfo {
+    environment?: 'wxwork';
+}
+interface SystemInfo extends WxWorkSystemInfo {
+}
+export declare const systemInfo: WechatMiniprogram.WindowInfo | SystemInfo;
+export declare const appBaseInfo: WechatMiniprogram.AppBaseInfo | SystemInfo;
+export declare const deviceInfo: WechatMiniprogram.DeviceInfo | SystemInfo;
 declare type Context = WechatMiniprogram.Page.TrivialInstance | WechatMiniprogram.Component.TrivialInstance;
 export declare const debounce: (func: any, wait?: number) => (...rest: any[]) => void;
 export declare const throttle: (func: any, wait?: number, options?: any) => (...args: any[]) => void;
@@ -11,7 +16,14 @@ export declare const classNames: (...args: any[]) => string;
 export declare const styles: (styleObj: any) => string;
 export declare const getAnimationFrame: (context: any, cb: Function) => any;
 export declare const getRect: (context: any, selector: string, needAll?: boolean) => Promise<any>;
+interface TreeNode {
+    children?: TreeNode[];
+    [key: string]: any;
+}
+export declare const getTreeDepth: (tree: TreeNode[], key?: string) => any;
 export declare const isIOS: () => boolean;
+export declare const isWxWork: boolean;
+export declare const isPC: boolean;
 export declare const addUnit: (value?: string | number) => string | undefined;
 export declare const getCharacterLength: (type: string, char: string | number, max?: number) => {
     length: number;
@@ -24,6 +36,7 @@ export declare const setIcon: (iconName: any, icon: any, defaultIcon: any) => {
     [x: string]: any;
 };
 export declare const toCamel: (str: any) => any;
+export declare function toKebabCase(str: string): string;
 export declare const getCurrentPage: <T>() => T & WechatMiniprogram.OptionalInterface<WechatMiniprogram.Page.ILifetime> & WechatMiniprogram.Page.InstanceProperties & WechatMiniprogram.Page.InstanceMethods<WechatMiniprogram.IAnyObject> & WechatMiniprogram.Page.Data<WechatMiniprogram.IAnyObject> & WechatMiniprogram.IAnyObject;
 export declare const uniqueFactory: (compName: any) => () => string;
 export declare const calcIcon: (icon: string | Record<string, any>, defaultIcon?: string) => Record<string, any>;

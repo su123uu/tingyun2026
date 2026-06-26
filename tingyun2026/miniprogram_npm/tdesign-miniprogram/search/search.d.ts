@@ -12,8 +12,8 @@ export default class Search extends SuperComponent {
     data: {
         classPrefix: string;
         prefix: string;
-        isShowResultList: boolean;
         isSelected: boolean;
+        isSearching: boolean;
         showClearIcon: boolean;
     };
     updateClearIconVisible(value?: boolean): void;
@@ -23,5 +23,5 @@ export default class Search extends SuperComponent {
     handleClear(): void;
     onConfirm(e: any): void;
     onActionClick(): void;
-    onSelectResultItem(e: any): void;
+    onSelectOption(e: any): void;
 }

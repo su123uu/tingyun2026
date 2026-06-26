@@ -30,7 +30,7 @@
       </block>
     </view>
   </view>
-  <button wx:if="{{!session}}" class="scan-table-btn" bindtap="scanTableCode">进入 A01 桌</button>
+  <button wx:if="{{!session}}" class="scan-table-btn" bindtap="scanTableCode">扫描桌上二维码</button>
 
   <view class="layout">
     <view class="categories">
@@ -69,7 +69,7 @@
       <text class="auth-desc">授权手机号，为您匹配停云山居会员身份</text>
       <text class="auth-note">会员可享专属权益</text>
     </view>
-    <button class="auth-phone-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">授权手机号</button>
+    <button class="auth-phone-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">授权手机号 使用积分抵扣</button>
     <view class="auth-skip" bindtap="cancelPhoneAuth">跳过，以访客身份继续</view>
   </view>
 
@@ -132,7 +132,7 @@
 
   <view class="cart" bindtap="showCart">
     <view class="bag"><t-icon name="cart" size="38rpx" /><text>{{count}}</text></view>
-    <view class="cart-copy"><strong>¥{{cart.total_amount}}</strong><text>{{session ? sessionLabel : '扫码确认人数后才能提交订单'}}</text></view>
+    <view class="cart-copy"><strong>¥{{cart.regular_total_amount}}</strong><text>{{session ? '会员价 ¥' + cart.member_total_amount + ' · ' + sessionLabel : '扫码确认人数后才能提交订单'}}</text></view>
     <button catchtap="checkout">去结算</button>
   </view>
 </view>
